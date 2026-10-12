@@ -1,7 +1,8 @@
 import { ToastProvider } from "@/components/ui/Toast";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import { Hero } from "@/components/home/Hero";
-import { HowItWorks, JoinSection, Leadership, MoneySplit, Projects, Trust, WhoWeAre } from "@/components/home/Sections";
+import { HowItWorks, JoinSection, Leadership, MoneySplit, Projects, Trust } from "@/components/home/Sections";
+import { WhoWeAre } from "@/components/home/WhoWeAre";
 import { Events } from "@/components/home/Events";
 import { Faq } from "@/components/home/Faq";
 import { Register } from "@/components/home/Register";

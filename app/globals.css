@@ -98,3 +98,15 @@
     transform: translateY(18px);
   }
 }
+
+/* "We are not" pen strikes and stamp: drawn when the ticket scrolls into view */
+.strike-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.stamp {
+  transition: transform 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) 1.35s, opacity 0.15s ease 1.35s;
+}
+:where(html.js) .reveal:not(.is-visible) .strike-path { stroke-dashoffset: 1; }
+:where(html.js) .reveal:not(.is-visible) .stamp { opacity: 0; transform: rotate(-11deg) scale(1.8); }

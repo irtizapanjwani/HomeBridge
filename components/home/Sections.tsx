@@ -9,11 +9,9 @@ import {
   SAFEGUARDS,
   SIMPLE_RULES,
   TARGETS,
-  WE_ARE,
-  WE_ARE_NOT,
   WHAT_YOU_GET,
 } from "@/lib/content";
-import { BuildingIcon, ChartIcon, CheckIcon, GlobeIcon, PeopleIcon, XIcon } from "@/components/ui/Icons";
+import { BuildingIcon, ChartIcon, GlobeIcon, PeopleIcon } from "@/components/ui/Icons";
 import { CountUp, Reveal } from "@/components/ui/Reveal";
 import { ProjectArt } from "./ProjectArt";
 import { SectionHeading } from "./SectionHeading";
@@ -21,41 +19,6 @@ import { ShareCalculator } from "./ShareCalculator";
 
 const wrap = "mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)]";
 const card = "rounded-[18px] border border-line bg-paper";
-
-export function WhoWeAre() {
-  return (
-    <section className={`${wrap} pt-16 pb-6`} aria-label="What HomeBridge is and is not">
-      <div className="grid gap-5 md:grid-cols-2">
-        <Reveal className={`${card} p-6 sm:p-7`}>
-          <h2 className="m-0 mb-4 font-display text-2xl font-bold text-forest-800">We are</h2>
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {WE_ARE.map((t) => (
-              <li key={t} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest-100 text-forest-800">
-                  <CheckIcon size={15} />
-                </span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-        <Reveal className={`${card} p-6 sm:p-7`} delay={80}>
-          <h2 className="m-0 mb-4 font-display text-2xl font-bold text-clay">We are not</h2>
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {WE_ARE_NOT.map((t) => (
-              <li key={t} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F6DED8] text-clay">
-                  <XIcon size={14} />
-                </span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
 
 const partIcons = { people: PeopleIcon, building: BuildingIcon, chart: ChartIcon, globe: GlobeIcon };
 
