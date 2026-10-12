@@ -1,0 +1,13 @@
+{
+  "name": "HomeBridge Cooperative",
+  "short_name": "HomeBridge",
+  "description": "Own real businesses at home — from wherever you live.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F0DA",
+  "theme_color": "#17452F",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

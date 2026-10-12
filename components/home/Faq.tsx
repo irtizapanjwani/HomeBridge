@@ -1,0 +1,59 @@
+"use client";
+
+import { useState } from "react";
+import { FAQS } from "@/lib/content";
+import { SectionHeading } from "./SectionHeading";
+
+export function Faq() {
+  const [open, setOpen] = useState(-1);
+
+  return (
+    <section id="faq" className="border-y border-line bg-paper">
+      <div className="mx-auto max-w-[880px] px-[clamp(16px,4vw,28px)] py-16">
+        <SectionHeading eyebrow="FAQ" title="Questions people ask" />
+        <div className="flex flex-col gap-2.5">
+          {FAQS.map(([q, a], i) => {
+            const isOpen = open === i;
+            return (
+              <div
+                key={q}
+                className={`rounded-[14px] border bg-cream transition-colors ${isOpen ? "border-forest-800" : "border-line"}`}
+              >
+                <h3 className="m-0">
+                  <button
+                    type="button"
+                    id={`faq-q-${i}`}
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-a-${i}`}
+                    onClick={() => setOpen(isOpen ? -1 : i)}
+                    className="flex min-h-14 w-full items-center justify-between gap-4 bg-transparent px-[18px] py-3.5 text-left text-lg font-bold text-forest-800"
+                  >
+                    <span>{q}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-2xl leading-none transition ${
+                        isOpen ? "rotate-45 bg-forest-800 text-cream" : "bg-paper"
+                      }`}
+                    >
+                      +
+                    </span>
+                  </button>
+                </h3>
+                <div
+                  id={`faq-a-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-q-${i}`}
+                  className={`grid transition-[grid-template-rows] duration-300 ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden" inert={!isOpen}>
+                    <p className="m-0 px-[18px] pb-[18px] text-[17px] text-[#33433A]">{a}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
