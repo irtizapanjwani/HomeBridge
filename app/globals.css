@@ -39,7 +39,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 92px;
+    scroll-padding-top: var(--header-h, 77px);
     -webkit-text-size-adjust: 100%;
   }
   body {

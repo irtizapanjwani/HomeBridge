@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LANGUAGES, NAV } from "@/lib/content";
 import { LogoMark } from "@/components/ui/Logo";
 import { CloseIcon, MenuIcon } from "@/components/ui/Icons";
@@ -9,6 +9,20 @@ export function SiteHeader() {
   const [lang, setLang] = useState("en");
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // Section links scroll to sit exactly under the sticky header (its bar plus 1px border),
+  // so no strip of the previous section peeks through. Measured, so it tracks font/zoom changes.
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--header-h", `${Math.ceil(bar.getBoundingClientRect().height) + 1}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -70,7 +84,7 @@ export function SiteHeader() {
           scrolled ? "shadow-[0_6px_20px_rgb(14_44_30/0.08)]" : ""
         }`}
       >
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-[clamp(16px,4vw,28px)] py-3.5">
+        <div ref={barRef} className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-[clamp(16px,4vw,28px)] py-3.5">
           <a href="#top" className="flex min-w-0 items-center gap-3 text-forest-800 no-underline">
             <LogoMark />
             <span className="flex min-w-0 flex-col leading-tight">
