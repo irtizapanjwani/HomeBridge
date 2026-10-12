@@ -1,6 +1,5 @@
 import {
   FIVE_CHECKS,
-  FOUR_PARTS,
   GOVERNANCE,
   LEADERS,
   MEMBER_TYPES,
@@ -11,7 +10,7 @@ import {
   TARGETS,
   WHAT_YOU_GET,
 } from "@/lib/content";
-import { BuildingIcon, ChartIcon, GlobeIcon, PeopleIcon } from "@/components/ui/Icons";
+import { PeopleIcon } from "@/components/ui/Icons";
 import { CountUp, Reveal } from "@/components/ui/Reveal";
 import { ProjectArt } from "./ProjectArt";
 import { SectionHeading } from "./SectionHeading";
@@ -19,37 +18,6 @@ import { ShareCalculator } from "./ShareCalculator";
 
 const wrap = "mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)]";
 const card = "rounded-[18px] border border-line bg-paper";
-
-const partIcons = { people: PeopleIcon, building: BuildingIcon, chart: ChartIcon, globe: GlobeIcon };
-
-export function HowItWorks() {
-  return (
-    <section id="how" className={`${wrap} py-16`}>
-      <SectionHeading
-        eyebrow="How it works"
-        title="Four parts. Each has one job."
-        lead="Money moves one way: from members into the cooperative’s bank accounts, then into the businesses. VEKAT and the chapters never hold it."
-      />
-      <ol className="m-0 grid list-none gap-[18px] p-0 sm:grid-cols-2 lg:grid-cols-4">
-        {FOUR_PARTS.map((p, i) => {
-          const Icon = partIcons[p.icon];
-          return (
-            <Reveal as="li" key={p.title} delay={i * 70} className={`${card} group relative flex flex-col gap-2.5 p-6 transition hover:-translate-y-1 hover:shadow-card`}>
-              <span className="absolute top-5 right-5 font-display text-4xl font-extrabold text-line transition group-hover:text-gold/60" aria-hidden="true">
-                0{i + 1}
-              </span>
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forest-100 text-forest-800">
-                <Icon size={30} />
-              </span>
-              <h3 className="m-0 text-xl font-bold text-forest-800">{p.title}</h3>
-              <p className="m-0 text-base text-muted">{p.text}</p>
-            </Reveal>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
 
 export function JoinSection() {
   return (

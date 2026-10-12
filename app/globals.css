@@ -110,3 +110,31 @@
 }
 :where(html.js) .reveal:not(.is-visible) .strike-path { stroke-dashoffset: 1; }
 :where(html.js) .reveal:not(.is-visible) .stamp { opacity: 0; transform: rotate(-11deg) scale(1.8); }
+
+/* "How it works" money pipe: coins travel down (phones) or across (desktop) */
+.flow-dot {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 9999px;
+  background: var(--color-gold-dark);
+  box-shadow: 0 0 0 3px rgb(201 162 39 / 0.35);
+  animation: flow-y 1.8s linear infinite;
+}
+@media (min-width: 64rem) {
+  .flow-dot {
+    left: 0;
+    top: 50%;
+    margin-left: 0;
+    margin-top: -4px;
+    animation-name: flow-x;
+  }
+}
+@keyframes flow-y { from { top: -10px; } to { top: 100%; } }
+@keyframes flow-x { from { left: -10px; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .flow-dot { display: none; }
+}
