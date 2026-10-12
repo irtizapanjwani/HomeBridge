@@ -2,10 +2,7 @@ import {
   FIVE_CHECKS,
   GOVERNANCE,
   LEADERS,
-  MEMBER_TYPES,
-  PROFIT_SPLIT,
   PROJECTS,
-  SAFEGUARDS,
   SIMPLE_RULES,
   TARGETS,
   WHAT_YOU_GET,
@@ -14,6 +11,8 @@ import { PeopleIcon } from "@/components/ui/Icons";
 import { CountUp, Reveal } from "@/components/ui/Reveal";
 import { ProjectArt } from "./ProjectArt";
 import { SectionHeading } from "./SectionHeading";
+import { MemberCards } from "./MemberCards";
+import { SafeguardGates } from "./SafeguardGates";
 import { ShareCalculator } from "./ShareCalculator";
 
 const wrap = "mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)]";
@@ -28,45 +27,19 @@ export function JoinSection() {
           title="Same share price. Same vote. Anywhere."
           lead="Anyone aged 18 or over can join. Pay a one-off joining fee, then buy shares at ₦1,000 each, at your own pace."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {MEMBER_TYPES.map((m, i) => (
-            <Reveal
-              key={m.name}
-              delay={i * 60}
-              className={`relative flex flex-col gap-2 rounded-2xl bg-cream p-5 ${
-                m.featured ? "border-2 border-gold shadow-[0_8px_24px_rgb(201_162_39/0.18)]" : "border border-line"
-              }`}
-            >
-              {m.featured && (
-                <span className="absolute -top-3 left-5 rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold tracking-wide text-forest-900 uppercase">
-                  First 12 months
-                </span>
-              )}
-              <h3 className="m-0 text-xl font-bold text-forest-800">{m.name}</h3>
-              <p className="m-0 text-[15px] text-muted">{m.who}</p>
-              <p className="m-0 mt-auto pt-2 text-base">
-                <b>{m.price[0]}</b>
-                {m.price[1]}
-                <br />
-                {m.extra[0]}
-                <b>{m.extra[1]}</b>
-                {m.extra[2]}
-              </p>
-            </Reveal>
-          ))}
-        </div>
+        <MemberCards />
 
-        <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
+        <div className="mt-10 grid items-start gap-6 lg:grid-cols-2">
           <ShareCalculator />
           <div className="flex flex-col gap-3.5">
             <h3 className="m-0 font-display text-2xl font-bold text-forest-800">Simple rules</h3>
-            <ul className="m-0 flex flex-col gap-2 pl-[22px] marker:text-gold-dark">
+            <ul className="m-0 flex list-disc flex-col gap-2 pl-[22px] marker:text-gold-dark">
               {SIMPLE_RULES.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
             <h3 className="m-0 mt-2 font-display text-2xl font-bold text-forest-800">What you get</h3>
-            <ul className="m-0 flex flex-col gap-2 pl-[22px] marker:text-gold-dark">
+            <ul className="m-0 flex list-disc flex-col gap-2 pl-[22px] marker:text-gold-dark">
               {WHAT_YOU_GET.map((r) => (
                 <li key={r}>{r}</li>
               ))}
@@ -77,50 +50,6 @@ export function JoinSection() {
           </div>
         </div>
       </div>
-    </section>
-  );
-}
-
-export function MoneySplit() {
-  const segments = [
-    { w: 75, cls: "bg-forest-800 text-cream justify-start pl-4", label: "75% businesses", short: "75%" },
-    { w: 15, cls: "bg-gold text-forest-900 justify-center", label: "15%", short: "15%" },
-    { w: 10, cls: "bg-[#8FA89A] text-forest-900 justify-center", label: "10%", short: "10%" },
-  ];
-  return (
-    <section className={`${wrap} py-16`} aria-labelledby="money-split">
-      <SectionHeading id="money-split" eyebrow="Where the money goes" title="Three-quarters goes into businesses" />
-      <div
-        role="img"
-        aria-label="75% into businesses, 15% reserve, 10% running costs"
-        className="flex h-14 overflow-hidden rounded-[14px] text-base font-bold shadow-[inset_0_0_0_1px_rgb(0_0_0/0.04)]"
-      >
-        {segments.map((s) => (
-          <div key={s.w} className={`flex items-center ${s.cls}`} style={{ width: `${s.w}%` }}>
-            <span className="hidden sm:inline">{s.label}</span>
-            <span className="sm:hidden">{s.short}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[15px] text-muted">
-        <span className="inline-flex items-center gap-2"><i className="h-3 w-3 rounded-sm bg-forest-800" /> <b className="text-forest-800">75%</b> into businesses, in stages</span>
-        <span className="inline-flex items-center gap-2"><i className="h-3 w-3 rounded-sm bg-gold" /> <b className="text-gold-dark">15%</b> reserve</span>
-        <span className="inline-flex items-center gap-2"><i className="h-3 w-3 rounded-sm bg-[#8FA89A]" /> <b className="text-ink">10%</b> running costs (includes VEKAT’s published 2% fee)</span>
-      </div>
-
-      <h3 className="mt-10 mb-4 font-display text-2xl font-bold text-forest-800">And when the businesses make a profit</h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PROFIT_SPLIT.map((p, i) => (
-          <Reveal key={i} delay={i * 60} className={`${card} rounded-2xl p-5`}>
-            <div className="font-display text-[32px] font-extrabold text-forest-800">{p.pct}</div>
-            <div className="text-base">{p.text}</div>
-          </Reveal>
-        ))}
-      </div>
-      <p className="mt-[18px] mb-0 text-[15px] text-muted">
-        Joining fees are kept separate from share money and used only for registration, identity checks and member
-        services. Foreign currency is changed to naira only when a business needs it.
-      </p>
     </section>
   );
 }
@@ -210,17 +139,7 @@ export function Trust() {
         title="No single person can move money"
         lead="And members can see every project, every month."
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {SAFEGUARDS.map((s, i) => (
-          <Reveal key={s.title} delay={(i % 3) * 60} className="flex gap-3.5 rounded-2xl border border-line bg-paper p-5">
-            <span className="font-display text-[28px] leading-none font-extrabold text-gold">{i + 1}</span>
-            <div>
-              <b className="text-forest-800">{s.title}</b>
-              <div className="text-base text-muted">{s.text}</div>
-            </div>
-          </Reveal>
-        ))}
-      </div>
+      <SafeguardGates />
 
       <h3 className="mt-10 mb-4 font-display text-2xl font-bold text-forest-800">Who decides what</h3>
       {/* Table on larger screens */}

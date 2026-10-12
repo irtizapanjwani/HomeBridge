@@ -61,12 +61,12 @@ export const FOUR_PARTS = [
 ] as const;
 
 export const MEMBER_TYPES = [
-  { name: "Home member", who: "Living in Nigeria (Edo and Abuja first)", price: ["₦10,000", " to join"], extra: ["Shares from ", "₦5,000", "/month"] },
-  { name: "Diaspora member", who: "Africans living abroad", price: ["£5", " (or $/€) to join"], extra: ["Shares from ", "£25", "/month"] },
-  { name: "Founding member", who: "Anyone joining in the first 12 months", price: ["", "Joining fee plus a founding block of"], extra: ["", "£1,000 or ₦2m", " or more"], featured: true },
-  { name: "Professional member", who: "Doctors, accountants, engineers, lawyers and others", price: ["", "Up to half of shares may be paid in"], extra: ["", "volunteered skills hours", ""] },
-  { name: "Group member", who: "Hometown unions, churches, mosques, businesses", price: ["£5 / ₦10,000", " per group"], extra: ["", "One vote", " per group"] },
-];
+  { name: "Home member", tag: "Nigeria", who: "Living in Nigeria — Edo and Abuja first", fee: "₦10,000", feeNote: "to join, once", perk: "Shares from ₦5,000 a month", theme: "forest" },
+  { name: "Diaspora member", tag: "Abroad", who: "Africans living abroad", fee: "£5", feeNote: "or $ / € to join, once", perk: "Shares from £25 a month", theme: "paper" },
+  { name: "Founding member", tag: "Founder", who: "Anyone joining in the first 12 months", fee: "£1,000+", feeNote: "or ₦2m+ founding block, plus the joining fee", perk: "First 12 months only", theme: "gold" },
+  { name: "Professional member", tag: "Pro", who: "Doctors, accountants, engineers, lawyers and others", fee: "Up to ½", feeNote: "of your shares paid in volunteered skills hours", perk: "Your expertise counts", theme: "clay" },
+  { name: "Group member", tag: "Group", who: "Hometown unions, churches, mosques, businesses", fee: "£5 / ₦10,000", feeNote: "per group to join", perk: "One vote per group", theme: "ink" },
+] as const;
 
 export const SIMPLE_RULES = [
   "One member, one vote. More money means a bigger share of profit, never more control.",
@@ -82,13 +82,6 @@ export const WHAT_YOU_GET = [
   "A say in which projects your shares back, on your own dashboard",
   "First chance to work in, supply or buy from the businesses",
   "Training and a network of members at home and abroad",
-];
-
-export const PROFIT_SPLIT = [
-  { pct: "40%", text: "of yearly profit shared with members after the audit" },
-  { pct: "40%", text: "kept to grow — at least a quarter of all profit goes to the legal reserve fund" },
-  { pct: "10%", text: "for member training" },
-  { pct: "10%", text: "for community work" },
 ];
 
 export const PROJECTS = [

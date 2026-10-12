@@ -138,3 +138,32 @@
 @media (prefers-reduced-motion: reduce) {
   .flow-dot { display: none; }
 }
+
+/* "Follow your money" waffle: squares pop in on reveal; hover dimming stays instant */
+.waffle-cell {
+  transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) var(--d, 0ms);
+}
+:where(html.js) .reveal:not(.is-visible) .waffle-cell { transform: scale(0); }
+
+/* Safeguard gates: padlocks close one after another, the track fills behind them */
+.gate-on { transition: opacity 0.25s ease, transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.gate-track { transition: transform 1.9s cubic-bezier(0.45, 0, 0.2, 1) 0.3s; }
+.gate-done { transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 1.6, 0.4, 1); }
+:where(html.js) .reveal:not(.is-visible) .gate-on { opacity: 0; transform: scale(0.4); }
+:where(html.js) .reveal:not(.is-visible) .gate-track { transform: scaleY(0); }
+:where(html.js) .reveal:not(.is-visible) .gate-done { opacity: 0; transform: translateY(6px) scale(0.9); }
+@media (min-width: 80rem) {
+  :where(html.js) .reveal:not(.is-visible) .gate-track { transform: scaleX(0); }
+}
+
+/* Founding member card: foil sheen sweeps across on hover */
+.foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.55) 48%, transparent 66%);
+  transform: translateX(-120%);
+  transition: transform 0.9s ease;
+  pointer-events: none;
+}
+.group:hover .foil::after { transform: translateX(120%); }
