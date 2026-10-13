@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { FAQS, MEMBER_TYPES, PORTFOLIO_RULES, SAFEGUARDS } from "@/lib/content";
+import { FAQS, PORTFOLIO_RULES, SAFEGUARDS } from "@/lib/content";
 import { ArrowRightIcon } from "@/components/ui/Icons";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHeading } from "./SectionHeading";
 import { EligibilityCheck } from "./EligibilityCheck";
+import { MemberCards } from "./MemberCards";
 import { TwoPayments } from "./MoneySplit";
 import { ProjectCards } from "./Sections";
 
@@ -17,50 +18,6 @@ export function MoreLink({ href, children }: { href: string; children: React.Rea
   );
 }
 
-/** Flat membership cards from the redesign. */
-export function MemberTypeGrid() {
-  const subs: Record<string, string> = {
-    "Home member": "to join, once · shares from ₦5,000 a month",
-    "Diaspora member": "or $ / € equivalent, once · shares from £25 a month",
-    "Founding member": "block of shares, plus the joining fee",
-    "Professional member": "of monthly shares paid in volunteered hours",
-    "Group member": "through one named representative",
-  };
-  const tags: Record<string, string> = {
-    "Home member": "Home",
-    "Diaspora member": "Abroad",
-    "Founding member": "First 12 months",
-    "Professional member": "Skills",
-    "Group member": "Groups",
-  };
-  const big: Record<string, string> = { "Founding member": "£1,000 / ₦2m", "Group member": "One vote" };
-  return (
-    <ul className="m-0 grid list-none gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-5">
-      {MEMBER_TYPES.map((m) => {
-        const dark = m.name === "Founding member";
-        return (
-          <li
-            key={m.name}
-            className={`flex flex-col gap-2 rounded-[20px] p-5 ${dark ? "bg-forest-800 text-cream" : "border border-line bg-paper"}`}
-          >
-            <span
-              className={`self-start rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.12em] uppercase ${
-                dark ? "bg-gold text-forest-900" : "bg-mist text-forest-800"
-              }`}
-            >
-              {tags[m.name]}
-            </span>
-            <h3 className={`m-0 mt-1 font-display text-[21px] leading-tight font-bold ${dark ? "text-cream" : "text-forest-800"}`}>{m.name}</h3>
-            <p className={`m-0 text-[14px] ${dark ? "text-[#E6E0C8]" : "text-body"}`}>{m.who}</p>
-            <p className={`m-0 mt-auto pt-3 text-[26px] leading-tight font-bold ${dark ? "text-gold" : "text-ink"}`}>{big[m.name] ?? m.fee}</p>
-            <p className={`m-0 text-[13px] ${dark ? "text-[#E6E0C8]" : "text-muted"}`}>{subs[m.name]}</p>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 export function WhoCanJoinHome() {
   return (
     <section className="border-b border-line">
@@ -70,7 +27,7 @@ export function WhoCanJoinHome() {
           title="Same share price. Same vote. Anywhere."
           lead="Anyone aged 18 or over, of good character, who passes our identity checks. Choose the membership that fits you — every type buys shares at ₦1,000 and carries one vote."
         />
-        <MemberTypeGrid />
+        <MemberCards />
         <EligibilityCheck ctaHref="/register" />
         <MoreLink href="/join">Fees, rules and how membership works</MoreLink>
       </div>

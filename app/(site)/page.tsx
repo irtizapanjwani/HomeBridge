@@ -1,4 +1,4 @@
-import { HomeHero, PromiseStrip } from "@/components/home/HomeHero";
+import { HomeHero } from "@/components/home/HomeHero";
 import {
   FaqHome,
   GatesHome,
@@ -16,7 +16,6 @@ export default function HomePage() {
   return (
     <>
       <HomeHero />
-      <PromiseStrip />
       <WhoCanJoinHome />
       <MoneyHome />
       <PortfolioHome />
