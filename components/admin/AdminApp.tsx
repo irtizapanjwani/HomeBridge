@@ -60,10 +60,10 @@ function Shell() {
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-2">
+      <div className="flex items-center gap-2.5 px-1">
         <LogoMark size={36} />
         <div className="min-w-0">
-          <div className="truncate font-display text-[18px] leading-tight font-bold text-cream">HomeBridge Admin</div>
+          <div className="font-display text-[16px] leading-tight font-bold whitespace-nowrap text-cream">HomeBridge Admin</div>
           <div className="mt-0.5 truncate text-[12.5px] text-[#A9B5AD]">{roleLine}</div>
         </div>
       </div>
