@@ -6,10 +6,13 @@ type Registration = {
   city?: unknown;
   phone?: unknown;
   email?: unknown;
+  route?: unknown;
   type?: unknown;
   heard?: unknown;
   consent?: unknown;
 };
+
+const ROUTES = ["lives", "land", "other", "none"];
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -32,13 +35,15 @@ export async function POST(req: Request) {
     city: str(body.city),
     phone: str(body.phone, 40),
     email: str(body.email),
+    route: ROUTES.includes(str(body.route, 10)) ? str(body.route, 10) : "",
+    supporterList: str(body.route, 10) === "none",
     type: str(body.type, 60),
     heard: str(body.heard, 60),
     consent: body.consent === true,
     receivedAt: new Date().toISOString(),
   };
 
-  if (entry.name.length < 2 || !entry.country || !entry.city || entry.phone.replace(/\D/g, "").length < 7 || !entry.consent) {
+  if (entry.name.length < 2 || !entry.country || !entry.city || entry.phone.replace(/\D/g, "").length < 7 || !entry.route || !entry.consent) {
     return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 422 });
   }
 

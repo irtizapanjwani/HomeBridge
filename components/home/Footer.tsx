@@ -125,7 +125,7 @@ export function Footer() {
             <b className="text-cream">Important:</b> HomeBridge offers shares to verified members only. There are no
             guaranteed returns — profits depend on how the businesses perform. HomeBridge is not a savings, deposit or
             loan scheme and does not take deposits from the public. Membership opens only after cooperative
-            registration and legal sign-off. Shares can be cashed in after 3 years with 6 months’ notice.
+            registration and legal sign-off. Shares can be withdrawn after 3 years with 6 months’ written notice. The one-off joining fee is paid to VEKAT Group Ltd, the appointed manager; share money goes only to the cooperative’s own accounts.
           </p>
           <p className="m-0">
             Charity work is kept separate from the cooperative. Personal data is handled under the Nigeria Data

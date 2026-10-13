@@ -25,7 +25,9 @@ export const NAV = [
   { href: "#how", label: "How it works", mobile: "How it works" },
   { href: "#join", label: "Join", mobile: "Join and costs" },
   { href: "#projects", label: "Projects", mobile: "Projects" },
-  { href: "#trust", label: "Your money", mobile: "How your money is protected" },
+  { href: "#your-money", label: "Your money", mobile: "Your money" },
+  { href: "#portfolio", label: "Portfolio", mobile: "Long-term portfolio" },
+  { href: "#trust", label: "Safeguards", mobile: "How your money is protected" },
   { href: "#events", label: "Events", mobile: "Events" },
   { href: "#faq", label: "FAQ", mobile: "FAQ" },
 ];
@@ -41,7 +43,7 @@ export const LANGUAGES = [
 
 export const MONEY_STEPS = [
   { title: "You pay", text: "by transfer, card or USSD. Your member number is your reference." },
-  { title: "The cooperative’s own bank account", text: "receives it. Never VEKAT, never a person." },
+  { title: "The cooperative’s own bank account", text: "receives your shares. Never cash, never a person." },
   { title: "Named businesses", text: "get it in stages, as milestones are met." },
 ];
 
@@ -56,24 +58,25 @@ export const WE_ARE_NOT = ["A charity", "A money-transfer service", "A savings o
 export const FOUR_PARTS = [
   { icon: "people", title: "Members own the cooperative", text: "You buy shares, you vote at the annual meeting, you choose the board." },
   { icon: "building", title: "The cooperative owns businesses", text: "Each business is its own company. The cooperative owns most of it; a local operator runs it." },
-  { icon: "chart", title: "VEKAT runs the work", text: "Checks projects, keeps accounts and runs your dashboard for a published fee. Never holds your money." },
+  { icon: "chart", title: "VEKAT runs the work", text: "The appointed manager: runs registration and ID checks, checks projects, keeps the accounts and runs your dashboard. Never holds share money." },
   { icon: "globe", title: "Chapters bring people in", text: "HomeBridge Edo, Abuja, UK and more recruit members and find skills. No access to money." },
 ] as const;
 
 export const MEMBER_TYPES = [
-  { name: "Home member", tag: "Nigeria", who: "Living in Nigeria — Edo and Abuja first", fee: "₦10,000", feeNote: "to join, once", perk: "Shares from ₦5,000 a month", theme: "forest" },
-  { name: "Diaspora member", tag: "Abroad", who: "Africans living abroad", fee: "£5", feeNote: "or $ / € to join, once", perk: "Shares from £25 a month", theme: "paper" },
+  { name: "Home member", tag: "Nigeria", who: "Living in Nigeria", fee: "₦10,000", feeNote: "to join, once", perk: "Shares from ₦5,000 a month", theme: "forest" },
+  { name: "Diaspora member", tag: "Abroad", who: "Africans living abroad", fee: "£10", feeNote: "or $ / € equivalent to join, once", perk: "Shares from £25 a month", theme: "paper" },
   { name: "Founding member", tag: "Founder", who: "Anyone joining in the first 12 months", fee: "£1,000+", feeNote: "or ₦2m+ founding block, plus the joining fee", perk: "First 12 months only", theme: "gold" },
   { name: "Professional member", tag: "Pro", who: "Doctors, accountants, engineers, lawyers and others", fee: "Up to ½", feeNote: "of your shares paid in volunteered skills hours", perk: "Your expertise counts", theme: "clay" },
-  { name: "Group member", tag: "Group", who: "Hometown unions, churches, mosques, businesses", fee: "£5 / ₦10,000", feeNote: "per group to join", perk: "One vote per group", theme: "ink" },
+  { name: "Group member", tag: "Group", who: "Hometown unions, churches, mosques, businesses", fee: "One vote", feeNote: "through one named representative", perk: "Same joining fee", theme: "ink" },
 ] as const;
 
 export const SIMPLE_RULES = [
   "One member, one vote. More money means a bigger share of profit, never more control.",
   "No one may own more than a fifth of all shares.",
-  "Shares can be cashed in after 3 years, with 6 months’ notice.",
+  "Shares can be withdrawn after 3 years, with 6 months’ written notice.",
   "Every member is identity-checked: BVN or NIN at home, Non-Resident BVN or passport abroad.",
-  "The joining fee covers registration, identity checks and your member pack. It is not a share and is not refundable.",
+  "The joining fee is paid once you are approved, to VEKAT Group Ltd, the cooperative’s manager. It covers registration, identity checks and your member pack. It is not a share and is not refundable.",
+  "Your shares are paid only into the cooperative’s own bank accounts, with your member number as the reference.",
 ];
 
 export const WHAT_YOU_GET = [
@@ -108,20 +111,20 @@ export const TARGETS = [
 ];
 
 export const SAFEGUARDS = [
-  { title: "No cash", text: "All money goes through the cooperative’s bank accounts." },
+  { title: "No cash", text: "Bank accounts in the Society’s name only. Suppliers are paid directly, never through a personal account." },
   { title: "Two signatures", text: "On every payment — one from home, one from the diaspora." },
-  { title: "Spending limits", text: "Manager up to ₦2m; Chairman and Treasurer up to ₦20m; full board above." },
-  { title: "Suppliers paid directly", text: "Never through personal accounts." },
-  { title: "Yearly audit", text: "By an ICAN-registered firm, shared with every member." },
-  { title: "Members’ dashboard", text: "Money in, money spent, progress and photos for every project." },
+  { title: "Spending limits", text: "The bigger the payment, the more people must approve it." },
+  { title: "Five checks first", text: "Operator’s own money in, real customers, path to profit, clean papers, bank-only payments." },
+  { title: "Independent audit", text: "Every year by an ICAN-registered auditor, sent to every member and checked by the Audit Committee." },
+  { title: "Monthly reports", text: "Money in, money spent and progress on every project, on your dashboard." },
 ];
 
 export const GOVERNANCE = [
-  { who: "Annual meeting", made: "All members, one vote each, online or in person", job: "Confirms the Chairman, elects the board, approves accounts and big projects" },
+  { who: "Annual meeting", made: "All members, one vote each, online or in person", job: "Confirms the Chairman, elects the board and Audit Committee, approves accounts, the investment policy and projects over ₦50m" },
   { who: "Board", made: "9 people: Chairman, 3 home members, 3 diaspora members, 1 independent accountant, 1 non-voting VEKAT seat", job: "Strategy, approving projects, overseeing VEKAT" },
-  { who: "Audit committee", made: "3 members, elected separately", job: "Checks the books and reports straight to members" },
+  { who: "Audit committee", made: "3 members who are not on the board, at least one from home and one from the diaspora", job: "Can inspect every book and record at any time, and reports straight to members" },
   { who: "Local chapters", made: "HomeBridge Edo, Abuja, UK and more", job: "Recruit members, find skills and projects" },
-  { who: "VEKAT Group", made: "Manager under a written contract, renewed every 3 years by member vote", job: "Day-to-day running" },
+  { who: "VEKAT Group", made: "Appointed manager under a written contract, reviewed by members at least every 3 years", job: "Day-to-day running, registration and identity checks. Receives the joining fee; never holds share money" },
 ];
 
 export const LEADERS = [
@@ -130,14 +133,14 @@ export const LEADERS = [
     initials: "VE",
     name: "Victor Evbuomwan",
     role: "Founding Chairman and Initiator",
-    text: "Started HomeBridge and chairs the founding board through the first cohort. Members confirm the Chairman at the first AGM. Steps out of any board vote on VEKAT’s fees or contracts.",
+    text: "Started HomeBridge and is Founding Chairman until the first AGM, where members vote to confirm him or elect another Chairman. As he also leads VEKAT Group, he never votes on VEKAT’s appointment, fees or contract.",
   },
   {
     kind: "org",
     initials: "VEKAT",
     name: "VEKAT Group Ltd (Nigeria)",
-    role: "Sponsor and manager",
-    text: "Finds and checks projects, keeps the accounts and runs the members’ dashboard. Paid a published fee. Never holds members’ money.",
+    role: "Initiator and appointed manager",
+    text: "Runs registration and identity checks, finds and checks projects, keeps the accounts and runs the members’ dashboard, under a contract members review. Receives the joining fee; never holds share money or signs on the cooperative’s accounts.",
   },
   {
     kind: "members",
@@ -161,20 +164,24 @@ export const NEWS = [
 
 export const DOCS = [
   { name: "HomeBridge cooperative model (v7)", status: "PDF", available: true },
-  { name: "Draft bye-laws (constitution)", status: "After legal review", available: false },
+  { name: "Draft bye-laws (constitution), draft 3", status: "After legal review", available: false },
   { name: "Membership registration form", status: "PDF", available: true },
   { name: "Annual report", status: "After first year", available: false },
   { name: "Audited accounts", status: "After first audit", available: false },
 ];
 
 export const FAQS = [
-  ["Is this an investment with guaranteed returns?", "No. You become a part-owner of real businesses. When they make a profit, members share it after the yearly audit. Nothing is guaranteed, and profits depend on how the businesses perform."],
-  ["How much does it cost to join?", "A one-off joining fee of £5 for members abroad or ₦10,000 for members in Nigeria. It covers registration, identity checks and your member pack. It is not a share and is not refundable."],
-  ["How much is a share?", "Every share costs ₦1,000, whether you live in Benin City, Abuja or Birmingham. Members abroad pay in £, $ or €, converted at the rate on the day."],
-  ["Who holds my money?", "Only the cooperative’s own bank accounts. VEKAT, chapters and individuals never hold members’ money. Every payment needs two signatures."],
-  ["Can I get my money back?", "Shares can be cashed in after 3 years, with 6 months’ notice. This protects the businesses from too many people leaving at once."],
+  ["Is this an investment with guaranteed returns?", "No. You become a part-owner of real businesses. When they make a profit, members share it after the yearly audit and AGM approval. Nothing is guaranteed, and profits depend on how the businesses perform."],
+  ["Who can join?", "Anyone aged 18 or over, of good character, who passes our identity checks and has a link to Edo State or Abuja FCT: you live there, or you or your family own or hold land or a home there."],
+  ["I am not in Edo or Abuja. Can I join?", "Yes, if you or your family have land or a home in Edo or the FCT, wherever you live. If not, join the Supporter list for your state or country and be first in when it opens."],
+  ["How much does it cost to join?", "A one-off joining fee of £10 for members abroad or ₦10,000 for members in Nigeria, paid once you are approved. It goes to VEKAT Group Ltd, the cooperative’s appointed manager, for registration, identity checks and your member pack. It is not a share and is not refundable."],
+  ["How much is a share?", "Every share costs ₦1,000, whether you live in Benin City, Abuja or Birmingham. Members abroad pay in £, $ or €, converted at the bank rate on the day received."],
+  ["Who holds my money?", "Your shares go only into the cooperative’s own bank accounts. VEKAT, chapters and individuals never hold share money, and every outgoing payment needs two signatures. The only payment that goes to VEKAT is the one-off joining fee."],
+  ["Can I get my money back?", "Shares can be withdrawn after 3 years, with 6 months’ written notice, at the value in the last audited accounts. This protects the businesses from too many people leaving at once."],
   ["Does more money give me more votes?", "No. One member, one vote. More shares mean a bigger share of profit, never more control. No one may own more than a fifth of all shares."],
-  ["How do members abroad pay?", "By bank transfer — ideally from a Non-Resident Nigerian account — or by card or UK pay-by-bank. Your member number is your payment reference."],
+  ["What happens to my shares if I die?", "You name one or more nominees when you join. The value of your shares passes to them."],
+  ["What if I stop paying?", "After 12 months without a contribution we remind you. After 3 more months you may become dormant, with no vote, until you start again."],
+  ["How do members abroad pay?", "Joining fee by card, Apple Pay or Google Pay. Shares by bank transfer into the cooperative’s US dollar or pound sterling account. Your member number is always your payment reference."],
   ["When can I join?", "Membership opens after the cooperative is registered in Edo State and the FCT and a lawyer has signed off. Register your interest now and we will tell you first."],
 ];
 
@@ -183,9 +190,29 @@ export const JOIN_STEPS = [
   { title: "Create your account", text: "With your phone number and a one-time code. No password to remember." },
   { title: "Choose how you join", text: "Home, diaspora, founding, professional or group member." },
   { title: "Check your identity", text: "BVN or NIN at home; Non-Resident BVN or passport abroad, plus a quick selfie." },
-  { title: "Officer review", text: "Usually within 2 working days. We message you on WhatsApp." },
-  { title: "Pay the joining fee", text: "Get your member number, then buy shares at your own pace." },
+  { title: "Officer review", text: "Usually within 2 working days, and always within 30 days. We message you on WhatsApp." },
+  { title: "Pay the joining fee", text: "£10 or ₦10,000, once you are approved. Get your member number, then buy shares at your own pace." },
 ];
+
+/** Bye-law 5.2 residence test. "none" goes to the Supporter list, not membership. */
+export const ROUTE_OPTIONS = [
+  { value: "lives", label: "I live in Edo State or Abuja FCT" },
+  { value: "land", label: "I live elsewhere, but I or my family own or hold land or a home in Edo or FCT" },
+  { value: "other", label: "Another link to Edo or FCT (sent for Director approval)" },
+  { value: "none", label: "None of these yet: add me to the Supporter list" },
+] as const;
+
+/** Bye-law 13A: long-term investment portfolio. Bracketed limits are proposals for members to decide. */
+export const PORTFOLIO_RULES = [
+  { big: "≤ 20%", title: "of the Society’s total funds", text: "can be held in the portfolio." },
+  { big: "≤ 10%", title: "of the portfolio in one company", text: "so no single company can sink it." },
+  { big: "Advice first", title: "", text: "Every trade needs written advice from an independent SEC-registered adviser." },
+  { big: "Our name", title: "", text: "Held through the Society’s own CSCS account and a registered custodian. Never in a person’s name." },
+  { big: "Never touched", title: "", text: "The withdrawal reserve, the legal reserve fund and joining fees." },
+  { big: "Quarterly", title: "", text: "Holdings and value on your dashboard, checked by the Audit Committee." },
+];
+
+export const PORTFOLIO_NOT = ["Borrowing to invest", "Derivatives or futures", "Currency trading", "Crypto", "Quick in-and-out trades"];
 
 export const MEMBER_TYPE_OPTIONS = ["Home member", "Diaspora member", "Founding member", "Professional member", "Group member", "Not sure yet"];
 export const HEARD_OPTIONS = ["WhatsApp", "Friend or family", "Church, mosque or union", "Zoom launch", "Social media", "Other"];

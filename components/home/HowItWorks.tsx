@@ -40,10 +40,10 @@ function WorkTether({ label }: { label: string }) {
   );
 }
 
-function NoMoneyBadge() {
+function NoMoneyBadge({ label = "No access to money" }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-clay/30 bg-[#F6DED8] px-2.5 py-0.5 text-xs font-bold text-clay">
-      <LockIcon size={13} /> No access to money
+      <LockIcon size={13} /> {label}
     </span>
   );
 }
@@ -56,7 +56,7 @@ export function HowItWorks() {
       <SectionHeading
         eyebrow="How it works"
         title="Four parts. Each has one job."
-        lead="Money moves one way: from members into the cooperative’s bank accounts, then into the businesses. VEKAT and the chapters never hold it."
+        lead="Share money moves one way: from members into the cooperative’s own bank accounts, then into the businesses. VEKAT and the chapters never hold it."
       />
 
       <Reveal className="grid grid-cols-1 lg:grid-cols-[1fr_96px_1.15fr_96px_1fr] lg:items-stretch">
@@ -149,8 +149,8 @@ export function HowItWorks() {
             <span className={`${num} text-line-strong`}>03</span>
           </div>
           <h3 className="m-0 font-display text-xl font-bold text-forest-800">{VEKAT.title}</h3>
-          <p className="m-0 text-base text-muted">{VEKAT.text.replace(" Never holds your money.", "")}</p>
-          <NoMoneyBadge />
+          <p className="m-0 text-base text-muted">{VEKAT.text.replace(" Never holds share money.", "")}</p>
+          <NoMoneyBadge label="Never holds share money" />
         </article>
 
         <div className="hidden lg:block" />
@@ -158,7 +158,7 @@ export function HowItWorks() {
         {/* Key */}
         <div className="mt-6 flex flex-col justify-center gap-3 rounded-[22px] p-2 text-sm text-muted lg:mt-0 lg:p-6">
           <span className="flex items-center gap-3">
-            <span className="h-1.5 w-10 rounded-full bg-gold" /> Money — one way only
+            <span className="h-1.5 w-10 rounded-full bg-gold" /> Share money — one way only
           </span>
           <span className="flex items-center gap-3">
             <span className="w-10 border-t-2 border-dashed border-line-strong" /> Work only — never money

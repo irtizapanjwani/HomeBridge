@@ -21,7 +21,8 @@ function GateDetail({ index }: { index: number }) {
     const tiers = [
       { who: "Manager", cap: "up to ₦2m", w: "38%" },
       { who: "Chair + Treasurer", cap: "up to ₦20m", w: "68%" },
-      { who: "Full board", cap: "above ₦20m", w: "100%" },
+      { who: "Full board", cap: "above ₦20m", w: "84%" },
+      { who: "Members’ vote", cap: "over ₦50m", w: "100%" },
     ];
     return (
       <div className="mt-2 flex flex-col gap-1" aria-hidden="true">

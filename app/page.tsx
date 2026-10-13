@@ -4,6 +4,7 @@ import { Hero } from "@/components/home/Hero";
 import { JoinSection, Leadership, Projects, Trust } from "@/components/home/Sections";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { MoneySplit } from "@/components/home/MoneySplit";
+import { Portfolio } from "@/components/home/Portfolio";
 import { WhoWeAre } from "@/components/home/WhoWeAre";
 import { Events } from "@/components/home/Events";
 import { Faq } from "@/components/home/Faq";
@@ -27,6 +28,7 @@ export default function HomePage() {
         <HowItWorks />
         <JoinSection />
         <MoneySplit />
+        <Portfolio />
         <Projects />
         <Trust />
         <Leadership />

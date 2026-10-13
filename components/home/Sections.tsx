@@ -14,6 +14,7 @@ import { SectionHeading } from "./SectionHeading";
 import { MemberCards } from "./MemberCards";
 import { SafeguardGates } from "./SafeguardGates";
 import { ShareCalculator } from "./ShareCalculator";
+import { EligibilityCheck } from "./EligibilityCheck";
 
 const wrap = "mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)]";
 const card = "rounded-[18px] border border-line bg-paper";
@@ -25,9 +26,10 @@ export function JoinSection() {
         <SectionHeading
           eyebrow="Who can join and what it costs"
           title="Same share price. Same vote. Anywhere."
-          lead="Anyone aged 18 or over can join. Pay a one-off joining fee, then buy shares at ₦1,000 each, at your own pace."
+          lead="Anyone aged 18 or over, of good character, who passes our identity checks. Pay a one-off joining fee once approved, then buy shares at ₦1,000 each, at your own pace."
         />
         <MemberCards />
+        <EligibilityCheck />
 
         <div className="mt-10 grid items-start gap-6 lg:grid-cols-2">
           <ShareCalculator />
@@ -61,7 +63,7 @@ export function Projects() {
         <SectionHeading
           eyebrow="First cohort projects"
           title="Real businesses you can visit"
-          lead="We start in Edo State and Abuja FCT at the same time. Projects are being shortlisted now and must pass five checks before any money moves."
+          lead="Being shortlisted now in Edo State and Abuja FCT. No money moves until a project passes all five checks."
         />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {PROJECTS.map((p, i) => (

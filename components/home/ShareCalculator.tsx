@@ -24,7 +24,7 @@ export function ShareCalculator() {
 
   return (
     <div className="adire flex flex-col gap-4 rounded-[20px] bg-forest-800 p-6 text-cream sm:p-7">
-      <h3 className="m-0 font-display text-2xl font-bold">Share calculator</h3>
+      <h3 className="m-0 font-display text-2xl font-bold">How many shares?</h3>
       <div role="group" aria-label="Where you live" className="flex flex-wrap gap-1.5 self-start rounded-full bg-forest-900 p-1.5">
         {(
           [
@@ -101,8 +101,8 @@ export function ShareCalculator() {
         {isHome
           ? `Each share costs ₦1,000.${leftover > 0 ? ` Shares are whole, so ₦${fmt(leftover)} of this would not buy a share.` : ""}`
           : `Example at ₦${fmt(EXAMPLE_RATE)} to £1. Your payment is converted at the rate on the day, so everyone pays the same ₦1,000 per share.`}{" "}
-        You still get one vote, however many shares you hold. Shares can be cashed in after 3 years with 6 months’
-        notice.
+        You still get one vote, however many shares you hold. Shares carry no guaranteed return and can be withdrawn
+        after 3 years with 6 months’ notice.
       </p>
     </div>
   );

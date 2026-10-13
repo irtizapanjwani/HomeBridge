@@ -10,15 +10,15 @@ const C = { green: "#2E7D50", gold: "#D9A93A", clay: "#B4532F", blue: "#2F7FB8" 
 
 const SPLIT = [
   { key: "biz", pct: 75, color: C.green, label: "Into businesses", note: "Released in stages, as milestones are met" },
-  { key: "res", pct: 15, color: C.gold, label: "Reserve", note: "Held back, not spent on projects" },
-  { key: "run", pct: 10, color: C.clay, label: "Running costs", note: "Includes VEKAT’s published 2% fee" },
+  { key: "res", pct: 15, color: C.gold, label: "Reserve", note: "For withdrawals and emergencies" },
+  { key: "run", pct: 10, color: C.clay, label: "Running costs", note: "Audit, members’ dashboard and the manager’s published fee" },
 ] as const;
 
 const PROFIT = [
-  { key: "share", pct: 40, color: C.green, label: "Shared with members", note: "Paid after the yearly audit" },
-  { key: "grow", pct: 40, color: C.gold, label: "Kept to grow", note: "At least a quarter of all profit goes to the legal reserve fund" },
-  { key: "train", pct: 10, color: C.clay, label: "Member training", note: "Training for members" },
-  { key: "comm", pct: 10, color: C.blue, label: "Community work", note: "Community work" },
+  { key: "share", pct: 40, color: C.green, label: "Shared with members", note: "As a dividend on shares, after the yearly audit and AGM approval" },
+  { key: "grow", pct: 40, color: C.gold, label: "Kept to grow", note: "At least a quarter of all profit goes to the legal reserve fund; the rest funds new businesses" },
+  { key: "train", pct: 10, color: C.clay, label: "Education and training", note: "Enterprise, cooperation and financial literacy" },
+  { key: "comm", pct: 10, color: C.blue, label: "Community development", note: "Given to registered charities as members decide" },
 ] as const;
 
 const AMOUNTS = [5000, 20000, 100000, 1000000];
@@ -64,7 +64,7 @@ function Donut({ active, setActive }: { active: string | null; setActive: (k: st
   const focus = PROFIT.find((p) => p.key === active);
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[300px]">
-      <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90" role="img" aria-label="Yearly profit: 40% shared with members, 40% kept to grow, 10% member training, 10% community work">
+      <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90" role="img" aria-label="Yearly profit: 40% shared with members, 40% kept to grow, 10% education and training, 10% community development">
         {PROFIT.map((p) => {
           const len = (p.pct / 100) * circ;
           const seg = (
@@ -96,25 +96,79 @@ function Donut({ active, setActive }: { active: string | null; setActive: (k: st
   );
 }
 
+const PAYEES = [
+  {
+    key: "fee",
+    when: "Once · after approval",
+    title: "Joining fee",
+    amount: "£10 or ₦10,000",
+    to: "Paid to VEKAT Group Ltd",
+    text: "The cooperative’s appointed manager, which runs registration and identity checks. Not a share, not refundable.",
+    ways: ["Card · Apple Pay · Google Pay (Stripe)", "First Bank transfer (naira)"],
+    tone: "border-clay/40 bg-[#FBEDE7]",
+    chip: "bg-clay text-cream",
+  },
+  {
+    key: "shares",
+    when: "Monthly · whenever you like",
+    title: "Shares",
+    amount: "₦1,000 per share",
+    to: "Paid to HomeBridge Cooperative Society Ltd",
+    text: "Only into the cooperative’s own bank accounts. Every outgoing payment needs two signatures.",
+    ways: ["UBA naira account", "US dollar domiciliary", "Pound sterling domiciliary"],
+    tone: "border-forest-800/30 bg-forest-100",
+    chip: "bg-forest-800 text-cream",
+  },
+] as const;
+
+function TwoPayments() {
+  return (
+    <Reveal className="mb-6 grid gap-4 md:grid-cols-2">
+      {PAYEES.map((p, i) => (
+        <article key={p.key} className={`flex flex-col gap-2 rounded-[22px] border-2 p-5 sm:p-6 ${p.tone}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-extrabold tracking-[0.12em] uppercase ${p.chip}`}>
+              Payment {i + 1} · {p.title}
+            </span>
+            <span className="text-sm font-semibold text-muted">{p.when}</span>
+          </div>
+          <div className="font-display text-[clamp(24px,2.6vw,30px)] leading-tight font-extrabold text-forest-800">{p.amount}</div>
+          <div className="font-bold text-ink">{p.to}</div>
+          <p className="m-0 text-[15px] text-muted">{p.text}</p>
+          <ul className="m-0 mt-auto flex list-none flex-wrap gap-1.5 p-0 pt-1">
+            {p.ways.map((w) => (
+              <li key={w} className="rounded-full bg-paper px-2.5 py-0.5 text-[13px] font-semibold text-forest-800">
+                {w}
+              </li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </Reveal>
+  );
+}
+
 export function MoneySplit() {
   const [amount, setAmount] = useState(AMOUNTS[1]);
   const [activeSplit, setActiveSplit] = useState<string | null>(null);
   const [activeProfit, setActiveProfit] = useState<string | null>(null);
 
   return (
-    <section className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)] py-16" aria-labelledby="money-split">
+    <section id="your-money" className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)] py-16" aria-labelledby="money-split">
       <SectionHeading
         id="money-split"
         eyebrow="Where the money goes"
         title="Follow your money"
-        lead="Three-quarters of share money goes into businesses. Pick an amount and see where every naira lands."
+        lead="Two payments, two places, never a person. Your member number is always your payment reference."
       />
+
+      <TwoPayments />
 
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         {/* Share money split */}
         <Reveal className="rounded-[24px] border border-line bg-paper p-6 shadow-card sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="m-0 font-display text-xl font-bold text-forest-800">If you put in</h3>
+            <h3 className="m-0 font-display text-xl font-bold text-forest-800">If you buy shares worth</h3>
             <div role="group" aria-label="Amount" className="flex flex-wrap gap-1.5 rounded-full bg-cream p-1">
               {AMOUNTS.map((a) => (
                 <button
@@ -186,8 +240,9 @@ export function MoneySplit() {
       </div>
 
       <p className="mt-5 mb-0 max-w-[60em] text-[15px] text-muted">
-        Joining fees are kept separate from share money and used only for registration, identity checks and member
-        services. Foreign currency is changed to naira only when a business needs it.
+        Within agreed limits, part of the money for businesses may instead go into the{" "}
+        <a href="#portfolio" className="font-semibold">long-term portfolio</a>. Foreign currency is converted to naira at
+        the bank rate on the day it is received.
       </p>
     </section>
   );

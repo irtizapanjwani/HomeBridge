@@ -21,7 +21,7 @@ export type Applicant = {
 export type Payment = {
   id: string;
   amount: string;
-  account: "Naira account" | "Domiciliary account";
+  account: "UBA naira account" | "USD domiciliary account" | "GBP domiciliary account";
   ref: string;
   match: string | null;
   type: "Shares" | "Joining fee" | "—";
@@ -99,9 +99,9 @@ export const APPLICANTS: Applicant[] = [
 ];
 
 export const PAYMENTS: Payment[] = [
-  { id: "p1", amount: "₦5,000", account: "Naira account", ref: "HB-EDO-000123", match: "[Member A]", type: "Shares", status: "Unconfirmed" },
-  { id: "p2", amount: "£5.00", account: "Domiciliary account", ref: "HB-UK-000045", match: "[Member B]", type: "Joining fee", status: "Unconfirmed" },
-  { id: "p3", amount: "₦20,000", account: "Naira account", ref: "HBEDO123 (typo)", match: null, type: "—", status: "Unconfirmed" },
+  { id: "p1", amount: "₦5,000", account: "UBA naira account", ref: "HB-EDO-000123", match: "[Member A]", type: "Shares", status: "Unconfirmed" },
+  { id: "p2", amount: "£25.00", account: "GBP domiciliary account", ref: "HB-UK-000045", match: "[Member B]", type: "Shares", status: "Unconfirmed" },
+  { id: "p3", amount: "₦20,000", account: "UBA naira account", ref: "HBEDO123 (typo)", match: null, type: "—", status: "Unconfirmed" },
 ];
 
 export const MEMBERS_FOR_MATCHING = [

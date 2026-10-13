@@ -46,7 +46,7 @@ export function Hero() {
         <div className="flex flex-col gap-6">
           <div className="inline-flex flex-wrap items-center gap-2.5 self-start rounded-full bg-forest-900 px-3.5 py-2 text-[15px] font-semibold ring-1 ring-gold/30">
             <span className="text-gold">New</span>
-            <span>First cohort: Edo State and Abuja FCT</span>
+            <span>First cohort: Edo State and Abuja FCT · open to Africans everywhere</span>
           </div>
           <h1 className="m-0 font-display text-[clamp(38px,6vw,68px)] leading-[1.02] font-extrabold tracking-[-0.02em]">
             Own real businesses at home — <span className="text-gold">from wherever you live.</span>
@@ -109,7 +109,7 @@ export function Hero() {
             </ol>
             <div className="grid grid-cols-3 gap-2.5 text-center">
               {[
-                ["£5", "or ₦10,000 to join, once"],
+                ["£10", "or ₦10,000 to join, once"],
                 ["₦1,000", "per share, for everyone"],
                 ["1", "member, one vote"],
               ].map(([big, small]) => (

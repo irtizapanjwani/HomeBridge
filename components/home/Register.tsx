@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CONTACT, HEARD_OPTIONS, JOIN_STEPS, MEMBER_TYPE_OPTIONS, SHARE_MESSAGE } from "@/lib/content";
+import { useEffect, useState } from "react";
+import { CONTACT, HEARD_OPTIONS, JOIN_STEPS, MEMBER_TYPE_OPTIONS, ROUTE_OPTIONS, SHARE_MESSAGE } from "@/lib/content";
 import { CheckIcon, MailIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "@/components/ui/Icons";
 
 type Fields = {
@@ -10,6 +10,7 @@ type Fields = {
   city: string;
   phone: string;
   email: string;
+  route: string;
   type: string;
   heard: string;
   consent: boolean;
@@ -21,6 +22,7 @@ const EMPTY: Fields = {
   city: "",
   phone: "",
   email: "",
+  route: "",
   type: MEMBER_TYPE_OPTIONS[0],
   heard: HEARD_OPTIONS[0],
   consent: false,
@@ -33,6 +35,7 @@ function validate(f: Fields) {
   if (!f.city.trim()) e.city = "Please enter your city.";
   if (f.phone.replace(/\D/g, "").length < 7) e.phone = "Please enter a phone or WhatsApp number we can reach.";
   if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = "That email doesn’t look right.";
+  if (!f.route) e.route = "Please choose your link to Edo State or Abuja FCT.";
   if (!f.consent) e.consent = "Please tick to confirm you understand.";
   return e;
 }
@@ -44,6 +47,18 @@ export function Register() {
   const [f, setF] = useState<Fields>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof Fields, string>>>({});
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  // Pre-fill the route when someone arrives from the "Can I join today?" checker.
+  useEffect(() => {
+    const onRoute = (e: Event) => {
+      const v = (e as CustomEvent<string>).detail;
+      setF((cur) => ({ ...cur, route: v }));
+      setErrors((cur) => ({ ...cur, route: undefined }));
+      setState((cur) => (cur === "sent" ? cur : "idle"));
+    };
+    window.addEventListener("hb:route", onRoute);
+    return () => window.removeEventListener("hb:route", onRoute);
+  }, []);
 
   const set = <K extends keyof Fields>(k: K, v: Fields[K]) => {
     setF((cur) => ({ ...cur, [k]: v }));
@@ -170,10 +185,13 @@ export function Register() {
                 <CheckIcon size={28} />
               </div>
               <h3 className="m-0 font-display text-[26px] font-bold text-forest-800">
-                Thank you{f.name ? `, ${f.name.trim().split(/\s+/)[0]}` : ""} — you’re on the list
+                Thank you{f.name ? `, ${f.name.trim().split(/\s+/)[0]}` : ""} — you’re on the{" "}
+                {f.route === "none" ? "Supporter list" : "list"}
               </h3>
               <p className="m-0 text-muted">
-                We will message you on WhatsApp when membership opens. Tell a friend at home or abroad.
+                {f.route === "none"
+                  ? "We will message you on WhatsApp when membership opens for your state or country. Tell a friend at home or abroad."
+                  : "We will message you on WhatsApp when membership opens. Tell a friend at home or abroad."}
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <a
@@ -227,6 +245,20 @@ export function Register() {
                   Email <span className="font-normal text-muted">(optional)</span>
                 </>,
                 <input id="r-email" type="email" autoComplete="email" value={f.email} onChange={(e) => set("email", e.target.value)} className={`${inputCls} ${border("email")}`} {...aria("email")} />,
+              )}
+              {field(
+                "route",
+                "Your link to Edo State or Abuja FCT",
+                <select id="r-route" value={f.route} onChange={(e) => set("route", e.target.value)} className={`${inputCls} ${border("route")}`} {...aria("route")}>
+                  <option value="" disabled>
+                    Choose one
+                  </option>
+                  {ROUTE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>,
               )}
               <div className="grid gap-3.5 sm:grid-cols-2">
                 {field(
