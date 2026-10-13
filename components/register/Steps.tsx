@@ -466,7 +466,7 @@ export function NomineeStep({ draft, set, errors }: StepProps) {
           </Checkbox>
           <Checkbox id="decl-bylaws" checked={draft.decl.bylaws} onChange={(v) => decl({ bylaws: v })} error={errors["decl-bylaws"]}>
             I have read and accept the{" "}
-            <a href="/governance" target="_blank" rel="noopener" className="font-medium underline">
+            <a href="/documents" target="_blank" rel="noopener" className="font-medium underline">
               HomeBridge bye-laws<span className="sr-only"> (opens in a new tab)</span>
             </a>
             .

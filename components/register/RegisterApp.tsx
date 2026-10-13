@@ -99,6 +99,11 @@ export function RegisterApp() {
       setStep(Math.max(0, Math.min(Number(saved.step) || 0, max)));
       setFurthest(Math.max(0, Math.min(Number(saved.furthest) || 0, max)));
     }
+    // Arriving from "Can I join today?" (/register?route=land): pre-select that route unless one is already chosen.
+    const fromCheck = new URLSearchParams(window.location.search).get("route");
+    if (!finished?.reference && (fromCheck === "lives" || fromCheck === "land" || fromCheck === "other" || fromCheck === "none")) {
+      setDraft((d) => (d.route ? d : { ...d, route: fromCheck }));
+    }
     setLoaded(true);
   }, []);
 
