@@ -63,7 +63,7 @@ function Shell() {
       <div className="flex items-center gap-3 px-2">
         <LogoMark size={36} />
         <div className="min-w-0">
-          <div className="font-display text-[18px] leading-tight font-bold whitespace-nowrap text-cream">HomeBridge Admin</div>
+          <div className="truncate font-display text-[18px] leading-tight font-bold text-cream">HomeBridge Admin</div>
           <div className="mt-0.5 truncate text-[12.5px] text-[#A9B5AD]">{roleLine}</div>
         </div>
       </div>
@@ -134,14 +134,14 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen bg-admin-bg text-[15px] text-body">
-      <div className="hidden w-[252px] shrink-0 bg-forest-900 lg:block">
-        <aside className="sticky top-0 h-screen overflow-y-auto px-4 py-6">{sidebar}</aside>
+      <div className="hidden w-[272px] shrink-0 bg-forest-900 lg:block">
+        <aside className="dark-scroll sticky top-0 h-screen overflow-y-auto px-4 py-6">{sidebar}</aside>
       </div>
 
       {navOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin menu">
           <button type="button" aria-label="Close menu" onClick={() => setNavOpen(false)} className="absolute inset-0 bg-forest-950/60" />
-          <aside className="relative h-full w-[min(86vw,300px)] overflow-y-auto bg-forest-900 px-4 py-6">{sidebar}</aside>
+          <aside className="dark-scroll relative h-full w-[min(86vw,300px)] overflow-y-auto bg-forest-900 px-4 py-6">{sidebar}</aside>
         </div>
       )}
 

@@ -75,6 +75,15 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23C9A227' stroke-opacity='.10' stroke-width='1.5'%3E%3Ccircle cx='28' cy='28' r='10'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3Cpath d='M0 0l12 12M56 0L44 12M0 56l12-12M56 56L44 44'/%3E%3C/g%3E%3C/svg%3E");
 }
 
+/* Slim, dark scrollbar for the admin sidebar (Windows shows a thick grey one by default). */
+@utility dark-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(247 240 218 / 0.22) transparent;
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-thumb { background: rgb(247 240 218 / 0.22); border-radius: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+}
+
 @utility eyebrow {
   display: block;
   margin: 0;
