@@ -134,7 +134,7 @@ export function AboutStep({ draft, set, errors }: StepProps) {
           )}
         </Field>
       )}
-      <Field id="city" label="Town or city" error={errors.city}>
+      <Field id="city" label="Town or city" error={errors.city} className={nigeria || draft.country === OTHER_COUNTRY ? "" : "sm:col-span-2"}>
         {(a) => <input {...a} type="text" autoComplete="address-level2" className={inputClass} value={draft.city} onChange={(e) => set({ city: e.target.value })} />}
       </Field>
       <Field id="address" label="Home address" error={errors.address} className="sm:col-span-2">

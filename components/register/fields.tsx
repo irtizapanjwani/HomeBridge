@@ -39,12 +39,13 @@ export function Field({ id, label, hint, error, optional, children, className = 
         {label}
         {optional && <span className="ml-1.5 font-normal text-muted">(optional)</span>}
       </label>
+      {children({ id, "aria-invalid": !!error, "aria-describedby": describedBy })}
+      {/* Hint sits under the box so labels and boxes line up across a row */}
       {hint && (
-        <p id={`${id}-hint`} className="-mt-0.5 mb-2 text-[14px] leading-snug text-muted">
+        <p id={`${id}-hint`} className="mt-1.5 mb-0 text-[13.5px] leading-snug text-muted">
           {hint}
         </p>
       )}
-      {children({ id, "aria-invalid": !!error, "aria-describedby": describedBy })}
       <ErrorText id={`${id}-error`}>{error}</ErrorText>
     </div>
   );
