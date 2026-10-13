@@ -40,8 +40,8 @@ function BridgeArt() {
       <path
         d="M-20 165 C 300 10, 900 10, 1220 165"
         fill="none"
-        stroke="#F7F0DA"
-        strokeOpacity=".35"
+        stroke="#17452F"
+        strokeOpacity=".25"
         strokeWidth="2"
         strokeDasharray="2 14"
         strokeLinecap="round"
@@ -122,7 +122,7 @@ export function HomeHero() {
       <MobileHero />
       <section
         id="top"
-        className="adire relative hidden overflow-hidden bg-forest-800 text-cream sm:block"
+        className="relative hidden overflow-hidden border-b border-line bg-cream text-forest-800 sm:block"
       >
         <div
           aria-hidden="true"
@@ -130,15 +130,15 @@ export function HomeHero() {
         />
         <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-[clamp(16px,4vw,28px)] pt-12 pb-36 sm:pt-20 sm:pb-44 lg:grid-cols-[1.15fr_1fr]">
           <div className="flex flex-col gap-6">
-            <span className="inline-flex flex-wrap items-center gap-2.5 self-start rounded-full bg-forest-900 px-3.5 py-2 text-[13.5px] font-medium ring-1 ring-gold/30">
-              <span className="font-semibold text-gold">First cohort</span>
+            <span className="inline-flex flex-wrap items-center gap-2.5 self-start rounded-full bg-paper px-3.5 py-2 text-[13.5px] font-medium ring-1 ring-line">
+              <span className="font-semibold text-gold-dark">First cohort</span>
               <span>Edo State and Abuja FCT · open to Africans everywhere</span>
             </span>
             <h1 className="m-0 text-[clamp(38px,6vw,66px)] leading-[1.04]">
               Own real businesses at home —{" "}
-              <span className="text-gold">from wherever you live.</span>
+              <span className="text-gold-dark">from wherever you live.</span>
             </h1>
-            <p className="m-0 max-w-[34em] text-[clamp(16.5px,1.6vw,19px)] text-[#E6E0C8]">
+            <p className="m-0 max-w-[34em] text-[clamp(16.5px,1.6vw,19px)] text-body">
               HomeBridge is a member-owned cooperative. Africans abroad and
               people across Nigeria join as equals, pool share capital, and own
               productive businesses together — one member, one vote.
@@ -165,18 +165,18 @@ export function HomeHero() {
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href="/register"
-                className="inline-flex min-h-14 items-center justify-center rounded-full bg-cream px-7 text-[17px] font-semibold text-forest-800 no-underline transition hover:-translate-y-px hover:bg-white"
+                className="inline-flex min-h-14 items-center justify-center rounded-full bg-forest-800 px-7 text-[17px] font-semibold text-cream no-underline transition hover:-translate-y-px hover:bg-forest-900 hover:text-cream"
               >
                 Start your registration
               </Link>
               <Link
                 href="/join#eligibility"
-                className="inline-flex min-h-14 items-center justify-center rounded-full border-2 border-cream px-6 text-[17px] font-semibold text-cream no-underline transition hover:-translate-y-px hover:bg-cream/10 hover:text-cream"
+                className="inline-flex min-h-14 items-center justify-center rounded-full border-2 border-forest-800 px-6 text-[17px] font-semibold text-forest-800 no-underline transition hover:-translate-y-px hover:bg-paper"
               >
                 Check if you can join
               </Link>
             </div>
-            <p className="m-0 font-display text-[19px] text-gold italic">
+            <p className="m-0 font-display text-[19px] text-gold-dark italic">
               “Abroad and at home, we build together.”
             </p>
           </div>
@@ -236,7 +236,7 @@ export function HomeHero() {
           </div>
         </div>
         <BridgeArt />
-        <div className="absolute inset-x-0 bottom-3 mx-auto flex max-w-[1200px] justify-between px-[clamp(16px,4vw,28px)] text-[11px] font-semibold tracking-[0.14em] text-gold/80 uppercase sm:text-xs">
+        <div className="absolute inset-x-0 bottom-3 mx-auto flex max-w-[1200px] justify-between px-[clamp(16px,4vw,28px)] text-[11px] font-semibold tracking-[0.14em] text-gold-dark uppercase sm:text-xs">
           <span>London · Houston · Dubai</span>
           <span>Benin City · Abuja</span>
         </div>
