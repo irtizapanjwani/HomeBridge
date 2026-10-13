@@ -81,12 +81,14 @@
   color: var(--color-gold-dark);
 }
 
-/* Content only starts hidden when JS is running, so it is never lost if scripts fail. */
+/* Content only starts hidden when scripting is on, so it is never lost if scripts fail. */
 @utility reveal {
   transition: opacity 0.6s ease, transform 0.6s ease;
-  :where(html.js) &:not(.is-visible) {
-    opacity: 0;
-    transform: translateY(18px);
+  @media (scripting: enabled) {
+    &:not(.is-visible) {
+      opacity: 0;
+      transform: translateY(18px);
+    }
   }
 }
 
@@ -99,8 +101,8 @@
 .stamp {
   transition: transform 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) 1.35s, opacity 0.15s ease 1.35s;
 }
-:where(html.js) .reveal:not(.is-visible) .strike-path { stroke-dashoffset: 1; }
-:where(html.js) .reveal:not(.is-visible) .stamp { opacity: 0; transform: rotate(-11deg) scale(1.8); }
+@media (scripting: enabled) { .reveal:not(.is-visible) .strike-path { stroke-dashoffset: 1; } }
+@media (scripting: enabled) { .reveal:not(.is-visible) .stamp { opacity: 0; transform: rotate(-11deg) scale(1.8); } }
 
 /* "How it works" money pipe: coins travel down (phones) or across (desktop) */
 .flow-dot {
@@ -134,17 +136,17 @@
 .waffle-cell {
   transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) var(--d, 0ms);
 }
-:where(html.js) .reveal:not(.is-visible) .waffle-cell { transform: scale(0); }
+@media (scripting: enabled) { .reveal:not(.is-visible) .waffle-cell { transform: scale(0); } }
 
 /* Safeguard gates: padlocks close one after another, the track fills behind them */
 .gate-on { transition: opacity 0.25s ease, transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1); }
 .gate-track { transition: transform 1.9s cubic-bezier(0.45, 0, 0.2, 1) 0.3s; }
 .gate-done { transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 1.6, 0.4, 1); }
-:where(html.js) .reveal:not(.is-visible) .gate-on { opacity: 0; transform: scale(0.4); }
-:where(html.js) .reveal:not(.is-visible) .gate-track { transform: scaleY(0); }
-:where(html.js) .reveal:not(.is-visible) .gate-done { opacity: 0; transform: translateY(6px) scale(0.9); }
-@media (min-width: 80rem) {
-  :where(html.js) .reveal:not(.is-visible) .gate-track { transform: scaleX(0); }
+@media (scripting: enabled) { .reveal:not(.is-visible) .gate-on { opacity: 0; transform: scale(0.4); } }
+@media (scripting: enabled) { .reveal:not(.is-visible) .gate-track { transform: scaleY(0); } }
+@media (scripting: enabled) { .reveal:not(.is-visible) .gate-done { opacity: 0; transform: translateY(6px) scale(0.9); } }
+@media (scripting: enabled) and (min-width: 80rem) {
+  .reveal:not(.is-visible) .gate-track { transform: scaleX(0); }
 }
 
 /* Founding member card: foil sheen sweeps across on hover */
