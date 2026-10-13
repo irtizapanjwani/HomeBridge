@@ -255,7 +255,7 @@ export function AdminApp() {
   return (
     <div className="flex min-h-screen bg-admin-bg text-base text-ink">
       {/* Desktop sidebar */}
-      <aside className="adire sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col overflow-y-auto bg-forest-900 px-3.5 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col overflow-y-auto bg-forest-900 px-3.5 py-5 lg:flex">
         {sidebar}
       </aside>
 
@@ -263,7 +263,7 @@ export function AdminApp() {
       {navOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin menu">
           <button type="button" aria-label="Close menu" onClick={() => setNavOpen(false)} className="absolute inset-0 bg-forest-950/60" />
-          <aside className="adire relative flex h-full w-[min(84vw,300px)] flex-col overflow-y-auto bg-forest-900 px-3.5 py-5">{sidebar}</aside>
+          <aside className="relative flex h-full w-[min(84vw,300px)] flex-col overflow-y-auto bg-forest-900 px-3.5 py-5">{sidebar}</aside>
         </div>
       )}
 

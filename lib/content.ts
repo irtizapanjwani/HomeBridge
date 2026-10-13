@@ -21,16 +21,26 @@ export const LAUNCH = {
 export const SHARE_MESSAGE =
   "HomeBridge Cooperative — own real businesses at home with Africans abroad. Abroad and at home, we build together.";
 
+/** Public pages, from the brief's site map. */
 export const NAV = [
-  { href: "#how", label: "How it works", mobile: "How it works" },
-  { href: "#join", label: "Join", mobile: "Join and costs" },
-  { href: "#projects", label: "Projects", mobile: "Projects" },
-  { href: "#your-money", label: "Your money", mobile: "Your money" },
-  { href: "#portfolio", label: "Portfolio", mobile: "Long-term portfolio" },
-  { href: "#trust", label: "Safeguards", mobile: "How your money is protected" },
-  { href: "#events", label: "Events", mobile: "Events" },
-  { href: "#faq", label: "FAQ", mobile: "FAQ" },
+  { href: "/how-it-works", label: "How it works" },
+  { href: "/join", label: "Who can join" },
+  { href: "/your-money", label: "Your money" },
+  { href: "/portfolio", label: "Portfolio" },
+  { href: "/projects", label: "Projects" },
+  { href: "/governance", label: "Governance" },
+  { href: "/faq", label: "FAQ" },
 ];
+
+export const NAV_MORE = [
+  { href: "/events", label: "Events" },
+  { href: "/documents", label: "Documents" },
+  { href: "/chapters", label: "Chapters" },
+  { href: "/contact", label: "Contact" },
+];
+
+export const RISK_NOTICE =
+  "Membership opens after registration with the Edo State and FCT Directors of Cooperatives and legal sign-off. No guaranteed returns. Not a savings or deposit scheme.";
 
 export const LANGUAGES = [
   { value: "en", label: "English" },

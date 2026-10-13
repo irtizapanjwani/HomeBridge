@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CONTACT } from "@/lib/content";
+import Link from "next/link";
+import { CONTACT, NAV, NAV_MORE } from "@/lib/content";
 import { ArrowUpIcon, CloseIcon } from "@/components/ui/Icons";
-import { LogoMark } from "@/components/ui/Logo";
+import { Logo } from "@/components/ui/Logo";
 
 function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -78,69 +79,75 @@ export function Footer() {
     if (window.location.hash === "#privacy") history.replaceState(null, "", window.location.pathname + window.location.search);
   };
 
-  const link = "text-[#E6E0C8] hover:text-gold";
+  const link = "text-[#E6E0C8] no-underline hover:text-gold hover:underline";
 
   return (
-    <footer className="adire bg-forest-900 text-[#E6E0C8]">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-7 px-[clamp(16px,4vw,28px)] pt-12 pb-7">
-        <div className="grid gap-7 text-base sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-3">
-              <LogoMark size={36} />
-              <span className="font-display text-[22px] font-extrabold text-cream">HomeBridge Cooperative</span>
-            </span>
-            <span>A VEKAT Group initiative</span>
-            <span className="text-gold italic">Abroad and at home, we build together.</span>
+    <footer className="bg-forest-900 text-[#E6E0C8]">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-[clamp(16px,4vw,28px)] pt-12 pb-8">
+        <div className="grid gap-8 text-[15px] sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+          <div className="flex flex-col gap-3">
+            <Link href="/" className="no-underline">
+              <Logo size={40} sub={null} tone="dark" />
+            </Link>
+            <span>HomeBridge Cooperative · a VEKAT Group initiative</span>
+            <span className="font-display text-gold italic">Abroad and at home, we build together.</span>
           </div>
-          <div className="flex flex-col gap-2">
-            <b className="text-cream">Head office</b>
-            <span>4 Eregbowa Street, off Trinity Road, Ugbor Quarters, Benin City, Edo State</span>
+          <div className="flex flex-col gap-1.5">
+            <b className="font-semibold text-cream">Head office</b>
+            <span>{CONTACT.address[0]}</span>
+            <span>{CONTACT.address[1]}</span>
+            <b className="mt-3 font-semibold text-cream">Contact</b>
             <a href={`mailto:${CONTACT.email}`} className={link}>
               {CONTACT.email}
             </a>
             <a href={CONTACT.phoneHref} className={link}>
-              {CONTACT.phoneDisplay}
+              {CONTACT.phoneIntl}
             </a>
           </div>
-          <nav aria-label="Footer" className="flex flex-col gap-2">
-            <b className="text-cream">Explore</b>
-            <a href="#how" className={link}>How it works</a>
-            <a href="#join" className={link}>Who can join</a>
-            <a href="#projects" className={link}>Projects</a>
-            <a href="#trust" className={link}>How your money is protected</a>
-            <a href="#faq" className={link}>FAQ</a>
+          <nav aria-label="Footer" className="flex flex-col gap-1.5">
+            <b className="font-semibold text-cream">Explore</b>
+            {NAV.map((n) => (
+              <Link key={n.href} href={n.href} className={link}>
+                {n.label}
+              </Link>
+            ))}
           </nav>
-          <div className="flex flex-col gap-2">
-            <b className="text-cream">Chapters</b>
-            <span>HomeBridge Edo</span>
-            <span>HomeBridge Abuja</span>
-            <span>HomeBridge UK</span>
+          <div className="flex flex-col gap-1.5">
+            <b className="font-semibold text-cream">More</b>
+            {NAV_MORE.map((n) => (
+              <Link key={n.href} href={n.href} className={link}>
+                {n.label}
+              </Link>
+            ))}
             <a href="#privacy" onClick={(e) => { e.preventDefault(); setPrivacy(true); }} className={link}>
               Privacy notice
             </a>
+            <b className="mt-3 font-semibold text-cream">Chapters</b>
+            <span>HomeBridge Edo · HomeBridge Abuja · HomeBridge UK</span>
           </div>
         </div>
-        <div className="flex flex-col gap-2 border-t border-[#2D4D3C] pt-5 text-sm text-[#C9C3AA]">
+        <div className="flex flex-col gap-2 border-t border-[#2D4D3C] pt-5 text-[13px] leading-relaxed text-[#C9C3AA]">
           <p className="m-0">
-            <b className="text-cream">Important:</b> HomeBridge offers shares to verified members only. There are no
-            guaranteed returns — profits depend on how the businesses perform. HomeBridge is not a savings, deposit or
-            loan scheme and does not take deposits from the public. Membership opens only after cooperative
-            registration and legal sign-off. Shares can be withdrawn after 3 years with 6 months’ written notice. The one-off joining fee is paid to VEKAT Group Ltd, the appointed manager; share money goes only to the cooperative’s own accounts.
+            <b className="text-cream">Important:</b> HomeBridge offers membership, and shares to verified members only. It
+            does not take deposits from the public, lend to non-members or promise a fixed or guaranteed return. Profits
+            depend on how the businesses perform. Shares can be withdrawn after 3 years with 6 months’ notice. The one-off
+            joining fee is paid to VEKAT Group Ltd, the appointed manager; share money goes only to the cooperative’s own
+            accounts. Membership opens only after cooperative registration and legal sign-off.
           </p>
           <p className="m-0">
-            Charity work is kept separate from the cooperative. Personal data is handled under the Nigeria Data
-            Protection Act 2023 and UK GDPR.
+            Personal data is handled under the Nigeria Data Protection Act 2023 and UK GDPR. © {new Date().getFullYear()}{" "}
+            HomeBridge Cooperative.
           </p>
-          <p className="m-0">© {new Date().getFullYear()} HomeBridge Cooperative · a VEKAT Group initiative</p>
         </div>
       </div>
 
       <PrivacyDialog open={privacy} onClose={closePrivacy} />
 
       <a
-        href="#top"
+        href="#"
+        onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0 }); }}
         aria-label="Back to top"
-        className={`fixed right-4 bottom-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-forest-800 text-gold shadow-card transition hover:bg-forest-900 hover:text-gold ${
+        className={`fixed right-4 bottom-20 z-40 md:bottom-4 flex h-12 w-12 items-center justify-center rounded-full bg-forest-800 text-gold shadow-card transition hover:bg-forest-900 hover:text-gold ${
           showTop ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
         }`}
       >

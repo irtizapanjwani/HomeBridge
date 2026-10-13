@@ -76,7 +76,7 @@ export function HowItWorks() {
         <MoneyPipe label="Shares" />
 
         {/* 02 The cooperative — the hub */}
-        <article className="adire relative flex flex-col gap-3 rounded-[22px] bg-forest-800 p-6 text-cream shadow-card ring-4 ring-gold/40">
+        <article className="relative flex flex-col gap-3 rounded-[22px] bg-forest-800 p-6 text-cream shadow-card ring-4 ring-gold/40">
           <div className="flex items-center justify-between">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold text-forest-900">
               <BankIcon size={26} />

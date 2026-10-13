@@ -3,19 +3,21 @@ export function SectionHeading({
   title,
   lead,
   id,
+  as: Tag = "h2",
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  lead?: string;
+  lead?: React.ReactNode;
   id?: string;
+  as?: "h2" | "h3";
 }) {
   return (
     <>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 id={id} className="mt-2.5 mb-3 font-display text-[clamp(30px,4.2vw,46px)] font-extrabold tracking-[-0.015em] text-forest-800">
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <Tag id={id} className="mt-3 mb-3 font-display text-[clamp(28px,3.8vw,42px)] leading-[1.12] font-bold text-forest-800">
         {title}
-      </h2>
-      {lead && <p className="m-0 mb-8 max-w-[42em] text-muted">{lead}</p>}
+      </Tag>
+      {lead && <p className="m-0 mb-8 max-w-[44em] text-[16.5px] text-body">{lead}</p>}
     </>
   );
 }

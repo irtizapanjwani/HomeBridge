@@ -79,7 +79,7 @@ export function Events() {
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
         <div>
           <SectionHeading eyebrow="Events" title="Meet us online and in person" />
-          <div className="adire flex flex-col gap-3.5 rounded-[20px] bg-forest-800 p-6 text-cream">
+          <div className="flex flex-col gap-3.5 rounded-[20px] bg-forest-800 p-6 text-cream">
             <div className="flex items-center gap-4">
               <div className="w-[70px] shrink-0 rounded-[14px] bg-gold py-2 text-center text-forest-900">
                 <div className="text-[13px] font-bold">OCT</div>

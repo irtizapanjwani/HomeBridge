@@ -23,7 +23,7 @@ export function ShareCalculator() {
   const leftover = isHome ? amount - perMonth * SHARE_PRICE_NGN : 0;
 
   return (
-    <div className="adire flex flex-col gap-4 rounded-[20px] bg-forest-800 p-6 text-cream sm:p-7">
+    <div className="flex flex-col gap-4 rounded-[20px] bg-forest-800 p-6 text-cream sm:p-7">
       <h3 className="m-0 font-display text-2xl font-bold">How many shares?</h3>
       <div role="group" aria-label="Where you live" className="flex flex-wrap gap-1.5 self-start rounded-full bg-forest-900 p-1.5">
         {(

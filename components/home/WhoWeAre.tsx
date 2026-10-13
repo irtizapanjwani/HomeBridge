@@ -43,7 +43,7 @@ export function WhoWeAre() {
 
       <Reveal className="ticket relative grid overflow-hidden rounded-[28px] border border-line shadow-card md:grid-cols-[1fr_1.05fr]">
         {/* Left stub: what HomeBridge is */}
-        <div className="adire relative bg-forest-800 p-7 text-cream sm:p-10">
+        <div className="relative bg-forest-800 p-7 text-cream sm:p-10">
           <div className="mb-6 flex items-center gap-3">
             <span className="rounded-full bg-gold px-3 py-1 text-xs font-extrabold tracking-[0.14em] text-forest-900 uppercase">
               We are

@@ -141,7 +141,7 @@ export function Register() {
             </ol>
           </div>
 
-          <div id="contact" className="adire flex flex-col gap-3.5 rounded-[20px] bg-forest-800 p-6 text-cream">
+          <div id="contact" className="flex flex-col gap-3.5 rounded-[20px] bg-forest-800 p-6 text-cream">
             <h3 className="m-0 font-display text-[22px] font-bold">Contact us</h3>
             <div className="flex items-start gap-3">
               <PinIcon size={22} className="mt-0.5 shrink-0 text-gold" />

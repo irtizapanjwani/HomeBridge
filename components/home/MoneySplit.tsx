@@ -213,7 +213,7 @@ export function MoneySplit() {
         </Reveal>
 
         {/* Profit split */}
-        <Reveal delay={120} className="adire flex flex-col rounded-[24px] bg-forest-800 p-6 text-cream shadow-card sm:p-8">
+        <Reveal delay={120} className="flex flex-col rounded-[24px] bg-forest-800 p-6 text-cream shadow-card sm:p-8">
           <h3 className="m-0 font-display text-xl font-bold">And when the businesses make a profit</h3>
           <p className="m-0 mt-1 text-sm text-on-dark">Tap or hover a slice to see where it goes.</p>
           <div className="mt-5 rounded-[20px] bg-paper p-5">

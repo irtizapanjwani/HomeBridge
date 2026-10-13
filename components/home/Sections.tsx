@@ -116,7 +116,7 @@ export function Projects() {
             </ol>
             <p className="mt-3.5 mb-0 text-[15px] text-muted">Projects over ₦50m also need a members’ vote.</p>
           </div>
-          <div className="adire rounded-[20px] bg-forest-800 p-6 text-cream sm:p-7">
+          <div className="rounded-[20px] bg-forest-800 p-6 text-cream sm:p-7">
             <h3 className="m-0 mb-4 font-display text-[22px] font-bold">First 18 months: our targets</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
               {TARGETS.map((t) => (

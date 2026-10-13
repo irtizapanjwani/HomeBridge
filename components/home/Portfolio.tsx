@@ -14,7 +14,7 @@ export function Portfolio() {
         />
 
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
-          <Reveal className="adire flex flex-col gap-4 rounded-[24px] bg-forest-800 p-6 text-cream shadow-card sm:p-8">
+          <Reveal className="flex flex-col gap-4 rounded-[24px] bg-forest-800 p-6 text-cream shadow-card sm:p-8">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold text-forest-900">
               <ChartIcon size={26} />
             </span>

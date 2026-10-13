@@ -2,32 +2,35 @@
 
 @theme {
   --color-forest-950: #0a2117;
-  --color-forest-900: #0e2c1e;
+  --color-forest-900: #0e2e1f;
   --color-forest-800: #17452f;
   --color-forest-700: #22573d;
   --color-forest-600: #3c6b52;
   --color-forest-100: #e6efe5;
   --color-gold: #c9a227;
   --color-gold-soft: #e3c565;
-  --color-gold-dark: #8a6d10;
+  --color-gold-dark: #8a6d12;
   --color-gold-ink: #6b5309;
   --color-butter: #fbefd0;
   --color-cream: #f7f0da;
-  --color-paper: #fffdf6;
+  --color-paper: #ffffff;
+  --color-page: #fbf8ee;
+  --color-mist: #e8f0ea;
   --color-sand: #dccfa4;
-  --color-line: #e4d9b6;
+  --color-line: #e3dcc3;
   --color-line-strong: #b8ac86;
-  --color-ink: #1b2620;
-  --color-muted: #4a5a50;
+  --color-ink: #1a1d1a;
+  --color-body: #3a3f3a;
+  --color-muted: #5a5f5a;
   --color-on-dark: #d6d0b8;
   --color-clay: #7a2e1f;
   --color-danger: #8a2f1e;
   --color-admin-bg: #f4f1e6;
 
-  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
-  --font-sans: var(--font-source-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-lora), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-poppins), system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --shadow-card: 0 2px 4px rgb(14 44 30 / 0.05), 0 12px 32px rgb(14 44 30 / 0.09);
+  --shadow-card: 0 1px 2px rgb(14 44 30 / 0.04), 0 8px 24px rgb(14 44 30 / 0.06);
 
   --animate-toast-in: toast-in 0.25s ease;
   @keyframes toast-in {
@@ -43,12 +46,13 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-cream font-sans text-ink antialiased;
-    font-size: 18px;
-    line-height: 1.55;
+    @apply bg-page font-sans text-body antialiased;
+    font-size: 16px;
+    line-height: 1.6;
     overflow-x: hidden;
   }
-  h1, h2, h3 { line-height: 1.12; }
+  h1, h2, h3 { line-height: 1.15; }
+  h1, h2 { font-family: var(--font-display); font-weight: 700; }
   a { @apply text-forest-800 underline-offset-[3px] hover:text-forest-900; }
   button:not(:disabled) { cursor: pointer; }
   :focus-visible {
@@ -66,28 +70,15 @@
   }
 }
 
-@utility adire {
-  /* Adire-inspired textile pattern for dark surfaces */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23C9A227' stroke-opacity='.10' stroke-width='1.5'%3E%3Ccircle cx='28' cy='28' r='10'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3Cpath d='M0 0l12 12M56 0L44 12M0 56l12-12M56 56L44 44'/%3E%3C/g%3E%3C/svg%3E");
-}
-
 @utility eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
   margin: 0;
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 14px;
+  letter-spacing: 0.14em;
+  font-size: 12.5px;
   color: var(--color-gold-dark);
-  &::before {
-    content: "";
-    width: 28px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--color-gold);
-  }
 }
 
 /* Content only starts hidden when JS is running, so it is never lost if scripts fail. */

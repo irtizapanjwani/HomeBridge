@@ -37,7 +37,7 @@ function BridgeArt() {
 
 export function Hero() {
   return (
-    <section id="top" className="adire relative overflow-hidden bg-forest-800 text-cream">
+    <section id="top" className="relative overflow-hidden bg-forest-800 text-cream">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-40 -right-40 h-[480px] w-[480px] rounded-full bg-gold/10 blur-3xl"
