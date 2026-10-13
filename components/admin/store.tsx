@@ -3,7 +3,7 @@
 // One in-memory store for the whole back office, so changes survive moving between screens.
 // In the live system each setter becomes an API call and the audit entry is written server-side.
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   APPLICATIONS,
   BANK_LINES,
@@ -119,6 +119,13 @@ export const VOTING_STATUSES: Member["status"][] = ["Active", "Reminder sent"];
 export function AdminStoreProvider({ children }: { children: React.ReactNode }) {
   const [roleId, setRoleId] = useState("finance");
   const [screen, setScreen] = useState<ScreenId>("register");
+  // Every screen opens at the top, not where the previous screen was scrolled to (runs after the new screen renders).
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    // Again after layout settles, so the browser's scroll anchoring can't nudge it back down.
+    const id = requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    return () => cancelAnimationFrame(id);
+  }, [screen]);
   const [members, setMembers] = useState(MEMBERS);
   const [lines, setLines] = useState(BANK_LINES);
   const [txs, setTxs] = useState(SHARE_TXS);
