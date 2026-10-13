@@ -128,7 +128,7 @@ export function HomeHero() {
           aria-hidden="true"
           className="pointer-events-none absolute -top-40 -right-40 h-[480px] w-[480px] rounded-full bg-gold/10 blur-3xl"
         />
-        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-[clamp(16px,4vw,28px)] pt-12 pb-36 sm:pt-20 sm:pb-44 lg:grid-cols-[1.15fr_1fr]">
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-[clamp(16px,4vw,28px)] pt-12 pb-10 sm:pt-20 lg:grid-cols-[1.15fr_1fr]">
           <div className="flex flex-col gap-6">
             <span className="inline-flex flex-wrap items-center gap-2.5 self-start rounded-full bg-paper px-3.5 py-2 text-[13.5px] font-medium ring-1 ring-line">
               <span className="font-semibold text-gold-dark">First cohort</span>
@@ -143,25 +143,6 @@ export function HomeHero() {
               people across Nigeria join as equals, pool share capital, and own
               productive businesses together — one member, one vote.
             </p>
-            <ul
-              className="m-0 flex list-none flex-wrap gap-2.5 p-0"
-              aria-label="What members do"
-            >
-              {[
-                ["Own", "shares in real businesses"],
-                ["Vote", "one member, one vote"],
-                ["See", "every naira, every month"],
-              ].map(([word, hint]) => (
-                <li
-                  key={word}
-                  title={hint}
-                  className="rounded-[10px] bg-gold px-[18px] py-2.5 text-lg font-semibold text-forest-900 shadow-[0_4px_0_#8A6D10]"
-                >
-                  {word}
-                  <span className="sr-only"> — {hint}</span>
-                </li>
-              ))}
-            </ul>
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href="/register"
@@ -235,6 +216,22 @@ export function HomeHero() {
             </div>
           </div>
         </div>
+        {/* Own · Vote · See (the client's three promises), sitting over the bridge */}
+        <ul
+          aria-label="What members do"
+          className="relative mx-auto m-0 grid max-w-[1200px] list-none grid-cols-3 gap-6 px-[clamp(16px,4vw,28px)] pt-4 pb-[130px] sm:pb-[160px] lg:gap-10"
+        >
+          {[
+            ["Own", "Shares in real businesses — food processing, health services, property, solar."],
+            ["Vote", "One member, one vote, however many shares you hold. Online or in person."],
+            ["See", "Every naira in and out, every project, every month on your dashboard."],
+          ].map(([w, t]) => (
+            <li key={w} className="text-center">
+              <span className="block font-display text-[clamp(28px,3vw,36px)] leading-none font-bold text-gold-dark">{w}</span>
+              <span className="mx-auto mt-2 block max-w-[22em] text-[14.5px] text-body">{t}</span>
+            </li>
+          ))}
+        </ul>
         <BridgeArt />
         <div className="absolute inset-x-0 bottom-3 mx-auto flex max-w-[1200px] justify-between px-[clamp(16px,4vw,28px)] text-[11px] font-semibold tracking-[0.14em] text-gold-dark uppercase sm:text-xs">
           <span>London · Houston · Dubai</span>
