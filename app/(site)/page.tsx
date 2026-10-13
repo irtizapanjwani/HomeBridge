@@ -1,30 +1,32 @@
-import { Hero } from "@/components/home/Hero";
-import { JoinSection, Leadership, Projects, Trust } from "@/components/home/Sections";
-import { HowItWorks } from "@/components/home/HowItWorks";
-import { MoneySplit } from "@/components/home/MoneySplit";
-import { Portfolio } from "@/components/home/Portfolio";
-import { WhoWeAre } from "@/components/home/WhoWeAre";
-import { Events } from "@/components/home/Events";
-import { Faq } from "@/components/home/Faq";
-import { Register } from "@/components/home/Register";
+import { HomeHero, PromiseStrip } from "@/components/home/HomeHero";
+import {
+  FaqHome,
+  GatesHome,
+  GovernanceHome,
+  MoneyHome,
+  PortfolioHome,
+  ProjectsHome,
+  WhoCanJoinHome,
+} from "@/components/home/HomeSections";
+import { EventsHome } from "@/components/home/Events";
 import { InstallBanner } from "@/components/home/InstallBanner";
+import { JoinCta } from "@/components/site/JoinCta";
 
 export default function HomePage() {
   return (
     <>
-        <Hero />
-        <WhoWeAre />
-        <HowItWorks />
-        <JoinSection />
-        <MoneySplit />
-        <Portfolio />
-        <Projects />
-        <Trust />
-        <Leadership />
-        <Events />
-        <Faq />
-        <Register />
-        <InstallBanner />
-          </>
+      <HomeHero />
+      <PromiseStrip />
+      <WhoCanJoinHome />
+      <MoneyHome />
+      <PortfolioHome />
+      <GatesHome />
+      <ProjectsHome />
+      <GovernanceHome />
+      <EventsHome />
+      <FaqHome />
+      <JoinCta />
+      <InstallBanner />
+    </>
   );
 }

@@ -39,6 +39,9 @@ export const NAV_MORE = [
   { href: "/contact", label: "Contact" },
 ];
 
+/** Kept as a fallback entry point until /register is live (brief p.5). */
+export const GOOGLE_FORM_URL = "https://forms.gle/wfdLDXrTbe4zw6t39";
+
 export const RISK_NOTICE =
   "Membership opens after registration with the Edo State and FCT Directors of Cooperatives and legal sign-off. No guaranteed returns. Not a savings or deposit scheme.";
 

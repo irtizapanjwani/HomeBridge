@@ -94,8 +94,9 @@ export function Footer() {
           </div>
           <div className="flex flex-col gap-1.5">
             <b className="font-semibold text-cream">Head office</b>
-            <span>{CONTACT.address[0]}</span>
-            <span>{CONTACT.address[1]}</span>
+            <span>
+              {CONTACT.address[0]} {CONTACT.address[1]}
+            </span>
             <b className="mt-3 font-semibold text-cream">Contact</b>
             <a href={`mailto:${CONTACT.email}`} className={link}>
               {CONTACT.email}

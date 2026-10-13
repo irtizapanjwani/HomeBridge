@@ -48,18 +48,18 @@ export function InstallBanner() {
   }
 
   return (
-    <section className="bg-gold" aria-label="Install HomeBridge">
-      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-x-6 gap-y-3.5 px-[clamp(16px,4vw,28px)] py-5 text-forest-900">
+    <section className="border-t border-line bg-cream" aria-label="Install HomeBridge">
+      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-x-6 gap-y-3.5 px-[clamp(16px,4vw,28px)] py-4 text-forest-800">
         <div className="flex items-center gap-3.5">
           <PhoneDeviceIcon size={30} className="shrink-0" />
-          <span className="text-[17px] font-bold">
+          <span className="text-[15px] font-semibold">
             Add HomeBridge to your phone’s home screen — it works like an app, even on slow data.
           </span>
         </div>
         <button
           type="button"
           onClick={install}
-          className="min-h-[46px] rounded-full border-2 border-forest-900 bg-transparent px-5 text-base font-bold text-forest-900 transition hover:bg-forest-900 hover:text-gold"
+          className="min-h-11 rounded-full border border-forest-800 bg-transparent px-5 text-[15px] font-semibold text-forest-800 transition hover:bg-forest-800 hover:text-cream"
         >
           Install
         </button>

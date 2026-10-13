@@ -8,13 +8,13 @@ import { SectionHeading } from "./SectionHeading";
 // Gold is < 3:1 against the surface, so every value is also shown as a text label.
 const C = { green: "#2E7D50", gold: "#D9A93A", clay: "#B4532F", blue: "#2F7FB8" };
 
-const SPLIT = [
+export const SPLIT = [
   { key: "biz", pct: 75, color: C.green, label: "Into businesses", note: "Released in stages, as milestones are met" },
   { key: "res", pct: 15, color: C.gold, label: "Reserve", note: "For withdrawals and emergencies" },
   { key: "run", pct: 10, color: C.clay, label: "Running costs", note: "Audit, members’ dashboard and the manager’s published fee" },
 ] as const;
 
-const PROFIT = [
+export const PROFIT = [
   { key: "share", pct: 40, color: C.green, label: "Shared with members", note: "As a dividend on shares, after the yearly audit and AGM approval" },
   { key: "grow", pct: 40, color: C.gold, label: "Kept to grow", note: "At least a quarter of all profit goes to the legal reserve fund; the rest funds new businesses" },
   { key: "train", pct: 10, color: C.clay, label: "Education and training", note: "Enterprise, cooperation and financial literacy" },
@@ -96,54 +96,50 @@ function Donut({ active, setActive }: { active: string | null; setActive: (k: st
   );
 }
 
-const PAYEES = [
-  {
-    key: "fee",
-    when: "Once · after approval",
-    title: "Joining fee",
-    amount: "£10 or ₦10,000",
-    to: "Paid to VEKAT Group Ltd",
-    text: "The cooperative’s appointed manager, which runs registration and identity checks. Not a share, not refundable.",
-    ways: ["Card · Apple Pay · Google Pay (Stripe)", "First Bank transfer (naira)"],
-    tone: "border-clay/40 bg-[#FBEDE7]",
-    chip: "bg-clay text-cream",
-  },
-  {
-    key: "shares",
-    when: "Monthly · whenever you like",
-    title: "Shares",
-    amount: "₦1,000 per share",
-    to: "Paid to HomeBridge Cooperative Society Ltd",
-    text: "Only into the cooperative’s own bank accounts. Every outgoing payment needs two signatures.",
-    ways: ["UBA naira account", "US dollar domiciliary", "Pound sterling domiciliary"],
-    tone: "border-forest-800/30 bg-forest-100",
-    chip: "bg-forest-800 text-cream",
-  },
-] as const;
-
-function TwoPayments() {
+/** The two payees, never mixed (brief p.5; bye-laws 6.3 and 14.1). */
+export function TwoPayments() {
   return (
-    <Reveal className="mb-6 grid gap-4 md:grid-cols-2">
-      {PAYEES.map((p, i) => (
-        <article key={p.key} className={`flex flex-col gap-2 rounded-[22px] border-2 p-5 sm:p-6 ${p.tone}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-extrabold tracking-[0.12em] uppercase ${p.chip}`}>
-              Payment {i + 1} · {p.title}
-            </span>
-            <span className="text-sm font-semibold text-muted">{p.when}</span>
-          </div>
-          <div className="font-display text-[clamp(24px,2.6vw,30px)] leading-tight font-extrabold text-forest-800">{p.amount}</div>
-          <div className="font-bold text-ink">{p.to}</div>
-          <p className="m-0 text-[15px] text-muted">{p.text}</p>
-          <ul className="m-0 mt-auto flex list-none flex-wrap gap-1.5 p-0 pt-1">
-            {p.ways.map((w) => (
-              <li key={w} className="rounded-full bg-paper px-2.5 py-0.5 text-[13px] font-semibold text-forest-800">
-                {w}
-              </li>
-            ))}
-          </ul>
-        </article>
-      ))}
+    <Reveal className="grid gap-4 md:grid-cols-2">
+      <article className="flex flex-col gap-3 rounded-[24px] bg-cream p-6 sm:p-7">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="m-0 font-display text-[24px] font-bold text-forest-800">Joining fee</h3>
+          <span className="text-[13px] font-semibold text-ink">Once · not refundable · not a share</span>
+        </div>
+        <p className="m-0 text-[32px] leading-tight font-bold text-ink">
+          £10 <span className="text-lg font-medium text-muted">or</span> ₦10,000
+        </p>
+        <p className="m-0 text-[15px] text-body">
+          Processed by <b className="font-semibold text-ink">VEKAT Group Ltd</b>, the cooperative’s appointed manager, which
+          runs registration and identity checks.
+        </p>
+        <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0 pt-1">
+          {["Card · Apple Pay · Google Pay (Stripe)", "First Bank transfer (naira)"].map((w) => (
+            <li key={w} className="rounded-full bg-paper px-3 py-1 text-[13px] font-semibold text-ink">
+              {w}
+            </li>
+          ))}
+        </ul>
+      </article>
+      <article className="flex flex-col gap-3 rounded-[24px] bg-forest-800 p-6 text-cream sm:p-7">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="m-0 font-display text-[24px] font-bold">Shares</h3>
+          <span className="text-[13px] font-semibold">Monthly · whenever you like</span>
+        </div>
+        <p className="m-0 text-[32px] leading-tight font-bold text-gold">
+          ₦1,000 <span className="text-lg font-medium text-cream">per share, for everyone</span>
+        </p>
+        <p className="m-0 text-[15px] text-[#E6E0C8]">
+          Paid only to <b className="font-semibold text-cream">HomeBridge Cooperative Society Ltd</b>. Every outgoing payment
+          needs two signatures — one at home, one in the diaspora.
+        </p>
+        <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0 pt-1">
+          {["UBA naira account", "US dollar domiciliary", "Pound sterling domiciliary"].map((w) => (
+            <li key={w} className="rounded-full bg-forest-900 px-3 py-1 text-[13px] font-semibold">
+              {w}
+            </li>
+          ))}
+        </ul>
+      </article>
     </Reveal>
   );
 }
@@ -154,15 +150,13 @@ export function MoneySplit() {
   const [activeProfit, setActiveProfit] = useState<string | null>(null);
 
   return (
-    <section id="your-money" className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)] py-16" aria-labelledby="money-split">
+    <section className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)] py-16" aria-labelledby="money-split">
       <SectionHeading
         id="money-split"
         eyebrow="Where the money goes"
-        title="Follow your money"
-        lead="Two payments, two places, never a person. Your member number is always your payment reference."
+        title="Follow your share money"
+        lead="Pick an amount and see where every naira of share money lands — and how profit is shared after the yearly audit."
       />
-
-      <TwoPayments />
 
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         {/* Share money split */}
@@ -241,7 +235,7 @@ export function MoneySplit() {
 
       <p className="mt-5 mb-0 max-w-[60em] text-[15px] text-muted">
         Within agreed limits, part of the money for businesses may instead go into the{" "}
-        <a href="#portfolio" className="font-semibold">long-term portfolio</a>. Foreign currency is converted to naira at
+        <a href="/portfolio" className="font-semibold">long-term portfolio</a>. Foreign currency is converted to naira at
         the bank rate on the day it is received.
       </p>
     </section>

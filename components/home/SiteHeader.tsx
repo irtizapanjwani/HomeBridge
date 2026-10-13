@@ -49,7 +49,7 @@ export function SiteHeader() {
   return (
     <>
       <div className="bg-forest-900 px-4 py-2 text-center text-[13px] text-cream">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
           <span className="hidden sm:inline">{RISK_NOTICE}</span>
           <span className="sm:hidden">Not a savings scheme · no guaranteed returns</span>
           <span className="hidden items-center gap-2 md:inline-flex">

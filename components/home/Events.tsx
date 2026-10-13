@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CONTACT, DOCS, LAUNCH, NEWS, OTHER_EVENTS, SHARE_MESSAGE } from "@/lib/content";
 import { FileIcon, LockIcon, WhatsAppIcon } from "@/components/ui/Icons";
-import { SectionHeading } from "./SectionHeading";
+import Link from "next/link";
 
 const waShare = "https://wa.me/?text=" + encodeURIComponent(SHARE_MESSAGE);
 
@@ -24,7 +24,7 @@ function launchStartUtc(): number | null {
   return Date.UTC(LAUNCH.year, LAUNCH.monthIndex, LAUNCH.day, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
 }
 
-export function Events() {
+function useLaunch() {
   const now = useNow(30_000);
   const start = launchStartUtc();
   // Without a confirmed time, treat the launch as over once the day has ended everywhere.
@@ -73,12 +73,15 @@ export function Events() {
       [m, "min"],
     ] as const;
   }, [start, now]);
+  return { isPast, times, countdown };
+}
 
+/** Launch card plus upcoming events (the /events page). */
+export function LaunchAndEvents() {
+  const { isPast, times, countdown } = useLaunch();
   return (
-    <section id="events" className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,28px)] py-16">
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
         <div>
-          <SectionHeading eyebrow="Events" title="Meet us online and in person" />
+          
           <div className="flex flex-col gap-3.5 rounded-[20px] bg-forest-800 p-6 text-cream">
             <div className="flex items-center gap-4">
               <div className="w-[70px] shrink-0 rounded-[14px] bg-gold py-2 text-center text-forest-900">
@@ -97,7 +100,7 @@ export function Events() {
 
             {isPast ? (
               <p className="m-0 rounded-[14px] bg-forest-900 px-4 py-3.5 text-base">
-                Thank you to everyone who joined the launch. Missed it? Register your interest and we will tell you
+                Thank you to everyone who joined the launch. Missed it? Message us on WhatsApp and we will tell you
                 about the next online session and the chapter meetings below.
               </p>
             ) : (
@@ -124,10 +127,10 @@ export function Events() {
 
             <div className="flex flex-wrap gap-2.5">
               <a
-                href="#register"
+                href="/register"
                 className="inline-flex min-h-12 items-center rounded-full bg-cream px-5 font-bold text-forest-800 no-underline hover:bg-white"
               >
-                {isPast ? "Hear about the next one" : "Register for the Zoom"}
+                {isPast ? "Start your registration" : "Register for the Zoom"}
               </a>
               <a
                 href={waShare}
@@ -153,9 +156,14 @@ export function Events() {
             ))}
           </ul>
         </div>
+  );
+}
 
+/** News and the documents list (the /documents page). */
+export function NewsAndDocs() {
+  return (
         <div>
-          <SectionHeading eyebrow="News and documents" title="Read it for yourself" />
+          
           <div className="flex flex-col gap-2.5">
             {NEWS.map((n) => (
               <article key={n.title} className="rounded-[14px] border border-line bg-paper px-[18px] py-4">
@@ -206,6 +214,31 @@ export function Events() {
           </ul>
           <p className="mt-2 mb-0 text-sm text-muted">Published documents are emailed on request until the member portal opens.</p>
         </div>
+  );
+}
+
+/** Compact events strip for the home page. */
+export function EventsHome() {
+  return (
+    <section className="border-b border-line bg-cream">
+      <div className="mx-auto grid max-w-[1200px] gap-6 px-[clamp(16px,4vw,28px)] py-14 md:grid-cols-[1fr_1.4fr] md:items-center">
+        <div>
+          <p className="eyebrow">Events</p>
+          <h2 className="mt-3 mb-2 text-[clamp(26px,3.2vw,36px)] text-forest-800">Meet us online and in person</h2>
+          <p className="m-0 text-body">The online launch was held on {LAUNCH.dateLabel}. Chapter meetings come next.</p>
+          <Link href="/events" className="mt-4 inline-block font-semibold">
+            All events
+          </Link>
+        </div>
+        <ul className="m-0 grid list-none gap-2.5 p-0 sm:grid-cols-3">
+          {OTHER_EVENTS.map((e) => (
+            <li key={e.title + e.where} className="flex flex-col gap-1 rounded-[18px] border border-line bg-paper p-4">
+              <b className="font-semibold text-forest-800">{e.title}</b>
+              <span className="text-[14px] text-body">{e.where}</span>
+              <span className="mt-1 self-start rounded-full bg-cream px-2.5 py-0.5 text-[12.5px] font-semibold text-gold-ink">Date to confirm</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
