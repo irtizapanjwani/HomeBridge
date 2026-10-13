@@ -75,10 +75,32 @@ export function ProfitCards() {
   return (
     <ul className="m-0 grid list-none gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-4">
       {PROFIT_CARDS.map(([pct, t, d]) => (
-        <li key={t} className="rounded-[20px] border border-line bg-paper p-5">
-          <span className="block text-[34px] leading-none font-bold text-forest-800">{pct}</span>
-          <b className="mt-3 block font-semibold text-ink">{t}</b>
-          <span className="mt-1 block text-[14px] text-body">{d}</span>
+        <li
+          key={t}
+          className="group relative overflow-hidden rounded-[20px] border border-line bg-paper p-5 pb-7 transition duration-300 hover:-translate-y-1.5 hover:border-forest-800 hover:shadow-[0_16px_32px_-14px_rgb(14_44_30/0.35)]"
+        >
+          {/* soft green wash rising from the bottom on hover */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-0 bg-gradient-to-t from-mist to-transparent transition-[height] duration-500 ease-out group-hover:h-full"
+          />
+          <span className="relative flex items-baseline justify-between">
+            <span className="block origin-left text-[34px] leading-none font-bold text-forest-800 transition duration-300 group-hover:scale-110 group-hover:text-gold-dark">
+              {pct}
+            </span>
+            <span aria-hidden="true" className="flex h-8 w-8 translate-x-2 items-center justify-center rounded-full bg-forest-800 text-gold opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+              ₦
+            </span>
+          </span>
+          <b className="relative mt-3 block font-semibold text-ink">{t}</b>
+          <span className="relative mt-1 block text-[14px] text-body">{d}</span>
+          {/* share-of-profit bar fills to its percentage on hover */}
+          <span aria-hidden="true" className="absolute inset-x-5 bottom-4 h-1.5 overflow-hidden rounded-full bg-line/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <span
+              className="block h-full w-0 rounded-full bg-gold transition-[width] duration-700 ease-out group-hover:w-[var(--pct)]"
+              style={{ "--pct": pct } as React.CSSProperties}
+            />
+          </span>
         </li>
       ))}
     </ul>
