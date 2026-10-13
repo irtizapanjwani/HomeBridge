@@ -28,7 +28,7 @@ export function Logo({ size = 44, sub = "Cooperative", tone = "light" }: { size?
           Home<span className="text-gold">Bridge</span>
         </span>
         {sub && (
-          <span className={`mt-1 truncate text-[10.5px] font-semibold tracking-[0.28em] uppercase ${tone === "dark" ? "text-on-dark" : "text-forest-800"}`}>
+          <span className={`mt-1 hidden truncate text-[10.5px] font-semibold tracking-[0.28em] uppercase sm:block ${tone === "dark" ? "text-on-dark" : "text-forest-800"}`}>
             {sub}
           </span>
         )}
