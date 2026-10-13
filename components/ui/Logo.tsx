@@ -1,7 +1,7 @@
 /** HomeBridge mark: a home on a bridge over water, with members either side. */
-export function LogoMark({ size = 44 }: { size?: number }) {
+export function LogoMark({ size = 44, outlined = false }: { size?: number; outlined?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden="true" className="shrink-0">
+    <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden="true" className={`shrink-0 ${outlined ? "rounded-[10px] ring-1 ring-cream/30" : ""}`}>
       <rect width="44" height="44" rx="10" fill="#17452F" />
       {/* house */}
       <path d="M22 8.5 31 16.5v8.5H13v-8.5z" fill="#C9A227" />
@@ -22,7 +22,7 @@ export function LogoMark({ size = 44 }: { size?: number }) {
 export function Logo({ size = 44, sub = "Cooperative", tone = "light" }: { size?: number; sub?: string | null; tone?: "light" | "dark" }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
-      <LogoMark size={size} />
+      <LogoMark size={size} outlined={tone === "dark"} />
       <span className="flex min-w-0 flex-col leading-none">
         <span className={`font-display text-[clamp(20px,2vw,24px)] font-bold ${tone === "dark" ? "text-cream" : "text-forest-800"}`}>
           Home<span className="text-gold">Bridge</span>

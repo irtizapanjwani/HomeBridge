@@ -19,17 +19,17 @@ function GateDetail({ index }: { index: number }) {
   }
   if (index === 2) {
     const tiers = [
-      { who: "Manager", cap: "up to ₦2m", w: "38%" },
-      { who: "Chair + Treasurer", cap: "up to ₦20m", w: "68%" },
-      { who: "Full board", cap: "above ₦20m", w: "84%" },
-      { who: "Members’ vote", cap: "over ₦50m", w: "100%" },
+      { who: "Manager", cap: "≤ ₦2m", w: "38%" },
+      { who: "Chair + Treas.", cap: "≤ ₦20m", w: "62%" },
+      { who: "Full Board", cap: "> ₦20m", w: "82%" },
+      { who: "Members", cap: "> ₦50m", w: "100%" },
     ];
     return (
-      <div className="mt-2 flex flex-col gap-1" aria-hidden="true">
+      <div className="mt-2 flex flex-col gap-1">
         {tiers.map((t) => (
           <div key={t.who} className="relative h-6 overflow-hidden rounded-md bg-cream">
             <div className="absolute inset-y-0 left-0 rounded-md bg-forest-800/15" style={{ width: t.w }} />
-            <div className="relative flex h-full items-center justify-between px-2 text-[11px] font-bold text-forest-800">
+            <div className="relative flex h-full items-center justify-between gap-1 px-2 text-[11px] font-semibold whitespace-nowrap text-forest-800">
               <span>{t.who}</span>
               <span className="text-muted">{t.cap}</span>
             </div>

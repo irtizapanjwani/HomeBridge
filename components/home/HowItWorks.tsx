@@ -86,7 +86,7 @@ export function HowItWorks() {
           <h3 className="m-0 font-display text-xl font-bold">{COOP.title}</h3>
           <p className="m-0 text-base text-on-dark">{COOP.text}</p>
           <span className="mt-auto inline-flex items-center gap-2 self-start rounded-lg bg-forest-900 px-3 py-1.5 text-sm font-bold text-gold">
-            Your money sits only here
+            Share money sits only here
           </span>
         </article>
 
