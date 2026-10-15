@@ -8,6 +8,8 @@ Next.js (App Router) + React + Tailwind CSS v4 + TypeScript.
 | `/admin` | Admin back office (KYC queue, payment matching, maker-checker approvals, report exports, audit log). **Route-only:** not linked from the public site, `noindex` via meta tag and `X-Robots-Tag` header, and not listed in `robots.txt`. |
 | `/api/apply` | Receives membership applications and stores them in MongoDB |
 | `/api/admin/login` | Signs in and out of the back office |
+| `/app` | A member's own account: their application, its status and their joining fee |
+| `/api/member/login` | Signs members in and out |
 
 ## Run it
 
@@ -38,7 +40,21 @@ People are matched across the sites by email or phone (`lib/members.ts`), so a s
 attaches to the person the first one created rather than making a duplicate. Indexes are created on
 first write — there is no migration step to run.
 
-Copy `.env.example` to `.env.local` and set `MONGODB_URI`, `MONGODB_DB` and `ADMIN_PASSWORD`.
+Copy `.env.example` to `.env.local` and set `MONGODB_URI`, `MONGODB_DB`, `MEMBER_SESSION_SECRET`
+and `ADMIN_PASSWORD`.
+
+## Member accounts
+
+Applicants set a password on the first step of `/register`, and are signed in as soon as they
+submit. They sign in again at `/app` with that email address and password.
+
+Passwords are hashed with scrypt and a per-password salt (`lib/member-auth.ts`). The plain password
+is never stored, never logged, and is deliberately kept out of the draft the form saves in the
+browser — so a half-finished application reopens at the first step.
+
+`/app` shows the member's real application: its status, their details, nominees and the joining fee
+they said they paid. Shares, contributions and statements are still the sample figures from
+`lib/member-data.ts`, because no share data exists yet.
 
 ## Before going live
 

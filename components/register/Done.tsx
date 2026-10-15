@@ -85,8 +85,14 @@ export function DoneScreen({ result, headingRef, onNew }: { result: Submission; 
           <WhatsAppIcon size={20} /> Share on WhatsApp
         </a>
         <Link
-          href="/"
+          href="/app"
           className="inline-flex min-h-12 items-center rounded-full border border-forest-800 px-6 font-semibold text-forest-800 no-underline hover:bg-mist"
+        >
+          Go to your account
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex min-h-12 items-center rounded-full px-6 font-semibold text-forest-800 underline underline-offset-[3px] hover:bg-mist"
         >
           Back to the home page
         </Link>

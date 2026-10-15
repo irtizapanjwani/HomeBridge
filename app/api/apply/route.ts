@@ -19,6 +19,7 @@ import {
 import { HEARD_OPTIONS } from "@/lib/content";
 import { isDbConfigured } from "@/lib/db";
 import { collections, draftToMember, ensureIndexes, makeReference, upsertPerson } from "@/lib/members";
+import { createMemberSession, hashPassword, isMemberAuthConfigured, passwordProblem } from "@/lib/member-auth";
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const oneOf = <T extends string>(v: unknown, list: readonly T[]): T | "" => {
@@ -43,6 +44,9 @@ function toDraft(body: Record<string, unknown>): Draft {
     ...base,
     contactMethod: body.contactMethod === "email" ? "email" : "phone",
     contact: str(body.contact, 120),
+    // Never trimmed or truncated: a password is used exactly as typed.
+    password: typeof body.password === "string" ? body.password : "",
+    passwordConfirm: typeof body.passwordConfirm === "string" ? body.passwordConfirm : "",
     fullName: str(body.fullName, 120),
     dob: str(body.dob, 10),
     country: oneOf(body.country, COUNTRIES),
@@ -118,6 +122,15 @@ export async function POST(req: Request) {
   const supporter = draft.route === "none";
   const fullName = draft.fullName;
 
+  const badPassword = passwordProblem(draft.password);
+  if (badPassword) {
+    return NextResponse.json({ ok: false, error: badPassword, step: "account", fields: ["password"] }, { status: 422 });
+  }
+  if (!isMemberAuthConfigured()) {
+    console.error("[apply] MEMBER_SESSION_SECRET is not set — members could not sign in.");
+    return NextResponse.json({ ok: false, error: "Registration is not configured" }, { status: 503 });
+  }
+
   if (!isDbConfigured()) {
     console.error("[apply] MONGODB_URI is not set — the application was not stored.");
     return NextResponse.json({ ok: false, error: "Registration storage is not configured" }, { status: 503 });
@@ -133,8 +146,11 @@ export async function POST(req: Request) {
 
     const { members } = await collections();
     const reference = makeReference(supporter ? "SUP" : "APP");
-    await members.insertOne(draftToMember(draft, { reference, personRef, fullName }));
+    const passwordHash = await hashPassword(draft.password);
+    await members.insertOne(draftToMember(draft, { reference, personRef, fullName, passwordHash }));
 
+    // Signed in straight away, so they land in their account rather than a sign-in form.
+    await createMemberSession(reference);
     return NextResponse.json({ ok: true, reference, status: supporter ? "Supporter" : "Submitted" });
   } catch (err) {
     // Never let the error text out: a Mongo error can carry the connection string.

@@ -28,7 +28,7 @@ const TITLES: Record<StepId, string> = { ...STEP_LABELS, supporter: "Join the Su
 function lead(step: StepId, d: Draft) {
   switch (step) {
     case "account":
-      return "Start with a phone number or an email address. It is how you will sign in.";
+      return "Choose how we reach you and set a password. These are how you sign in to your account.";
     case "about":
       return "Tell us who you are and where you live. This goes on the register of members.";
     case "join":
@@ -94,9 +94,12 @@ export function RegisterApp() {
       const base = emptyDraft();
       const d: Draft = { ...base, ...saved.draft, decl: { ...base.decl, ...saved.draft.decl } };
       if (!Array.isArray(d.nominees) || d.nominees.length === 0) d.nominees = base.nominees;
+      d.password = "";
+      d.passwordConfirm = "";
       const max = flowFor(d).length - 1;
       setDraft(d);
-      setStep(Math.max(0, Math.min(Number(saved.step) || 0, max)));
+      // The password was deliberately not saved, so a restored draft starts at the account step.
+      setStep(0);
       setFurthest(Math.max(0, Math.min(Number(saved.furthest) || 0, max)));
     }
     // Arriving from "Can I join today?" (/register?route=land): pre-select that route unless one is already chosen.
@@ -107,10 +110,11 @@ export function RegisterApp() {
     setLoaded(true);
   }, []);
 
-  // Autosave every change.
+  // Autosave every change — except the password, which never goes to disk.
   useEffect(() => {
     if (!loaded || done) return;
-    writeJSON(DRAFT_KEY, { draft, step: current, furthest: reached } satisfies Saved);
+    const { password: _p, passwordConfirm: _c, ...safe } = draft;
+    writeJSON(DRAFT_KEY, { draft: safe as Draft, step: current, furthest: reached } satisfies Saved);
   }, [draft, current, reached, loaded, done]);
 
   // Move focus to the step heading and bring the card into view when the step changes.

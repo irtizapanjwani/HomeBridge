@@ -102,6 +102,9 @@ export type MemberDoc = {
   declarations: Declarations | { accepted: string[]; allAccepted: boolean } | null;
   signature?: string;
 
+  /** scrypt hash of the password set at registration. Never the password itself. */
+  passwordHash?: string;
+
   source: "homebridge" | "vekat";
   submittedAt: Date;
   updatedAt: Date;
@@ -213,7 +216,10 @@ export async function upsertPerson(input: { name: string; email?: string; phone?
 }
 
 /** Turns a validated Draft into the stored document. */
-export function draftToMember(d: Draft, opts: { reference: string; personRef: string; fullName: string }): MemberDoc {
+export function draftToMember(
+  d: Draft,
+  opts: { reference: string; personRef: string; fullName: string; passwordHash: string },
+): MemberDoc {
   const supporter = d.route === "none";
   const now = new Date();
   const email = d.email || (d.contactMethod === "email" ? d.contact : "");
@@ -261,6 +267,8 @@ export function draftToMember(d: Draft, opts: { reference: string; personRef: st
             share: Number(n.share) || 0,
           })),
     declarations: supporter ? null : d.decl,
+
+    passwordHash: opts.passwordHash,
 
     source: "homebridge",
     submittedAt: now,

@@ -4,6 +4,9 @@
 
 import { FOUNDING_BLOCK, JOINING_FEE, MIN_MONTHLY } from "@/lib/settings";
 
+/** Long enough to be worth hashing. Length beats punctuation rules. */
+export const MIN_PASSWORD_LENGTH = 10;
+
 /** All 36 states plus the Federal Capital Territory. */
 export const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River",
@@ -85,6 +88,9 @@ export type Declarations = { character: boolean; bylaws: boolean; risk: boolean;
 export type Draft = {
   contactMethod: "phone" | "email";
   contact: string;
+  /** Set at registration so the member can sign in. Never stored or sent back in plain text. */
+  password: string;
+  passwordConfirm: string;
   fullName: string;
   dob: string; // yyyy-mm-dd
   country: string;
@@ -120,6 +126,8 @@ export const newNominee = (share = ""): Nominee => ({
 export const emptyDraft = (): Draft => ({
   contactMethod: "phone",
   contact: "",
+  password: "",
+  passwordConfirm: "",
   fullName: "",
   dob: "",
   country: "",
@@ -234,6 +242,9 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
         need(e, "contact", d.contact.trim() !== "", "Enter your email address.");
         need(e, "contact", isEmail(d.contact), "Enter an email address like name@example.com.");
       }
+      need(e, "password", d.password.trim().length >= MIN_PASSWORD_LENGTH, `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.`);
+      need(e, "passwordConfirm", d.passwordConfirm !== "" , "Type your password again.");
+      need(e, "passwordConfirm", d.password === "" || d.passwordConfirm === "" || d.password === d.passwordConfirm, "The two passwords don't match.");
       break;
     }
     case "about": {

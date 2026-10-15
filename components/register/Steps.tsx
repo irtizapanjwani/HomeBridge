@@ -9,6 +9,7 @@ import {
   MEMBERSHIP_TYPES,
   NIGERIAN_STATES,
   OTHER_COUNTRY,
+  MIN_PASSWORD_LENGTH,
   STEP_LABELS,
   countryName,
   feeFor,
@@ -68,15 +69,48 @@ export function AccountStep({ draft, set, errors }: StepProps) {
           />
         )}
       </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id="password"
+          label="Choose a password"
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters. Three random words is easy to remember and hard to guess.`}
+          error={errors.password}
+        >
+          {(a) => (
+            <input
+              {...a}
+              type="password"
+              autoComplete="new-password"
+              className={inputClass}
+              value={draft.password}
+              onChange={(e) => set({ password: e.target.value })}
+            />
+          )}
+        </Field>
+        <Field id="passwordConfirm" label="Type it again" error={errors.passwordConfirm}>
+          {(a) => (
+            <input
+              {...a}
+              type="password"
+              autoComplete="new-password"
+              className={inputClass}
+              value={draft.passwordConfirm}
+              onChange={(e) => set({ passwordConfirm: e.target.value })}
+            />
+          )}
+        </Field>
+      </div>
+
       <div className="flex gap-3 rounded-2xl border border-line bg-page px-4 py-3.5">
         <LockIcon size={22} className="mt-0.5 shrink-0 text-forest-800" />
         <div className="text-[14.5px] leading-relaxed">
-          <p className="font-semibold text-ink">No password to remember.</p>
+          <p className="font-semibold text-ink">This is how you sign in.</p>
           <p className="text-body">
-            Each time you sign in, we send a one-time code to this {phone ? "number" : "address"}. You type it in and you are in.
+            Use your {phone ? "email address" : "email address"} and this password at{" "}
+            <span className="font-medium text-forest-800">/app</span> to see your membership, what you have paid and your statements.
           </p>
-          <p className="mt-2 inline-block rounded-full bg-butter px-3 py-1 text-[13px] font-medium text-gold-ink">
-            Preview: codes are sent once accounts open.
+          <p className="mt-2 text-body">
+            Never share it. Nobody from HomeBridge will ever ask you for your password.
           </p>
         </div>
       </div>

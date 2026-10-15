@@ -30,8 +30,8 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
         </div>
       </header>
       <p className="m-0 border-b border-line bg-cream px-[clamp(16px,4vw,28px)] py-2 text-center text-[14px] text-body print:hidden">
-        <strong className="font-semibold text-forest-800">Preview</strong> — member accounts open after registration and legal sign-off.
-        Figures below are sample data.
+        <strong className="font-semibold text-forest-800">Preview</strong> — share accounts open once the cooperative launches. Any
+        contribution figures shown are sample data; your own application details are real.
       </p>
       <main id="main" className="pb-24 md:pb-16 print:p-0">
         {children}
