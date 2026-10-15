@@ -102,7 +102,7 @@ export function ChoicesCard({ draft }: { draft: Draft }) {
           <>
             <Item label="Membership" value={typeLabel(draft.memberType) || "Not chosen yet"} big="serif" />
             {draft.memberType === "founding" && <Item label="Founding block, year one" value={`from ${block}`} />}
-            <Item label="Joining fee, paid with this form" value={fee.fee} note={fee.note} big="gold" />
+            <Item label="Joining fee, after approval" value={fee.fee} note={fee.note} big="gold" />
             <Item label={draft.memberType === "founding" ? "Then monthly shares from" : "Monthly shares from"} value={monthlyFor(draft)} />
           </>
         )}
@@ -114,13 +114,11 @@ export function ChoicesCard({ draft }: { draft: Draft }) {
 export function PayNothingNote({ supporter }: { supporter: boolean }) {
   return (
     <div className="rounded-[20px] border border-line bg-paper px-5 py-4">
-      <p className="text-[15px] font-semibold text-forest-800">
-        {supporter ? "You pay nothing today." : "You buy no shares today."}
-      </p>
+      <p className="text-[15px] font-semibold text-forest-800">You pay nothing today.</p>
       <p className="mt-1 text-[14px] leading-relaxed text-body">
         {supporter
           ? "The Supporter list is free. You can leave it at any time."
-          : "Only the joining fee is paid with this form. It is not a share and is not refundable. Share money is paid later, into the cooperative’s own account."}
+          : "The joining fee is requested only once you are approved. It is not a share and is not refundable."}
       </p>
     </div>
   );

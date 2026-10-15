@@ -109,7 +109,8 @@ export function toApplication(m: MemberDoc): Application {
     kyc: {
       idType: idTypeOf(m.idChoice),
       provider: "Manual check",
-      providerRef: m.idNumber ? `On file · ends ${m.idNumber.trim().slice(-4)}` : "Not given",
+      // Only VEKAT registrations carry a number; a HomeBridge one is checked later with a provider.
+      providerRef: m.idNumber ? `On file · ends ${m.idNumber.trim().slice(-4)}` : "Checked at verification",
       liveness: "Not required",
       docMatch: "Pending",
       addressOk: false,
@@ -119,7 +120,7 @@ export function toApplication(m: MemberDoc): Application {
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
     note: [
       m.source === "vekat" ? "Registered on vekat.org." : "",
-      m.payment.status === "Claimed" ? `Fee claimed paid — ref ${m.payment.reference || "none given"}, not yet verified.` : "",
+      m.payment?.status === "Claimed" ? `Fee claimed paid — ref ${m.payment.reference || "none given"}, not yet verified.` : "",
     ]
       .filter(Boolean)
       .join(" ") || undefined,

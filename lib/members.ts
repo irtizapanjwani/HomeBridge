@@ -47,14 +47,15 @@ export type MemberDoc = {
   status: MemberStatus;
   supporter: boolean;
 
-  title: string;
-  firstName: string;
-  surname: string;
-  otherNames: string;
+  // The VEKAT form collects these; the HomeBridge form does not, so they are optional.
+  title?: string;
+  firstName?: string;
+  surname?: string;
+  otherNames?: string;
+  sex?: string;
+  nationality?: string;
+  stateOfOrigin?: string;
   fullName: string;
-  sex: string;
-  nationality: string;
-  stateOfOrigin: string;
   dob: string;
 
   email: string;
@@ -75,13 +76,14 @@ export type MemberDoc = {
   memberType: string;
   route: string;
   routeDetail: string;
-  sharePlan: string;
-
   idChoice: string;
-  idNumber: string;
-  idDocsEmailed: boolean;
+  /** VEKAT only: the HomeBridge form asks which ID will be used, never the number. */
+  idNumber?: string;
+  idDocsEmailed?: boolean;
+  sharePlan?: string;
 
-  payment: {
+  /** VEKAT only: the HomeBridge flow collects the joining fee after approval, not on the form. */
+  payment?: {
     status: PaymentStatus;
     method: string;
     datePaid: string;
@@ -97,8 +99,8 @@ export type MemberDoc = {
   repName: string;
   groupDoc: string;
   nominees: { name: string; relationship: string; contact: string; share: number }[];
-  declarations: Declarations | null;
-  signature: string;
+  declarations: Declarations | { accepted: string[]; allAccepted: boolean } | null;
+  signature?: string;
 
   source: "homebridge" | "vekat";
   submittedAt: Date;
@@ -222,14 +224,7 @@ export function draftToMember(d: Draft, opts: { reference: string; personRef: st
     status: supporter ? "Submitted" : "Submitted",
     supporter,
 
-    title: d.title,
-    firstName: d.firstName,
-    surname: d.surname,
-    otherNames: d.otherNames,
     fullName: opts.fullName,
-    sex: d.sex,
-    nationality: d.nationality,
-    stateOfOrigin: d.stateOfOrigin,
     dob: d.dob,
 
     email,
@@ -250,22 +245,8 @@ export function draftToMember(d: Draft, opts: { reference: string; personRef: st
     memberType: supporter ? "" : d.memberType,
     route: d.route,
     routeDetail: d.routeDetail,
-    sharePlan: d.sharePlan,
 
     idChoice: d.idChoice,
-    idNumber: d.idNumber,
-    idDocsEmailed: d.idDocsEmailed,
-
-    payment: {
-      status: supporter ? "Not matched" : "Claimed",
-      method: d.paymentMethod,
-      datePaid: d.datePaid,
-      reference: d.paymentReference,
-      receiptEmailed: d.receiptEmailed,
-      verifiedAt: null,
-      verifiedBy: null,
-      amount: null,
-    },
 
     groupName: d.groupName,
     repName: d.repName,
@@ -280,7 +261,6 @@ export function draftToMember(d: Draft, opts: { reference: string; personRef: st
             share: Number(n.share) || 0,
           })),
     declarations: supporter ? null : d.decl,
-    signature: d.signature,
 
     source: "homebridge",
     submittedAt: now,

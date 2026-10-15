@@ -45,9 +45,11 @@ Copy `.env.example` to `.env.local` and set `MONGODB_URI`, `MONGODB_DB` and `ADM
 - **Admin accounts:** `/admin` now asks for one shared password (`ADMIN_PASSWORD`). That keeps the page
   closed to anyone with the URL, but it cannot tell two officers apart, so the audit log cannot name
   who did what. Give each officer their own account with 2FA before this handles live member data.
-- **ID numbers:** applications store a BVN, NIN or passport number. It is never logged and never sent to
-  the browser (the admin screen shows only the last four digits), but it is in the database — so restrict
-  who holds the Atlas credentials, turn on IP access lists, and agree a retention period with the client.
+- **ID numbers:** this site's form never asks for one — it records which ID the applicant will use, and the
+  number is collected later at verification. Registrations coming from the VEKAT site *do* carry a number,
+  so the database holds some: it is never logged and never sent to the browser (the admin screen shows only
+  the last four digits), but restrict who holds the Atlas credentials, turn on IP access lists, and agree a
+  retention period with the client.
 - **Other admin screens:** only the Applications queue reads real data. Contributions, the member
   register, fees, withdrawals, meetings, projects, reports and the audit log still run on the sample
   data in `lib/admin-data.ts`.

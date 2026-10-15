@@ -6,12 +6,8 @@ import {
   ID_OPTIONS,
   MEMBERSHIP_TYPES,
   NIGERIAN_STATES,
-  PAYMENT_METHODS,
-  SHARE_PLANS,
-  TITLE_OPTIONS,
   ageOn,
   emptyDraft,
-  fullNameOf,
   firstInvalidStep,
   flowFor,
   validateStep,
@@ -34,12 +30,10 @@ const ROUTES: Route[] = ["lives", "land", "other", "none"];
 const TYPES = MEMBERSHIP_TYPES.map((t) => t.value) as MemberType[];
 const ID_VALUES = [...ID_OPTIONS.nigeria, ...ID_OPTIONS.abroad].map((o) => o.value as string);
 const DOC_VALUES = GROUP_DOC_OPTIONS.map((o) => o.value as string);
-const SHARE_PLAN_VALUES = SHARE_PLANS.map((o) => o.value as string);
-const PAYMENT_METHOD_VALUES = PAYMENT_METHODS.map((o) => o.value as string);
 
 /**
  * Rebuilds a Draft from untrusted JSON using only known fields, so anything else in the body
- * is dropped and never stored, forwarded or logged.
+ * (for example an ID number) is dropped and never stored, forwarded or logged.
  */
 function toDraft(body: Record<string, unknown>): Draft {
   const base = emptyDraft();
@@ -49,13 +43,7 @@ function toDraft(body: Record<string, unknown>): Draft {
     ...base,
     contactMethod: body.contactMethod === "email" ? "email" : "phone",
     contact: str(body.contact, 120),
-    title: oneOf(body.title, TITLE_OPTIONS),
-    surname: str(body.surname, 80),
-    firstName: str(body.firstName, 80),
-    otherNames: str(body.otherNames, 80),
-    sex: body.sex === "Male" || body.sex === "Female" ? body.sex : "",
-    nationality: str(body.nationality, 60),
-    stateOfOrigin: str(body.stateOfOrigin, 80),
+    fullName: str(body.fullName, 120),
     dob: str(body.dob, 10),
     country: oneOf(body.country, COUNTRIES),
     countryOther: str(body.countryOther, 80),
@@ -71,13 +59,6 @@ function toDraft(body: Record<string, unknown>): Draft {
     route: oneOf(body.route, ROUTES),
     routeDetail: str(body.routeDetail, 400),
     idChoice: oneOf(body.idChoice, ID_VALUES),
-    idNumber: str(body.idNumber, 40),
-    idDocsEmailed: body.idDocsEmailed === true,
-    sharePlan: oneOf(body.sharePlan, SHARE_PLAN_VALUES),
-    paymentMethod: oneOf(body.paymentMethod, PAYMENT_METHOD_VALUES),
-    datePaid: str(body.datePaid, 10),
-    paymentReference: str(body.paymentReference, 80),
-    receiptEmailed: body.receiptEmailed === true,
     groupName: str(body.groupName, 160),
     repName: str(body.repName, 120),
     groupDoc: oneOf(body.groupDoc, DOC_VALUES),
@@ -92,16 +73,11 @@ function toDraft(body: Record<string, unknown>): Draft {
       };
     }),
     decl: {
-      individual: decl.individual === true,
       character: decl.character === true,
       bylaws: decl.bylaws === true,
-      fee: decl.fee === true,
-      sharesAccount: decl.sharesAccount === true,
       risk: decl.risk === true,
       privacy: decl.privacy === true,
-      truthful: decl.truthful === true,
     },
-    signature: str(body.signature, 120),
     supporterConsent: body.supporterConsent === true,
   };
 }
@@ -140,7 +116,7 @@ export async function POST(req: Request) {
   }
 
   const supporter = draft.route === "none";
-  const fullName = fullNameOf(draft);
+  const fullName = draft.fullName;
 
   if (!isDbConfigured()) {
     console.error("[apply] MONGODB_URI is not set — the application was not stored.");

@@ -25,10 +25,10 @@ export function DoneScreen({ result, headingRef, onNew }: { result: Submission; 
         "You can leave the list at any time. Just message us.",
       ]
     : [
-        `We check your joining fee (${result.fee ?? `£${JOINING_FEE.gbp} abroad or ₦${JOINING_FEE.ngn.toLocaleString("en-GB")} in Nigeria`}) against the payment reference you gave us.`,
         "A membership officer reviews your application. We decide within 30 days, and aim for 2 working days.",
-        `If you haven’t sent your ID and proof of address yet, email them to ${JOINING_FEE.documentsEmail} within 7 days.`,
-        "You become a member once you are approved, you buy your first share and your name is on the register.",
+        `If you’re approved, we send you a link to pay the joining fee (${result.fee ?? `£${JOINING_FEE.gbp} abroad or ₦${JOINING_FEE.ngn.toLocaleString("en-GB")} in Nigeria`}) to ${JOINING_FEE.payee}. It is not a share and is not refundable.`,
+        "You’ll complete the secure ID check with our verification partner once your account opens.",
+        "You become a member when the fee is paid, you buy your first share and your name is on the register.",
       ];
 
   return (
