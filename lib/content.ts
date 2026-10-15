@@ -23,13 +23,12 @@ export const SHARE_MESSAGE =
 
 /** Public pages, from the brief's site map. */
 export const NAV = [
-  { href: "/how-it-works", label: "How it works" },
+  { href: "/", label: "Home" },
   { href: "/join", label: "Who can join" },
   { href: "/your-money", label: "Your money" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/projects", label: "Projects" },
   { href: "/governance", label: "Governance" },
-  { href: "/faq", label: "FAQ" },
 ];
 
 export const NAV_MORE = [
