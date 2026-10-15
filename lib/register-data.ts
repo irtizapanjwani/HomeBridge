@@ -25,6 +25,26 @@ const EURO_COUNTRIES = ["Ireland", "Germany", "Netherlands", "Italy", "France", 
 
 export const CHAPTERS = ["HomeBridge Edo", "HomeBridge Abuja", "HomeBridge UK", "None yet"] as const;
 
+export const TITLE_OPTIONS = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Prof", "Chief", "Engr", "Pastor", "Rev", "Other"] as const;
+
+export const SEX_OPTIONS = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+] as const;
+
+/** Bye-law 11.2: the monthly minimum by residence, plus the year-one founding block. */
+export const SHARE_PLANS = [
+  { value: "home-min", label: `Home minimum`, sub: `₦${MIN_MONTHLY.ngn.toLocaleString("en-GB")} a month (${MIN_MONTHLY.ngn / 1000} shares)` },
+  { value: "diaspora-min", label: `Diaspora minimum`, sub: `£${MIN_MONTHLY.gbp} a month` },
+  { value: "founding", label: "Founding block", sub: `₦${FOUNDING_BLOCK.ngn.toLocaleString("en-GB")} or £${FOUNDING_BLOCK.gbp.toLocaleString("en-GB")}` },
+  { value: "other", label: "Another amount", sub: "Tell us on the next step or by WhatsApp" },
+] as const;
+
+export const PAYMENT_METHODS = [
+  { value: "bank", label: "Bank transfer", sub: `${JOINING_FEE.bankAccount.bank} · ₦${JOINING_FEE.ngn.toLocaleString("en-GB")}` },
+  { value: "card", label: "Card payment link", sub: `£${JOINING_FEE.gbp}` },
+] as const;
+
 export const MEMBERSHIP_TYPES = [
   {
     value: "home",
@@ -79,13 +99,28 @@ export const GROUP_DOC_OPTIONS = [
 
 export type Nominee = { id: string; name: string; relationship: string; contact: string; share: string };
 
-export type Declarations = { character: boolean; bylaws: boolean; risk: boolean; privacy: boolean };
+export type Declarations = {
+  individual: boolean;
+  character: boolean;
+  bylaws: boolean;
+  fee: boolean;
+  sharesAccount: boolean;
+  risk: boolean;
+  privacy: boolean;
+  truthful: boolean;
+};
 
-/** Everything the applicant enters. Never holds an ID number or a file. */
+/** Everything the applicant enters. */
 export type Draft = {
   contactMethod: "phone" | "email";
   contact: string;
-  fullName: string;
+  title: string;
+  surname: string;
+  firstName: string;
+  otherNames: string;
+  sex: string;
+  nationality: string;
+  stateOfOrigin: string;
   dob: string; // yyyy-mm-dd
   country: string;
   countryOther: string;
@@ -101,11 +136,19 @@ export type Draft = {
   route: Route | "";
   routeDetail: string;
   idChoice: string;
+  idNumber: string;
+  idDocsEmailed: boolean;
+  sharePlan: string;
+  paymentMethod: string;
+  datePaid: string; // yyyy-mm-dd
+  paymentReference: string;
+  receiptEmailed: boolean;
   groupName: string;
   repName: string;
   groupDoc: string;
   nominees: Nominee[];
   decl: Declarations;
+  signature: string;
   supporterConsent: boolean;
 };
 
@@ -120,7 +163,13 @@ export const newNominee = (share = ""): Nominee => ({
 export const emptyDraft = (): Draft => ({
   contactMethod: "phone",
   contact: "",
-  fullName: "",
+  title: "",
+  surname: "",
+  firstName: "",
+  otherNames: "",
+  sex: "",
+  nationality: "",
+  stateOfOrigin: "",
   dob: "",
   country: "",
   countryOther: "",
@@ -136,29 +185,47 @@ export const emptyDraft = (): Draft => ({
   route: "",
   routeDetail: "",
   idChoice: "",
+  idNumber: "",
+  idDocsEmailed: false,
+  sharePlan: "",
+  paymentMethod: "",
+  datePaid: "",
+  paymentReference: "",
+  receiptEmailed: false,
   groupName: "",
   repName: "",
   groupDoc: "",
   nominees: [newNominee("100")],
-  decl: { character: false, bylaws: false, risk: false, privacy: false },
+  decl: {
+    individual: false,
+    character: false,
+    bylaws: false,
+    fee: false,
+    sharesAccount: false,
+    risk: false,
+    privacy: false,
+    truthful: false,
+  },
+  signature: "",
   supporterConsent: false,
 });
 
 // ---------- Steps ----------
 
-export type StepId = "account" | "about" | "join" | "identity" | "nominee" | "review" | "supporter";
+export type StepId = "account" | "about" | "join" | "identity" | "payment" | "nominee" | "review" | "supporter";
 
 export const STEP_LABELS: Record<StepId, string> = {
   account: "Account",
   about: "About you",
   join: "How you join",
   identity: "Identity",
+  payment: "Registration fee",
   nominee: "Nominee and agreements",
   review: "Check and send",
   supporter: "Supporter list",
 };
 
-const MEMBER_FLOW: StepId[] = ["account", "about", "join", "identity", "nominee", "review"];
+const MEMBER_FLOW: StepId[] = ["account", "about", "join", "identity", "payment", "nominee", "review"];
 const SUPPORTER_FLOW: StepId[] = ["account", "about", "join", "supporter"];
 
 /** Bye-law 5.2: with no link to Edo or the FCT the applicant joins the Supporter list instead. */
@@ -167,6 +234,20 @@ export const flowFor = (d: Pick<Draft, "route">): StepId[] => (d.route === "none
 // ---------- Helpers ----------
 
 export const livesInNigeria = (d: Pick<Draft, "country">) => d.country === "Nigeria";
+
+/** First name, any other names, then surname — the order the register of members uses. */
+export const fullNameOf = (d: Pick<Draft, "firstName" | "otherNames" | "surname">) =>
+  [d.firstName.trim(), d.otherNames.trim(), d.surname.trim()].filter(Boolean).join(" ");
+
+export const sharePlanLabel = (v: string) => {
+  const p = SHARE_PLANS.find((s) => s.value === v);
+  return p ? `${p.label} — ${p.sub}` : "";
+};
+
+export const paymentMethodLabel = (v: string) => {
+  const m = PAYMENT_METHODS.find((p) => p.value === v);
+  return m ? `${m.label} (${m.sub})` : "";
+};
 
 export const countryName = (d: Pick<Draft, "country" | "countryOther">) =>
   d.country === OTHER_COUNTRY ? d.countryOther.trim() || "Another country" : d.country;
@@ -237,7 +318,11 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
       break;
     }
     case "about": {
-      need(e, "fullName", d.fullName.trim().length >= 3 && /\s/.test(d.fullName.trim()), "Enter your full name, first and last.");
+      need(e, "title", (TITLE_OPTIONS as readonly string[]).includes(d.title), "Choose a title.");
+      need(e, "firstName", d.firstName.trim().length >= 2, "Enter your first name.");
+      need(e, "surname", d.surname.trim().length >= 2, "Enter your surname.");
+      need(e, "sex", d.sex === "Male" || d.sex === "Female", "Choose an option.");
+      need(e, "nationality", d.nationality.trim().length >= 2, "Enter your nationality.");
       const age = ageOn(d.dob, today);
       need(e, "dob", d.dob !== "", "Enter your date of birth.");
       need(e, "dob", !Number.isNaN(age) && age < 120, "Enter a real date of birth.");
@@ -261,6 +346,9 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
       need(e, "route", d.route !== "", "Choose your link to Edo State or Abuja FCT.");
       if (d.route === "land") need(e, "routeDetail", d.routeDetail.trim().length >= 6, "Tell us where the land or home is, and whose name it is in.");
       if (d.route === "other") need(e, "routeDetail", d.routeDetail.trim().length >= 6, "Tell us about your link to Edo or the FCT.");
+      if (d.route !== "none") {
+        need(e, "sharePlan", SHARE_PLANS.some((p) => p.value === d.sharePlan), "Choose how much you plan to contribute.");
+      }
       break;
     }
     case "identity": {
@@ -275,6 +363,15 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
         idOptionsFor(d).some((o) => o.value === d.idChoice),
         d.memberType === "group" ? "Choose which ID the representative will use." : "Choose which ID you will use.",
       );
+      need(e, "idNumber", d.idNumber.trim().length >= 6, "Enter the ID number.");
+      need(e, "idDocsEmailed", d.idDocsEmailed, "Please confirm you have sent, or will send, your ID and proof of address.");
+      break;
+    }
+    case "payment": {
+      need(e, "paymentMethod", PAYMENT_METHODS.some((p) => p.value === d.paymentMethod), "Choose how you paid.");
+      need(e, "datePaid", d.datePaid !== "", "Enter the date you paid.");
+      need(e, "paymentReference", d.paymentReference.trim().length >= 3, "Enter the payment reference or transaction ID.");
+      need(e, "receiptEmailed", d.receiptEmailed, "Please confirm you have emailed your receipt.");
       break;
     }
     case "nominee": {
@@ -288,18 +385,27 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
         });
         need(e, "nomineeTotal", nomineeTotal(d.nominees) === 100, `Shares must add up to exactly 100%. They add up to ${nomineeTotal(d.nominees)}%.`);
       }
+      need(e, "decl-individual", d.decl.individual, "Please confirm you are applying as an individual and are 18 or older.");
       need(e, "decl-character", d.decl.character, "Please confirm the good-character declaration.");
       need(e, "decl-bylaws", d.decl.bylaws, "Please confirm you accept the bye-laws.");
+      need(e, "decl-fee", d.decl.fee, "Please confirm you understand the registration fee.");
+      need(e, "decl-sharesAccount", d.decl.sharesAccount, "Please confirm where share money is paid.");
       need(e, "decl-risk", d.decl.risk, "Please confirm you understand the risk notice.");
       need(e, "decl-privacy", d.decl.privacy, "Please confirm you have read the privacy notice.");
+      need(e, "decl-truthful", d.decl.truthful, "Please confirm your answers are true and complete.");
       break;
     }
     case "supporter": {
       need(e, "supporterConsent", d.supporterConsent, "Please confirm we may contact you.");
       break;
     }
-    case "review":
+    case "review": {
+      const name = fullNameOf(d).toLowerCase().replace(/\s+/g, " ");
+      const signed = d.signature.trim().toLowerCase().replace(/\s+/g, " ");
+      need(e, "signature", signed !== "", "Type your full name to sign.");
+      need(e, "signature", signed === "" || signed === name, "Your signature needs to match your full name exactly.");
       break;
+    }
   }
   return e;
 }

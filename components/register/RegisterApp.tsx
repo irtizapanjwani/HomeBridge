@@ -8,6 +8,7 @@ import {
   STEP_LABELS,
   emptyDraft,
   feeFor,
+  fullNameOf,
   firstInvalidStep,
   flowFor,
   validateStep,
@@ -15,7 +16,7 @@ import {
   type Errors,
   type StepId,
 } from "@/lib/register-data";
-import { AboutStep, AccountStep, IdentityStep, JoinStep, NomineeStep, ReviewStep, SupporterStep } from "./Steps";
+import { AboutStep, AccountStep, IdentityStep, JoinStep, NomineeStep, PaymentStep, ReviewStep, SupporterStep } from "./Steps";
 import { ProgressBar, StepList, ChoicesCard, PayNothingNote } from "./Sidebar";
 import { DoneScreen, type Submission } from "./Done";
 import { RegisterTopBar } from "./TopBar";
@@ -34,13 +35,15 @@ function lead(step: StepId, d: Draft) {
     case "join":
       return `Every membership has one vote and the same ₦${SHARE_PRICE_NGN.toLocaleString("en-GB")} share price.`;
     case "identity":
-      return "Tell us which ID you will use. You don’t need to upload anything today.";
+      return "Tell us which ID you will use, and its number. You don’t need to upload anything today.";
+    case "payment":
+      return "Pay the one-off joining fee, then tell us how you paid so we can match it to you.";
     case "nominee":
       return d.memberType === "group"
-        ? "Confirm four short declarations."
-        : "Choose who receives your shares if you die, then confirm four short declarations.";
+        ? "Confirm the declarations below."
+        : "Choose who receives your shares if you die, then confirm the declarations below.";
     case "review":
-      return "Check your answers, then send. You can still change anything.";
+      return "Check your answers and sign, then send. You can still change anything.";
     case "supporter":
       return "Nothing to pay and nothing to sign. We’ll keep you in the loop.";
   }
@@ -179,7 +182,7 @@ export function RegisterApp() {
         const result: Submission = {
           reference: data.reference,
           supporter: draft.route === "none",
-          firstName: draft.fullName.trim().split(/\s+/)[0] ?? "",
+          firstName: draft.firstName.trim() || fullNameOf(draft).split(/\s+/)[0] || "",
           contact: draft.contactMethod === "email" ? draft.contact : draft.whatsapp || draft.contact,
           fee: feeFor(draft).fee,
         };
@@ -205,10 +208,8 @@ export function RegisterApp() {
 
   const next = () => {
     if (stepId === "review" || stepId === "supporter") {
-      if (stepId === "supporter") {
-        const errs = validateStep("supporter", draft);
-        if (Object.keys(errs).length) return showErrors(errs);
-      }
+      const errs = validateStep(stepId, draft);
+      if (Object.keys(errs).length) return showErrors(errs);
       void submit();
       return;
     }
@@ -297,8 +298,9 @@ export function RegisterApp() {
                 {stepId === "about" && <AboutStep draft={draft} set={set} errors={errors} />}
                 {stepId === "join" && <JoinStep draft={draft} set={set} errors={errors} />}
                 {stepId === "identity" && <IdentityStep draft={draft} set={set} errors={errors} />}
+                {stepId === "payment" && <PaymentStep draft={draft} set={set} errors={errors} />}
                 {stepId === "nominee" && <NomineeStep draft={draft} set={set} errors={errors} />}
-                {stepId === "review" && <ReviewStep draft={draft} onEdit={goTo} />}
+                {stepId === "review" && <ReviewStep draft={draft} set={set} errors={errors} onEdit={goTo} />}
                 {stepId === "supporter" && <SupporterStep draft={draft} set={set} errors={errors} onEdit={goTo} />}
 
                 {sendError && (

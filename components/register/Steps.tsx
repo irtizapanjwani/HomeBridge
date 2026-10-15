@@ -1,7 +1,7 @@
 "use client";
 
 import { CONTACT, HEARD_OPTIONS, ROUTE_OPTIONS } from "@/lib/content";
-import { JOINING_FEE } from "@/lib/settings";
+import { JOINING_FEE, SHARE_PRICE_NGN } from "@/lib/settings";
 import {
   CHAPTERS,
   COUNTRIES,
@@ -9,13 +9,20 @@ import {
   MEMBERSHIP_TYPES,
   NIGERIAN_STATES,
   OTHER_COUNTRY,
+  PAYMENT_METHODS,
+  SEX_OPTIONS,
+  SHARE_PLANS,
   STEP_LABELS,
+  TITLE_OPTIONS,
   countryName,
   feeFor,
+  fullNameOf,
   idOptionsFor,
   livesInNigeria,
   newNominee,
   nomineeTotal,
+  paymentMethodLabel,
+  sharePlanLabel,
   typeLabel,
   type Draft,
   type Errors,
@@ -91,8 +98,35 @@ export function AboutStep({ draft, set, errors }: StepProps) {
   const emailOptional = draft.contactMethod === "email";
   return (
     <div className="grid gap-5 sm:grid-cols-2">
-      <Field id="fullName" label="Full name" hint="As it appears on your ID." error={errors.fullName} className="sm:col-span-2">
-        {(a) => <input {...a} type="text" autoComplete="name" className={inputClass} value={draft.fullName} onChange={(e) => set({ fullName: e.target.value })} />}
+      <Field id="title" label="Title" error={errors.title}>
+        {(a) => (
+          <select {...a} autoComplete="honorific-prefix" className={inputClass} value={draft.title} onChange={(e) => set({ title: e.target.value })}>
+            <option value="">Choose one</option>
+            {TITLE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+      <Field id="firstName" label="First name" hint="As it appears on your ID." error={errors.firstName}>
+        {(a) => <input {...a} type="text" autoComplete="given-name" className={inputClass} value={draft.firstName} onChange={(e) => set({ firstName: e.target.value })} />}
+      </Field>
+      <Field id="surname" label="Surname" error={errors.surname}>
+        {(a) => <input {...a} type="text" autoComplete="family-name" className={inputClass} value={draft.surname} onChange={(e) => set({ surname: e.target.value })} />}
+      </Field>
+      <Field id="otherNames" label="Other names" optional error={errors.otherNames}>
+        {(a) => <input {...a} type="text" autoComplete="additional-name" className={inputClass} value={draft.otherNames} onChange={(e) => set({ otherNames: e.target.value })} />}
+      </Field>
+      <div className="sm:col-span-2">
+        <ChoiceGroup id="sex" legend="Sex" layout="pair" options={SEX_OPTIONS} value={draft.sex} onChange={(v) => set({ sex: v })} error={errors.sex} />
+      </div>
+      <Field id="nationality" label="Nationality" error={errors.nationality}>
+        {(a) => <input {...a} type="text" placeholder="e.g. Nigerian" className={inputClass} value={draft.nationality} onChange={(e) => set({ nationality: e.target.value })} />}
+      </Field>
+      <Field id="stateOfOrigin" label="State of origin / LGA" optional hint="Your family's state of origin, if Nigerian." error={errors.stateOfOrigin}>
+        {(a) => <input {...a} type="text" placeholder="e.g. Edo / Oredo" className={inputClass} value={draft.stateOfOrigin} onChange={(e) => set({ stateOfOrigin: e.target.value })} />}
       </Field>
       <Field id="dob" label="Date of birth" hint="You need to be 18 or older to join." error={errors.dob}>
         {(a) => <input {...a} type="date" autoComplete="bday" max={today()} min="1900-01-01" className={inputClass} value={draft.dob} onChange={(e) => set({ dob: e.target.value })} />}
@@ -252,6 +286,19 @@ export function JoinStep({ draft, set, errors }: StepProps) {
         </Field>
       )}
 
+      {draft.route !== "none" && (
+        <ChoiceGroup
+          id="sharePlan"
+          legend="How much do you plan to contribute?"
+          hint={`Shares are ₦${SHARE_PRICE_NGN.toLocaleString("en-GB")} each. You can change this later.`}
+          layout="rows"
+          options={SHARE_PLANS}
+          value={draft.sharePlan}
+          onChange={(v) => set({ sharePlan: v })}
+          error={errors.sharePlan}
+        />
+      )}
+
       {draft.route === "none" && (
         <div role="status" className="rounded-[20px] border border-gold/50 bg-butter px-5 py-5 sm:px-6">
           <p className="font-display text-[20px] font-bold text-forest-900">You can’t become a member just yet, but you can still be part of this.</p>
@@ -331,6 +378,26 @@ export function IdentityStep({ draft, set, errors }: StepProps) {
         error={errors.idChoice}
       />
 
+      <Field
+        id="idNumber"
+        label={idLabel ? `${idLabel} number` : "ID number"}
+        hint="The number on the ID you chose above."
+        error={errors.idNumber}
+      >
+        {(a) => (
+          <input
+            {...a}
+            type="text"
+            inputMode={draft.idChoice === "passport" ? "text" : "numeric"}
+            autoComplete="off"
+            spellCheck={false}
+            className={`${inputClass} sm:max-w-[320px]`}
+            value={draft.idNumber}
+            onChange={(e) => set({ idNumber: e.target.value })}
+          />
+        )}
+      </Field>
+
       <div className="rounded-[20px] border border-line p-4 sm:p-5">
         <p className="flex items-center gap-2 text-[15px] font-semibold text-ink">
           <IdIcon size={20} className="text-forest-800" /> Have these ready
@@ -345,12 +412,26 @@ export function IdentityStep({ draft, set, errors }: StepProps) {
         </ul>
       </div>
 
+      <Checkbox
+        id="idDocsEmailed"
+        checked={draft.idDocsEmailed}
+        onChange={(v) => set({ idDocsEmailed: v })}
+        error={errors.idDocsEmailed}
+      >
+        I have emailed, or will email within 7 days, a copy of my ID and proof of address to{" "}
+        <a href={`mailto:${JOINING_FEE.documentsEmail}`} className="font-medium underline">
+          {JOINING_FEE.documentsEmail}
+        </a>
+        .
+      </Checkbox>
+
       <Note>
         <span className="flex gap-2.5">
           <LockIcon size={20} className="mt-0.5 shrink-0" />
           <span>
-            You’ll complete the secure ID check with our verification partner once your account opens. We never store your BVN or NIN. Nothing is
-            uploaded on this page.
+            Your ID number is used only to verify who you are, and is seen only by the membership officers who check your application. It is held
+            under Nigeria’s Data Protection Act 2023 and, for people in the UK, the UK GDPR. Don’t send it to anyone who contacts you claiming to be
+            from HomeBridge.
           </span>
         </span>
       </Note>
@@ -358,7 +439,90 @@ export function IdentityStep({ draft, set, errors }: StepProps) {
   );
 }
 
-/* ---------------- 5. Nominee and agreements ---------------- */
+/* ---------------- 5. Registration fee ---------------- */
+
+export function PaymentStep({ draft, set, errors }: StepProps) {
+  const nigeria = livesInNigeria(draft);
+  const fee = feeFor(draft);
+  const { bankAccount, documentsEmail, stripeLink } = JOINING_FEE;
+  return (
+    <div className="space-y-7">
+      <p className="text-[15px] leading-relaxed text-body">
+        The joining fee is {fee.fee}
+        {fee.note ? ` (${fee.note})` : ""}. It is paid to {JOINING_FEE.payee}, {JOINING_FEE.payeeRole}, for processing and vetting. It is not a share
+        and it is not refundable (bye-law 6.3).
+      </p>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`rounded-[20px] border p-4 sm:p-5 ${nigeria ? "border-forest-800 bg-mist" : "border-line"}`}>
+          <p className="text-[15px] font-semibold text-ink">In Nigeria — bank transfer</p>
+          <p className="mt-1 text-[14.5px] leading-relaxed text-body">
+            ₦{JOINING_FEE.ngn.toLocaleString("en-GB")} to
+            <br />
+            <strong className="text-forest-800">{bankAccount.accountName}</strong>
+            <br />
+            {bankAccount.bank} · {bankAccount.accountNumber}
+          </p>
+        </div>
+        <div className={`rounded-[20px] border p-4 sm:p-5 ${nigeria ? "border-line" : "border-forest-800 bg-mist"}`}>
+          <p className="text-[15px] font-semibold text-ink">Abroad — card payment</p>
+          <p className="mt-1 mb-3 text-[14.5px] leading-relaxed text-body">£{JOINING_FEE.gbp} by card, Apple Pay or Google Pay.</p>
+          <a
+            href={stripeLink}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex min-h-11 items-center rounded-full border border-forest-800 px-5 text-[15px] font-semibold text-forest-800 hover:bg-paper"
+          >
+            Open the payment page<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </div>
+      </div>
+
+      <ChoiceGroup
+        id="paymentMethod"
+        legend="How did you pay?"
+        layout="pair"
+        options={PAYMENT_METHODS}
+        value={draft.paymentMethod}
+        onChange={(v) => set({ paymentMethod: v })}
+        error={errors.paymentMethod}
+      />
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field id="datePaid" label="Date paid" error={errors.datePaid}>
+          {(a) => (
+            <input {...a} type="date" max={today()} className={inputClass} value={draft.datePaid} onChange={(e) => set({ datePaid: e.target.value })} />
+          )}
+        </Field>
+        <Field
+          id="paymentReference"
+          label="Payment reference or transaction ID"
+          hint={draft.paymentMethod === "card" ? "On your card receipt from the payment page." : "On your transfer receipt or bank app."}
+          error={errors.paymentReference}
+        >
+          {(a) => (
+            <input {...a} type="text" spellCheck={false} className={inputClass} value={draft.paymentReference} onChange={(e) => set({ paymentReference: e.target.value })} />
+          )}
+        </Field>
+      </div>
+
+      <Checkbox id="receiptEmailed" checked={draft.receiptEmailed} onChange={(v) => set({ receiptEmailed: v })} error={errors.receiptEmailed}>
+        I have emailed my payment receipt to{" "}
+        <a href={`mailto:${documentsEmail}`} className="font-medium underline">
+          {documentsEmail}
+        </a>
+        .
+      </Checkbox>
+
+      <Note tone="butter">
+        Pay only into the account shown above. Share money is different: it goes only into the cooperative’s own account, and you receive those
+        details in your approval letter. Never pay share money to a private or personal account.
+      </Note>
+    </div>
+  );
+}
+
+/* ---------------- 6. Nominee and agreements ---------------- */
 
 export function NomineeStep({ draft, set, errors }: StepProps) {
   const group = draft.memberType === "group";
@@ -460,6 +624,11 @@ export function NomineeStep({ draft, set, errors }: StepProps) {
         </h2>
         <p className="mt-1 text-[14.5px] text-muted">Please read and tick each one.</p>
         <div className="mt-4 space-y-3">
+          <Checkbox id="decl-individual" checked={draft.decl.individual} onChange={(v) => decl({ individual: v })} error={errors["decl-individual"]}>
+            {group
+              ? "I am applying on behalf of the group named above, as its authorised representative, and I am 18 or older."
+              : "I am applying as an individual, in my own name, and I am 18 or older."}
+          </Checkbox>
           <Checkbox id="decl-character" checked={draft.decl.character} onChange={(v) => decl({ character: v })} error={errors["decl-character"]}>
             {group ? "The group and its representative are" : "I am"} of good character and have never been convicted of fraud or dishonesty
             (bye-law 5.1b).
@@ -471,6 +640,17 @@ export function NomineeStep({ draft, set, errors }: StepProps) {
             </a>
             .
           </Checkbox>
+          <Checkbox id="decl-fee" checked={draft.decl.fee} onChange={(v) => decl({ fee: v })} error={errors["decl-fee"]}>
+            I understand the registration fee is non-refundable, is paid to {JOINING_FEE.payee} for processing and vetting, and is not share capital.
+          </Checkbox>
+          <Checkbox
+            id="decl-sharesAccount"
+            checked={draft.decl.sharesAccount}
+            onChange={(v) => decl({ sharesAccount: v })}
+            error={errors["decl-sharesAccount"]}
+          >
+            I will pay for shares only into the cooperative’s own bank account, never in cash or to any private account.
+          </Checkbox>
           <Checkbox id="decl-risk" checked={draft.decl.risk} onChange={(v) => decl({ risk: v })} error={errors["decl-risk"]}>
             I understand the risk notice: there is no guaranteed return, HomeBridge is not a savings or deposit scheme, and shares can only be withdrawn
             after 3 years, with 6 months’ notice.
@@ -481,6 +661,9 @@ export function NomineeStep({ draft, set, errors }: StepProps) {
               privacy notice<span className="sr-only"> (opens in a new tab)</span>
             </a>
             . My details are handled under Nigeria’s Data Protection Act 2023 and, for people in the UK, the UK GDPR.
+          </Checkbox>
+          <Checkbox id="decl-truthful" checked={draft.decl.truthful} onChange={(v) => decl({ truthful: v })} error={errors["decl-truthful"]}>
+            The information I have given is true and complete.
           </Checkbox>
         </div>
       </section>
@@ -519,7 +702,7 @@ function Group({ step, index, onEdit, children }: { step: StepId; index: number;
   );
 }
 
-export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number) => void }) {
+export function ReviewStep({ draft, set, errors, onEdit }: StepProps & { onEdit: (i: number) => void }) {
   const fee = feeFor(draft);
   const route = ROUTE_OPTIONS.find((r) => r.value === draft.route)?.label;
   const idLabel = idOptionsFor(draft).find((o) => o.value === draft.idChoice)?.label;
@@ -530,7 +713,10 @@ export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number
         <Row label={draft.contactMethod === "phone" ? "Phone" : "Email"} value={draft.contact} />
       </Group>
       <Group step="about" index={1} onEdit={onEdit}>
-        <Row label="Full name" value={draft.fullName} />
+        <Row label="Full name" value={[draft.title, fullNameOf(draft)].filter(Boolean).join(" ")} />
+        <Row label="Sex" value={draft.sex} />
+        <Row label="Nationality" value={draft.nationality} />
+        <Row label="State of origin / LGA" value={draft.stateOfOrigin} />
         <Row
           label="Date of birth"
           value={draft.dob ? new Date(`${draft.dob}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}
@@ -547,21 +733,56 @@ export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number
         <Row label="Membership type" value={typeLabel(draft.memberType)} />
         <Row label="Link to Edo or FCT" value={route} />
         {(draft.route === "land" || draft.route === "other") && <Row label="Details" value={draft.routeDetail} />}
+        <Row label="Planned contribution" value={sharePlanLabel(draft.sharePlan)} />
       </Group>
       <Group step="identity" index={3} onEdit={onEdit}>
         {group && <Row label="Group" value={draft.groupName} />}
         {group && <Row label="Representative" value={draft.repName} />}
         {group && <Row label="Registration document" value={GROUP_DOC_OPTIONS.find((o) => o.value === draft.groupDoc)?.label} />}
         <Row label={group ? "Representative’s ID" : "ID you will use"} value={idLabel} />
-        <Row label="ID check" value="With our verification partner, once your account opens" />
+        <Row label="ID number" value={draft.idNumber ? `${"•".repeat(Math.max(0, draft.idNumber.trim().length - 4))}${draft.idNumber.trim().slice(-4)}` : ""} />
+        <Row label="ID documents" value={draft.idDocsEmailed ? `Emailed to ${JOINING_FEE.documentsEmail}` : "Not confirmed yet"} />
       </Group>
-      <Group step="nominee" index={4} onEdit={onEdit}>
+      <Group step="payment" index={4} onEdit={onEdit}>
+        <Row label="How you paid" value={paymentMethodLabel(draft.paymentMethod)} />
+        <Row
+          label="Date paid"
+          value={draft.datePaid ? new Date(`${draft.datePaid}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}
+        />
+        <Row label="Reference" value={draft.paymentReference} />
+        <Row label="Receipt" value={draft.receiptEmailed ? `Emailed to ${JOINING_FEE.documentsEmail}` : "Not confirmed yet"} />
+      </Group>
+      <Group step="nominee" index={5} onEdit={onEdit}>
         {!group &&
           draft.nominees.map((n, i) => (
             <Row key={n.id} label={`Nominee ${i + 1}`} value={`${n.name} (${n.relationship}), ${n.contact}, ${n.share}%`} />
           ))}
-        <Row label="Declarations" value={Object.values(draft.decl).every(Boolean) ? "All four confirmed" : "Not all confirmed yet"} />
+        <Row
+          label="Declarations"
+          value={Object.values(draft.decl).every(Boolean) ? `All ${Object.keys(draft.decl).length} confirmed` : "Not all confirmed yet"}
+        />
       </Group>
+
+      <section aria-labelledby="sign-h" className="rounded-[20px] border border-line p-4 sm:p-5">
+        <h2 id="sign-h" className="font-sans text-[16px] font-semibold text-forest-800">
+          Sign your application
+        </h2>
+        <p className="mt-1 mb-4 text-[14.5px] leading-relaxed text-muted">
+          Type your full name exactly as you gave it above{fullNameOf(draft) ? `: ${fullNameOf(draft)}` : ""}.
+        </p>
+        <Field id="signature" label="Your signature" error={errors.signature}>
+          {(a) => (
+            <input
+              {...a}
+              type="text"
+              autoComplete="off"
+              className={`${inputClass} sm:max-w-[360px]`}
+              value={draft.signature}
+              onChange={(e) => set({ signature: e.target.value })}
+            />
+          )}
+        </Field>
+      </section>
 
       <section aria-labelledby="next-h" className="rounded-[20px] bg-mist p-5 sm:p-6">
         <h2 id="next-h" className="font-display text-[20px] text-forest-900">
@@ -569,9 +790,9 @@ export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number
         </h2>
         <ol className="mt-3 space-y-3">
           {[
+            `We match your joining fee of ${fee.fee}${fee.note ? ` (${fee.note})` : ""} to the reference you gave us. It is paid to ${JOINING_FEE.payee}, ${JOINING_FEE.payeeRole}, and is not a share.`,
             "A membership officer reviews your application. We decide within 30 days, and aim for 2 working days (bye-law 6.2).",
-            `If you are approved, we send you a link to pay the joining fee of ${fee.fee}${fee.note ? ` (${fee.note})` : ""}. It is paid to ${JOINING_FEE.payee}, ${JOINING_FEE.payeeRole}. It is not a share and is not refundable.`,
-            "You become a member once the fee is paid, you have bought at least one share, and your name is on the register of members (bye-law 6.4).",
+            "You become a member once you are approved, you have bought at least one share, and your name is on the register of members (bye-law 6.4).",
             "If we can’t approve you, we tell you why. You can ask the next general meeting to review the decision.",
           ].map((t, i) => (
             <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-forest-900">
@@ -604,7 +825,7 @@ export function SupporterStep({ draft, set, errors, onEdit }: StepProps & { onEd
           </button>
         </div>
         <dl className="mt-1 divide-y divide-line/70">
-          <Row label="Name" value={draft.fullName} />
+          <Row label="Name" value={fullNameOf(draft)} />
           <Row label="Lives in" value={[draft.city, livesInNigeria(draft) ? draft.state : "", countryName(draft)].filter(Boolean).join(", ")} />
           <Row label="WhatsApp" value={draft.whatsapp} />
           <Row label="Email" value={draft.email || (draft.contactMethod === "email" ? draft.contact : "")} />

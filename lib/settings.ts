@@ -17,6 +17,15 @@ export const JOINING_FEE = {
     { id: "stripe", label: "Card · Apple Pay · Google Pay (Stripe)", currencies: ["GBP", "USD", "EUR"] },
     { id: "firstbank", label: "First Bank transfer (naira)", currencies: ["NGN"] },
   ],
+  /** Where the joining fee is paid. Settings, not code: confirm with the client before launch. */
+  stripeLink: "https://buy.stripe.com/8x214nbjMdZg2gddNI8IU00",
+  bankAccount: {
+    bank: "First Bank",
+    accountName: "VEKAT Nigeria Limited",
+    accountNumber: "2049483671",
+  },
+  /** Where applicants send their receipt and ID documents. */
+  documentsEmail: "admin@vekat.org",
 } as const;
 
 export const SHARE_PRICE_NGN = 1_000; // bye-law 11.1

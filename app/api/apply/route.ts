@@ -6,6 +6,9 @@ import {
   ID_OPTIONS,
   MEMBERSHIP_TYPES,
   NIGERIAN_STATES,
+  PAYMENT_METHODS,
+  SHARE_PLANS,
+  TITLE_OPTIONS,
   ageOn,
   emptyDraft,
   firstInvalidStep,
@@ -28,6 +31,8 @@ const ROUTES: Route[] = ["lives", "land", "other", "none"];
 const TYPES = MEMBERSHIP_TYPES.map((t) => t.value) as MemberType[];
 const ID_VALUES = [...ID_OPTIONS.nigeria, ...ID_OPTIONS.abroad].map((o) => o.value as string);
 const DOC_VALUES = GROUP_DOC_OPTIONS.map((o) => o.value as string);
+const SHARE_PLAN_VALUES = SHARE_PLANS.map((o) => o.value as string);
+const PAYMENT_METHOD_VALUES = PAYMENT_METHODS.map((o) => o.value as string);
 
 /** Reference alphabet without look-alike characters (0/O, 1/I). */
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -38,7 +43,7 @@ function makeReference(prefix: string) {
 
 /**
  * Rebuilds a Draft from untrusted JSON using only known fields, so anything else in the body
- * (for example an ID number) is dropped and never stored, forwarded or logged.
+ * is dropped and never stored, forwarded or logged.
  */
 function toDraft(body: Record<string, unknown>): Draft {
   const base = emptyDraft();
@@ -48,7 +53,13 @@ function toDraft(body: Record<string, unknown>): Draft {
     ...base,
     contactMethod: body.contactMethod === "email" ? "email" : "phone",
     contact: str(body.contact, 120),
-    fullName: str(body.fullName, 120),
+    title: oneOf(body.title, TITLE_OPTIONS),
+    surname: str(body.surname, 80),
+    firstName: str(body.firstName, 80),
+    otherNames: str(body.otherNames, 80),
+    sex: body.sex === "Male" || body.sex === "Female" ? body.sex : "",
+    nationality: str(body.nationality, 60),
+    stateOfOrigin: str(body.stateOfOrigin, 80),
     dob: str(body.dob, 10),
     country: oneOf(body.country, COUNTRIES),
     countryOther: str(body.countryOther, 80),
@@ -64,6 +75,13 @@ function toDraft(body: Record<string, unknown>): Draft {
     route: oneOf(body.route, ROUTES),
     routeDetail: str(body.routeDetail, 400),
     idChoice: oneOf(body.idChoice, ID_VALUES),
+    idNumber: str(body.idNumber, 40),
+    idDocsEmailed: body.idDocsEmailed === true,
+    sharePlan: oneOf(body.sharePlan, SHARE_PLAN_VALUES),
+    paymentMethod: oneOf(body.paymentMethod, PAYMENT_METHOD_VALUES),
+    datePaid: str(body.datePaid, 10),
+    paymentReference: str(body.paymentReference, 80),
+    receiptEmailed: body.receiptEmailed === true,
     groupName: str(body.groupName, 160),
     repName: str(body.repName, 120),
     groupDoc: oneOf(body.groupDoc, DOC_VALUES),
@@ -78,11 +96,16 @@ function toDraft(body: Record<string, unknown>): Draft {
       };
     }),
     decl: {
+      individual: decl.individual === true,
       character: decl.character === true,
       bylaws: decl.bylaws === true,
+      fee: decl.fee === true,
+      sharesAccount: decl.sharesAccount === true,
       risk: decl.risk === true,
       privacy: decl.privacy === true,
+      truthful: decl.truthful === true,
     },
+    signature: str(body.signature, 120),
     supporterConsent: body.supporterConsent === true,
   };
 }
@@ -91,7 +114,9 @@ function toDraft(body: Record<string, unknown>): Draft {
  * Receives membership applications from /register (preview).
  * Set APPLY_WEBHOOK_URL (e.g. a Zapier/Make hook, Google Apps Script or CRM endpoint) to forward
  * each application as JSON. Without it, applications are only written to the server log.
- * Identity checks happen later with a licensed provider: this route never accepts ID numbers or files.
+ *
+ * Applications carry an ID number, so before this handles real members: send it only over HTTPS to a
+ * destination with access control, and keep it out of any general-purpose log.
  */
 export async function POST(req: Request) {
   let body: Record<string, unknown>;
@@ -144,7 +169,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Could not store application" }, { status: 502 });
     }
   } else {
-    console.info("[apply]", JSON.stringify(entry));
+    const { idNumber: _idNumber, ...safe } = entry;
+    console.info("[apply]", JSON.stringify({ ...safe, idNumber: "[not logged]" }));
   }
 
   return NextResponse.json({ ok: true, reference, status: entry.status });
