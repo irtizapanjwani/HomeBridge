@@ -120,7 +120,11 @@ export function toApplication(m: MemberDoc): Application {
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
     note: [
       m.source === "vekat" ? "Registered on vekat.org." : "",
-      m.payment?.status === "Claimed" ? `Fee claimed paid — ref ${m.payment.reference || "none given"}, not yet verified.` : "",
+      m.payment?.status === "Verified"
+        ? `Fee verified automatically by ${m.payment.provider ?? "the provider"}${m.payment.amount ? ` — ${m.payment.amount}` : ""}.`
+        : m.payment?.status === "Claimed"
+          ? `Fee claimed paid — ref ${m.payment.reference || "none given"}, not yet verified.`
+          : "",
     ]
       .filter(Boolean)
       .join(" ") || undefined,

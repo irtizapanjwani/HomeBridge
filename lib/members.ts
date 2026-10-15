@@ -93,6 +93,10 @@ export type MemberDoc = {
     verifiedAt: Date | null;
     verifiedBy: string | null;
     amount: string | null;
+    /** Set by the payment provider's webhook on the VEKAT site, never by the applicant. */
+    provider?: string;
+    providerRef?: string;
+    eventId?: string;
   };
 
   groupName: string;
