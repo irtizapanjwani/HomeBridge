@@ -11,6 +11,7 @@ import {
   TITLE_OPTIONS,
   ageOn,
   emptyDraft,
+  fullNameOf,
   firstInvalidStep,
   flowFor,
   validateStep,
@@ -20,6 +21,8 @@ import {
   type Route,
 } from "@/lib/register-data";
 import { HEARD_OPTIONS } from "@/lib/content";
+import { isDbConfigured } from "@/lib/db";
+import { collections, draftToMember, ensureIndexes, makeReference, upsertPerson } from "@/lib/members";
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const oneOf = <T extends string>(v: unknown, list: readonly T[]): T | "" => {
@@ -33,13 +36,6 @@ const ID_VALUES = [...ID_OPTIONS.nigeria, ...ID_OPTIONS.abroad].map((o) => o.val
 const DOC_VALUES = GROUP_DOC_OPTIONS.map((o) => o.value as string);
 const SHARE_PLAN_VALUES = SHARE_PLANS.map((o) => o.value as string);
 const PAYMENT_METHOD_VALUES = PAYMENT_METHODS.map((o) => o.value as string);
-
-/** Reference alphabet without look-alike characters (0/O, 1/I). */
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function makeReference(prefix: string) {
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return `${prefix}-${Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("")}`;
-}
 
 /**
  * Rebuilds a Draft from untrusted JSON using only known fields, so anything else in the body
@@ -111,12 +107,11 @@ function toDraft(body: Record<string, unknown>): Draft {
 }
 
 /**
- * Receives membership applications from /register (preview).
- * Set APPLY_WEBHOOK_URL (e.g. a Zapier/Make hook, Google Apps Script or CRM endpoint) to forward
- * each application as JSON. Without it, applications are only written to the server log.
+ * Receives membership applications from /register and stores them in the shared database
+ * (see lib/members.ts). The VEKAT site writes to the same database, so one person has one
+ * reference across both.
  *
- * Applications carry an ID number, so before this handles real members: send it only over HTTPS to a
- * destination with access control, and keep it out of any general-purpose log.
+ * Applications carry an ID number: it is stored, never logged, and never returned to the browser.
  */
 export async function POST(req: Request) {
   let body: Record<string, unknown>;
@@ -145,33 +140,29 @@ export async function POST(req: Request) {
   }
 
   const supporter = draft.route === "none";
-  const reference = makeReference(supporter ? "SUP" : "APP");
-  const { decl, nominees, ...rest } = draft;
-  const entry = {
-    reference,
-    status: supporter ? "Supporter" : "Submitted",
-    ...rest,
-    memberType: supporter ? "" : rest.memberType,
-    nominees: supporter || draft.memberType === "group" ? [] : nominees.map(({ id: _id, ...n }) => ({ ...n, share: Number(n.share) })),
-    declarations: supporter ? null : decl,
-    preview: true,
-    receivedAt: today.toISOString(),
-  };
+  const fullName = fullNameOf(draft);
 
-  const hook = process.env.APPLY_WEBHOOK_URL;
-  if (hook) {
-    const res = await fetch(hook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry),
-    }).catch(() => null);
-    if (!res || !res.ok) {
-      return NextResponse.json({ ok: false, error: "Could not store application" }, { status: 502 });
-    }
-  } else {
-    const { idNumber: _idNumber, ...safe } = entry;
-    console.info("[apply]", JSON.stringify({ ...safe, idNumber: "[not logged]" }));
+  if (!isDbConfigured()) {
+    console.error("[apply] MONGODB_URI is not set — the application was not stored.");
+    return NextResponse.json({ ok: false, error: "Registration storage is not configured" }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true, reference, status: entry.status });
+  try {
+    await ensureIndexes();
+    const personRef = await upsertPerson({
+      name: fullName,
+      email: draft.email || (draft.contactMethod === "email" ? draft.contact : ""),
+      phone: draft.whatsapp || (draft.contactMethod === "phone" ? draft.contact : ""),
+    });
+
+    const { members } = await collections();
+    const reference = makeReference(supporter ? "SUP" : "APP");
+    await members.insertOne(draftToMember(draft, { reference, personRef, fullName }));
+
+    return NextResponse.json({ ok: true, reference, status: supporter ? "Supporter" : "Submitted" });
+  } catch (err) {
+    // Never let the error text out: a Mongo error can carry the connection string.
+    console.error("[apply] could not store the application:", err instanceof Error ? err.message : "unknown error");
+    return NextResponse.json({ ok: false, error: "Could not store application" }, { status: 502 });
+  }
 }

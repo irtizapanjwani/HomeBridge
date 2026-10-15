@@ -116,7 +116,7 @@ export function useAdmin() {
 
 export const VOTING_STATUSES: Member["status"][] = ["Active", "Reminder sent"];
 
-export function AdminStoreProvider({ children }: { children: React.ReactNode }) {
+export function AdminStoreProvider({ children, initialApps }: { children: React.ReactNode; initialApps?: Application[] }) {
   const [roleId, setRoleId] = useState("finance");
   const [screen, setScreen] = useState<ScreenId>("register");
   // Every screen opens at the top, not where the previous screen was scrolled to (runs after the new screen renders).
@@ -131,7 +131,8 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const [txs, setTxs] = useState(SHARE_TXS);
   const [transfers, setTransfers] = useState(TRANSFERS);
   const [hours, setHours] = useState(HOURS);
-  const [apps, setApps] = useState(APPLICATIONS);
+  // Real registrations when the database is connected; the sample queue otherwise.
+  const [apps, setApps] = useState(initialApps ?? APPLICATIONS);
   const [fees, setFees] = useState(JOINING_FEES);
   const [withdrawals, setWithdrawals] = useState(WITHDRAWALS);
   const [votes, setVotes] = useState(VOTES);

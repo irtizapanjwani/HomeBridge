@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PENDING_APP, ROLES, type ScreenId } from "@/lib/admin-data";
+import { PENDING_APP, ROLES, type Application, type ScreenId } from "@/lib/admin-data";
 import { LockIcon, MenuIcon } from "@/components/ui/Icons";
 import { LogoMark } from "@/components/ui/Logo";
 import { AdminStoreProvider, useAdmin } from "./store";
@@ -31,15 +31,15 @@ const NAV: { id: ScreenId; label: string; what: string; group: 1 | 2 }[] = [
   { id: "settings", label: "Settings", what: "settings", group: 2 },
 ];
 
-export function AdminApp() {
+export function AdminApp({ initialApps, dbConnected = false }: { initialApps?: Application[]; dbConnected?: boolean }) {
   return (
-    <AdminStoreProvider>
-      <Shell />
+    <AdminStoreProvider initialApps={initialApps}>
+      <Shell dbConnected={dbConnected} />
     </AdminStoreProvider>
   );
 }
 
-function Shell() {
+function Shell({ dbConnected }: { dbConnected: boolean }) {
   const s = useAdmin();
   const [navOpen, setNavOpen] = useState(false);
 
@@ -67,6 +67,8 @@ function Shell() {
           <div className="mt-0.5 truncate text-[12.5px] text-[#A9B5AD]">{roleLine}</div>
         </div>
       </div>
+
+      <SignOutButton className="mt-3 self-start rounded-full px-1 text-[13px] font-semibold text-[#D8D3BC] underline underline-offset-[3px] hover:text-cream" />
 
       <nav aria-label="Admin sections" className="mt-6 flex flex-col gap-1">
         {NAV.map((n, i) => {
@@ -156,13 +158,19 @@ function Shell() {
           >
             <MenuIcon size={22} />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="font-display text-[17px] leading-tight font-bold text-forest-800">HomeBridge Admin</div>
             <div className="truncate text-[12px] text-muted">{roleLine}</div>
           </div>
+          <SignOutButton className="shrink-0 text-[14px] font-semibold text-forest-800 underline underline-offset-[3px]" />
         </header>
 
         <main className="flex w-full max-w-[1280px] min-w-0 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {!dbConnected && s.screen === "applications" && (
+            <p role="status" className="rounded-2xl border border-gold/50 bg-butter px-4 py-3 text-[14.5px] text-gold-ink">
+              Showing the sample queue. Set <code>MONGODB_URI</code> to see real registrations here.
+            </p>
+          )}
           {access === "none" ? (
             <>
               <h1 className="m-0 font-display text-[clamp(26px,3vw,34px)] font-bold text-forest-800">{current.label}</h1>
@@ -176,6 +184,24 @@ function Shell() {
 
       {s.profileNo ? <MemberProfile /> : null}
     </div>
+  );
+}
+
+function SignOutButton({ className }: { className?: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await fetch("/api/admin/login", { method: "DELETE" }).catch(() => null);
+        window.location.reload();
+      }}
+      className={cx("min-h-11", className)}
+    >
+      {busy ? "Signing out…" : "Sign out"}
+    </button>
   );
 }
 

@@ -1,0 +1,134 @@
+// Turns stored registrations into the shape the admin Applications screen already renders.
+// Server-only: it reaches the database and handles ID numbers.
+
+import "server-only";
+import { collections } from "@/lib/members";
+import type { MemberDoc } from "@/lib/members";
+import type { Application, AppStatus, KycCheck, MemberType, Region, Society } from "@/lib/admin-data";
+
+const TYPE: Record<string, MemberType> = {
+  home: "Home",
+  diaspora: "Diaspora",
+  founding: "Founding",
+  professional: "Professional",
+  group: "Group",
+};
+
+/** The HomeBridge form stores a short code; the VEKAT form stores the label the client wrote. */
+const ID_TYPE: Record<string, KycCheck["idType"]> = {
+  bvn: "BVN",
+  nin: "NIN",
+  nrbvn: "NR-BVN",
+  passport: "Passport",
+  "nin (national identification number)": "NIN",
+  "non-resident bvn": "NR-BVN",
+  "international passport": "Passport",
+  "uk/eu/other national id or driving licence": "Passport",
+};
+
+const idTypeOf = (v: string) => ID_TYPE[v] ?? ID_TYPE[v.trim().toLowerCase()] ?? "NIN";
+
+const STATUS: Record<MemberDoc["status"], AppStatus> = {
+  Submitted: "Submitted",
+  "In review": "In review",
+  "Info requested": "Info requested",
+  Approved: "Approved (fee due)",
+  Declined: "Refused",
+};
+
+function regionOf(m: MemberDoc): Region {
+  if (m.country === "Nigeria") {
+    if (m.state === "Edo") return "NG-ED";
+    if (m.state === "FCT (Abuja)") return "NG-FC";
+    return "NG-OTHER";
+  }
+  if (m.country === "United Kingdom") return "UK";
+  if (m.country === "United States") return "US";
+  if (["Ghana", "Kenya", "South Africa"].includes(m.country)) return "AFRICA";
+  return "AFRICA";
+}
+
+/**
+ * The chapter or cohort the applicant chose decides the society they join. The two sites word it
+ * differently ("HomeBridge Abuja" and "Abuja FCT"), so match on the place name.
+ */
+const societyOf = (m: MemberDoc): Society => (/abuja|fct/i.test(m.chapter) ? "FC" : "ED");
+
+/** "HomeBridge Edo" and "Edo State (Benin City)" both show as "Edo". */
+const chapterOf = (m: MemberDoc) => {
+  const c = m.chapter.replace(/^HomeBridge\s+/i, "").trim();
+  if (/abuja|fct/i.test(c)) return "AB";
+  if (/^edo/i.test(c)) return "ED";
+  return c || "None yet";
+};
+
+const routeKindOf = (m: MemberDoc): Application["routeKind"] =>
+  m.memberType === "group" ? "group" : m.route === "lives" || m.route === "land" || m.route === "other" || m.route === "none" ? m.route : "other";
+
+const ROUTE_LABEL: Record<string, string> = {
+  lives: "Lives in Edo State or Abuja FCT",
+  land: "Owns or holds land or a home in Edo or FCT",
+  other: "Another link (sent for Director approval)",
+  none: "No link yet — Supporter list",
+};
+
+/**
+ * The two forms record declarations differently: HomeBridge keeps one flag per declaration, while
+ * the VEKAT form keeps the list of statements ticked and whether all of them were.
+ */
+function goodCharacterOf(m: MemberDoc): boolean {
+  const d = m.declarations as unknown;
+  if (!d || typeof d !== "object") return false;
+  if ("character" in d) return (d as { character?: boolean }).character === true;
+  if ("allAccepted" in d) return (d as { allAccepted?: boolean }).allAccepted === true;
+  return false;
+}
+
+export function toApplication(m: MemberDoc): Application {
+  return {
+    id: m.reference,
+    name: [m.title, m.fullName].filter(Boolean).join(" ").trim() || m.fullName,
+    type: TYPE[m.memberType] ?? "Home",
+    society: societyOf(m),
+    chapter: chapterOf(m),
+    base: m.country === "Nigeria" ? "home" : "diaspora",
+    livesIn: [m.city, m.country === "Nigeria" ? m.state : "", m.country].filter(Boolean).join(", "),
+    region: regionOf(m),
+    routeKind: routeKindOf(m),
+    route: ROUTE_LABEL[m.route] ?? m.route ?? "",
+    landLocation: m.routeDetail || undefined,
+    dob: m.dob,
+    goodCharacter: goodCharacterOf(m),
+    submittedAt: m.submittedAt.toISOString().slice(0, 10),
+    status: m.supporter ? "Supporter" : (STATUS[m.status] ?? "Submitted"),
+    source: "web",
+    // `source` on the admin type only knows "web" and "gform"; which site it came from is in the note.
+    phone: m.whatsapp || m.contact,
+    email: m.email,
+    // The ID number itself never leaves the server: the screen shows the type and the check result.
+    kyc: {
+      idType: idTypeOf(m.idChoice),
+      provider: "Manual check",
+      providerRef: m.idNumber ? `On file · ends ${m.idNumber.trim().slice(-4)}` : "Not given",
+      liveness: "Not required",
+      docMatch: "Pending",
+      addressOk: false,
+      // The applicant says they have sent their documents; an officer still has to check them.
+      result: m.idDocsEmailed ? "Pending" : "Not started",
+    },
+    nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
+    note: [
+      m.source === "vekat" ? "Registered on vekat.org." : "",
+      m.payment.status === "Claimed" ? `Fee claimed paid — ref ${m.payment.reference || "none given"}, not yet verified.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined,
+  };
+}
+
+/** Newest first. The screen filters and sorts further in the browser. */
+export async function listApplications(limit = 500): Promise<Application[]> {
+  const { members } = await collections();
+  const docs = await members.find({}).sort({ submittedAt: -1 }).limit(limit).toArray();
+  return docs.map(toApplication);
+}
