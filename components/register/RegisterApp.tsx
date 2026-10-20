@@ -17,7 +17,7 @@ import {
 } from "@/lib/register-data";
 import { AboutStep, AccountStep, IdentityStep, JoinStep, NomineeStep, ReviewStep, SupporterStep } from "./Steps";
 import { ProgressBar, StepList, ChoicesCard, PayNothingNote } from "./Sidebar";
-import { DoneScreen, type Submission } from "./Done";
+import { SubmittedToast, type Submission } from "./SubmittedToast";
 import { RegisterTopBar } from "./TopBar";
 
 const DRAFT_KEY = "hb-register-draft-v1";
@@ -90,7 +90,7 @@ export function RegisterApp() {
     const finished = readJSON<Submission>(DONE_KEY);
     const saved = readJSON<Saved>(DRAFT_KEY);
     if (finished?.reference) setDone(finished);
-    else if (saved?.draft) {
+    if (saved?.draft) {
       const base = emptyDraft();
       const d: Draft = { ...base, ...saved.draft, decl: { ...base.decl, ...saved.draft.decl } };
       if (!Array.isArray(d.nominees) || d.nominees.length === 0) d.nominees = base.nominees;
@@ -112,10 +112,10 @@ export function RegisterApp() {
 
   // Autosave every change — except the password, which never goes to disk.
   useEffect(() => {
-    if (!loaded || done) return;
+    if (!loaded) return;
     const { password: _p, passwordConfirm: _c, ...safe } = draft;
     writeJSON(DRAFT_KEY, { draft: safe as Draft, step: current, furthest: reached } satisfies Saved);
-  }, [draft, current, reached, loaded, done]);
+  }, [draft, current, reached, loaded]);
 
   // Move focus to the step heading and bring the card into view when the step changes.
   useEffect(() => {
@@ -190,6 +190,10 @@ export function RegisterApp() {
         writeJSON(DRAFT_KEY, null);
         writeJSON(DONE_KEY, result);
         setDone(result);
+        // Back to a blank first step, so the panel is a confirmation rather than a dead end.
+        setDraft(emptyDraft());
+        setFurthest(0);
+        goTo(0);
         return;
       }
       if (res.status === 422 && data.step && flow.includes(data.step)) {
@@ -234,22 +238,20 @@ export function RegisterApp() {
     if (!skipConfirm) toast("Your answers have been cleared.");
   };
 
-  if (done) {
-    return (
-      <>
-        <RegisterTopBar saved={false} />
-        <main id="main" className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6 sm:py-12">
-          <DoneScreen result={done} headingRef={headingRef} onNew={() => startAgain(true)} />
-        </main>
-      </>
-    );
-  }
-
   const errorCount = Object.keys(errors).length;
   const primaryLabel = stepId === "review" ? "Send application" : stepId === "supporter" ? "Join the Supporter list" : "Save and continue";
 
   return (
     <>
+      {done ? (
+        <SubmittedToast
+          result={done}
+          onClose={() => {
+            setDone(null);
+            writeJSON(DONE_KEY, null);
+          }}
+        />
+      ) : null}
       <RegisterTopBar saved={loaded} />
       <main id="main" className="mx-auto w-full max-w-[1200px] px-4 pt-5 pb-14 sm:px-6 lg:pt-10">
         <div className="grid gap-5 lg:grid-cols-[272px_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-7 lg:gap-y-5">
