@@ -507,6 +507,10 @@ export type Application = {
   note?: string;
   phone: string;
   email: string;
+  /** Set when the applicant uploaded a payment receipt. The bytes are fetched separately. */
+  receipt?: { name: string; type: string; bytes: number };
+  /** Whose account paid, when it was not the applicant's own. */
+  payerName?: string;
 };
 
 export const APPLICATIONS: Application[] = [

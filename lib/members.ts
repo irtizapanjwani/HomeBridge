@@ -97,6 +97,20 @@ export type MemberDoc = {
     provider?: string;
     providerRef?: string;
     eventId?: string;
+    /** Whose account the money came from, when a joint or family account paid. */
+    payerName?: string;
+  };
+
+  /**
+   * A payment receipt uploaded on the VEKAT form. The bytes stay on the server: the admin screen
+   * only ever learns that one exists, and fetches it through a route behind the admin session.
+   */
+  receipt?: {
+    name: string;
+    type: string;
+    bytes: number;
+    data?: unknown;
+    uploadedAt: Date;
   };
 
   groupName: string;

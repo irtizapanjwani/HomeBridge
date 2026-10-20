@@ -118,6 +118,8 @@ export function toApplication(m: MemberDoc): Application {
       result: m.idDocsEmailed ? "Pending" : "Not started",
     },
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
+    ...(m.receipt ? { receipt: { name: m.receipt.name, type: m.receipt.type, bytes: m.receipt.bytes } } : {}),
+    ...(m.payment?.payerName ? { payerName: m.payment.payerName } : {}),
     note: [
       m.source === "vekat" ? "Registered on vekat.org." : "",
       m.payment?.status === "Verified"
@@ -134,6 +136,33 @@ export function toApplication(m: MemberDoc): Application {
 /** Newest first. The screen filters and sorts further in the browser. */
 export async function listApplications(limit = 500): Promise<Application[]> {
   const { members } = await collections();
-  const docs = await members.find({}).sort({ submittedAt: -1 }).limit(limit).toArray();
+  // The receipt's bytes are left behind: a few hundred registrations with screenshots attached
+  // would otherwise be megabytes of base64 in the admin page's HTML. Its name and size still come
+  // through, which is all the screen needs to offer a link.
+  const docs = await members
+    .find({}, { projection: { "receipt.data": 0 } })
+    .sort({ submittedAt: -1 })
+    .limit(limit)
+    .toArray();
   return docs.map(toApplication);
+}
+
+/** The stored receipt for one registration, bytes included. Admin routes only. */
+export async function findReceipt(reference: string) {
+  const { members } = await collections();
+  const doc = await members.findOne({ reference }, { projection: { receipt: 1 } });
+  const r = doc?.receipt;
+  if (!r || !r.data) return null;
+  // The driver returns BSON Binary; .buffer holds the bytes.
+  const data = r.data as { buffer?: Uint8Array } | Uint8Array;
+  const bytes = data instanceof Uint8Array ? data : data.buffer;
+  if (!bytes) return null;
+  return { name: r.name, type: r.type, bytes };
+}
+
+/** Removes one registration for good. Returns false when there was nothing to remove. */
+export async function deleteApplication(reference: string) {
+  const { members } = await collections();
+  const res = await members.deleteOne({ reference });
+  return res.deletedCount === 1;
 }

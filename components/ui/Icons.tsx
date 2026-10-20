@@ -146,6 +146,11 @@ export const SearchIcon = (p: IconProps) => (
     <path d="M20 20l-3.5-3.5" />
   </Svg>
 );
+export const BinIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+  </Svg>
+);
 export const DownloadIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />

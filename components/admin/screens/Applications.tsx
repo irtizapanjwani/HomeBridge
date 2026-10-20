@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { CHAPTERS, PENDING_APP, TODAY, type Application, type AppStatus, type MemberType, type Region } from "@/lib/admin-data";
 import { useToast } from "@/components/ui/Toast";
-import { CheckIcon, DownloadIcon, FileIcon, XIcon } from "@/components/ui/Icons";
+import { BinIcon, CheckIcon, DownloadIcon, FileIcon, XIcon } from "@/components/ui/Icons";
 import { useAdmin } from "../store";
 import { addDays, daysBetween, download, fmtDate, naira, parseCsv, workingDaysBetween } from "../lib";
 import { Banner, Btn, Card, CardTitle, Empty, KeyVals, PageHeader, Pill, ReadOnly, cx, inputCls } from "../ui";
@@ -54,14 +54,24 @@ export function ApplicationsScreen() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = s.ui<Filter>("app.filter", "pending");
   const [selId, setSelId] = s.ui<string>("app.sel", "APP-0141");
-  const [mode, setMode] = useState<null | "info" | "refuse">(null);
+  const [query, setQuery] = s.ui<string>("app.query", "");
+  const [mode, setMode] = useState<null | "info" | "refuse" | "delete">(null);
+  const [deleting, setDeleting] = useState(false);
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
 
   const canDecide = s.can("kyc.decide");
   const decideReason = canDecide ? undefined : "Only the KYC officer decides applications.";
 
-  const list = s.apps.filter((a) => inList(filter, a.status)).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+  // Matches a name or a reference such as APP-YUJDVY, so an officer holding a receipt or a bank
+  // line can find the person without reading down the list.
+  const q = query.trim().toLowerCase();
+  const matches = (a: Application) =>
+    !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || (a.memberNo ?? "").toLowerCase().includes(q);
+
+  const list = s.apps
+    .filter((a) => inList(filter, a.status) && matches(a))
+    .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
   // The selected application stays open after a decision moves it to another list.
   const sel = s.apps.find((a) => a.id === selId) ?? list[0];
 
@@ -102,6 +112,40 @@ export function ApplicationsScreen() {
     setMode(null);
     setReason("");
     setErr("");
+  }
+
+  /**
+   * Removes the registration from the database for good.
+   *
+   * Unlike every other action on this screen, this one is not a change of status held in the
+   * browser: it reaches the server, and there is no copy to restore from. The screen asks for the
+   * reference to be typed first, so it cannot happen on a stray click.
+   */
+  async function destroy(a: Application) {
+    if (reason.trim().toUpperCase() !== a.id.toUpperCase()) {
+      setErr(`Type ${a.id} exactly to confirm. This cannot be undone.`);
+      return;
+    }
+    setDeleting(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}`, { method: "DELETE" });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setErr(data.error || "The registration could not be deleted. Nothing was changed.");
+        return;
+      }
+      // The log keeps the reference, not the person: the point of deleting was to remove them.
+      s.addLog("Deleted registration", a.id, a.status, "Deleted permanently");
+      s.setApps((cur) => cur.filter((x) => x.id !== a.id));
+      setMode(null);
+      setReason("");
+      toast(`${a.id} deleted permanently.`);
+    } catch {
+      setErr("We could not reach the server. Nothing was deleted.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function toSupporter(a: Application) {
@@ -240,6 +284,7 @@ export function ApplicationsScreen() {
 
       {readOnly ? <ReadOnly why={`${s.role.title} can see the queue and decisions; only the KYC officer approves, asks for information or refuses.`} /> : null}
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Filter applications" className="flex flex-wrap gap-1.5">
         {(
           [
@@ -269,9 +314,45 @@ export function ApplicationsScreen() {
         ))}
       </div>
 
+        <div className="relative min-w-[230px] flex-1 sm:max-w-xs">
+          <label htmlFor="app-search" className="sr-only">
+            Search applications by name or reference
+          </label>
+          <input
+            id="app-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name or APP-XXXXXX"
+            className={cx(inputCls, "pr-16")}
+          />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-muted hover:text-ink"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {q && list.length ? (
+        <p className="m-0 text-[13px] text-muted">
+          {list.length} {list.length === 1 ? "match" : "matches"} for “{query.trim()}” in this list.
+        </p>
+      ) : null}
+
       {list.length === 0 || !sel ? (
         <Card className="p-5">
-          <Empty title="Nothing in this list.">New applications arrive from /register or a Google Form import.</Empty>
+          {q ? (
+            <Empty title={`Nothing matches “${query.trim()}”.`}>
+              Try part of a name, or a reference such as APP-YUJDVY. Searching only looks in the list you are on.
+            </Empty>
+          ) : (
+            <Empty title="Nothing in this list.">New applications arrive from /register or a Google Form import.</Empty>
+          )}
         </Card>
       ) : (
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
@@ -329,6 +410,9 @@ export function ApplicationsScreen() {
             onSupporter={toSupporter}
             onIdLink={sendIdLink}
             onRegister={enterRegister}
+            onDelete={destroy}
+            deleting={deleting}
+            canDecide={canDecide}
           />
         </div>
       )}
@@ -349,10 +433,13 @@ function Detail({
   onSupporter,
   onIdLink,
   onRegister,
+  onDelete,
+  deleting,
+  canDecide,
 }: {
   a: Application;
-  mode: null | "info" | "refuse";
-  setMode: (m: null | "info" | "refuse") => void;
+  mode: null | "info" | "refuse" | "delete";
+  setMode: (m: null | "info" | "refuse" | "delete") => void;
   reason: string;
   setReason: (v: string) => void;
   err: string;
@@ -362,6 +449,9 @@ function Detail({
   onSupporter: (a: Application) => void;
   onIdLink: (a: Application) => void;
   onRegister: (a: Application) => void;
+  onDelete: (a: Application) => void;
+  deleting: boolean;
+  canDecide: boolean;
 }) {
   const s = useAdmin();
   const list = checks(a);
@@ -423,6 +513,8 @@ function Detail({
         ))}
       </ul>
 
+      <Receipt a={a} />
+
       {a.note ? (
         <Banner tone="warn" title="Note:">
           {a.note}
@@ -467,7 +559,7 @@ function Detail({
             </Btn>
           </div>
           {failing && !decideReason && a.routeKind !== "none" ? <p className="m-0 -mt-1 text-[13px] text-danger">Approve is blocked: {failing.why}</p> : null}
-          {mode ? (
+          {mode && mode !== "delete" ? (
             <div className="flex flex-col gap-2 rounded-[14px] border border-line bg-[#FBF8EE] p-3.5">
               <label htmlFor="kyc-reason" className="text-[14px] font-semibold text-ink">
                 {mode === "info" ? "What do you need from the applicant?" : "Reason for refusing (recorded and sent to the applicant)"}
@@ -513,6 +605,114 @@ function Detail({
           </div>
         </div>
       ) : null}
+
+      {/* Available whatever the status: a test entry or a duplicate needs removing just as much as
+          a decided one, and a registration holds an ID number worth not keeping by accident. */}
+      <div className="mt-1 border-t border-line pt-3.5">
+        {mode === "delete" ? (
+          <div className="flex flex-col gap-2 rounded-[14px] border border-danger bg-[#FDF3F0] p-3.5">
+            <p className="m-0 text-[14px] font-semibold text-danger">Delete this registration permanently?</p>
+            <p className="m-0 text-[13.5px]">
+              Everything held for {a.name} goes, including their ID number, their nominees and any receipt they uploaded.
+              There is no undo and no copy kept.
+            </p>
+            <label htmlFor="del-confirm" className="text-[13.5px] font-semibold text-ink">
+              Type <b>{a.id}</b> to confirm
+            </label>
+            <input
+              id="del-confirm"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoComplete="off"
+              aria-invalid={Boolean(err)}
+              aria-describedby={err ? "del-err" : undefined}
+              className={cx(inputCls, "w-full sm:max-w-xs")}
+            />
+            {err ? (
+              <p id="del-err" className="m-0 text-[13px] font-semibold text-danger" role="alert">
+                {err}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Btn variant="danger" reason={deleting ? "Deleting…" : undefined} onClick={() => onDelete(a)}>
+                {deleting ? "Deleting…" : "Delete permanently"}
+              </Btn>
+              <Btn variant="ghost" onClick={() => setMode(null)}>
+                Cancel
+              </Btn>
+            </div>
+          </div>
+        ) : (
+          <Btn
+            variant="danger"
+            size="sm"
+            reason={canDecide ? undefined : "Only the KYC officer can delete a registration."}
+            onClick={() => setMode("delete")}
+          >
+            <BinIcon size={16} />
+            Delete registration
+          </Btn>
+        )}
+      </div>
     </Card>
+  );
+}
+
+/** How big a receipt is, for the officer deciding whether to open it on a slow connection. */
+const prettyBytes = (n: number) => (n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / (1024 * 1024)).toFixed(1)} MB`);
+
+/**
+ * The payment receipt the applicant uploaded on the VEKAT form.
+ *
+ * The bytes are never in this page: the image is loaded from an admin-only route when the officer
+ * asks for it, so a queue of 300 applications does not carry 300 screenshots with it.
+ */
+function Receipt({ a }: { a: Application }) {
+  const [open, setOpen] = useState(false);
+
+  if (!a.receipt) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-line p-3.5">
+        <p className="m-0 text-[13.5px] text-muted">
+          No payment receipt uploaded.
+          {a.payerName ? ` Paid from an account in the name of ${a.payerName}.` : ""}
+        </p>
+      </div>
+    );
+  }
+
+  const src = `/api/admin/applications/${encodeURIComponent(a.id)}/receipt`;
+  const isImage = a.receipt.type.startsWith("image/");
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[14px] border border-line p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="m-0 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Payment receipt</h3>
+        <span className="text-[12.5px] text-muted">
+          {a.receipt.name} · {prettyBytes(a.receipt.bytes)}
+        </span>
+      </div>
+
+      {a.payerName ? (
+        <p className="m-0 text-[13.5px]">
+          Paid from an account in the name of <strong>{a.payerName}</strong>, not the applicant&rsquo;s own.
+        </p>
+      ) : null}
+
+      {isImage && open ? (
+        /* eslint-disable-next-line @next/next/no-img-element -- a private, admin-only byte stream, not an optimisable asset */
+        <img src={src} alt={`Payment receipt for ${a.name}`} className="max-h-[420px] w-full rounded-[10px] border border-line object-contain" />
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        {isImage ? (
+          <Btn onClick={() => setOpen((v) => !v)}>{open ? "Hide receipt" : "Show receipt"}</Btn>
+        ) : null}
+        <a href={src} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-paper px-3.5 text-[13.5px] font-semibold text-forest-800 transition hover:bg-mist">
+          <FileIcon size={16} />
+          Open in a new tab
+        </a>
+      </div>
+    </div>
   );
 }
