@@ -122,10 +122,6 @@ export function ApplicationsScreen() {
    * reference to be typed first, so it cannot happen on a stray click.
    */
   async function destroy(a: Application) {
-    if (reason.trim().toUpperCase() !== a.id.toUpperCase()) {
-      setErr(`Type ${a.id} exactly to confirm. This cannot be undone.`);
-      return;
-    }
     setDeleting(true);
     setErr("");
     try {
@@ -616,29 +612,17 @@ function Detail({
               Everything held for {a.name} goes, including their ID number, their nominees and any receipt they uploaded.
               There is no undo and no copy kept.
             </p>
-            <label htmlFor="del-confirm" className="text-[13.5px] font-semibold text-ink">
-              Type <b>{a.id}</b> to confirm
-            </label>
-            <input
-              id="del-confirm"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              autoComplete="off"
-              aria-invalid={Boolean(err)}
-              aria-describedby={err ? "del-err" : undefined}
-              className={cx(inputCls, "w-full sm:max-w-xs")}
-            />
             {err ? (
-              <p id="del-err" className="m-0 text-[13px] font-semibold text-danger" role="alert">
+              <p className="m-0 text-[13px] font-semibold text-danger" role="alert">
                 {err}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
+            <div className="mt-0.5 flex flex-wrap gap-2">
               <Btn variant="danger" reason={deleting ? "Deleting…" : undefined} onClick={() => onDelete(a)}>
-                {deleting ? "Deleting…" : "Delete permanently"}
+                {deleting ? "Deleting…" : "Yes, delete"}
               </Btn>
               <Btn variant="ghost" onClick={() => setMode(null)}>
-                Cancel
+                No, keep it
               </Btn>
             </div>
           </div>
