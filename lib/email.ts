@@ -158,3 +158,48 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
     html,
   });
 }
+
+export type ResetInput = { to: string; firstName: string; url: string };
+
+/**
+ * The password-reset link.
+ *
+ * It says plainly what to do if the request was not theirs, because an unexpected reset email is
+ * the first sign someone else is trying to get into an account.
+ */
+export async function sendPasswordReset(input: ResetInput): Promise<SendResult> {
+  const name = input.firstName.trim() || "there";
+  const url = input.url;
+
+  const text = [
+    `Hello ${name},`,
+    ``,
+    `Someone asked to reset the password on your HomeBridge Cooperative account.`,
+    ``,
+    `Open this link to choose a new password. It works once, and expires in one hour:`,
+    url,
+    ``,
+    `If this was not you, you can ignore this email. Your password has not changed, and nobody can`,
+    `use the link unless they can read this inbox.`,
+    ``,
+    `HomeBridge Cooperative`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px">Hello ${esc(name)},</p>
+      <p style="margin:0 0 16px">Someone asked to reset the password on your <strong>HomeBridge Cooperative</strong> account.</p>
+      <p style="margin:0 0 22px">
+        <a href="${esc(url)}" style="display:inline-block;background:#17452F;color:#FFFDF7;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">Choose a new password</a>
+      </p>
+      <p style="margin:0 0 16px;font-size:14px;color:#6B6A61">The link works once and expires in one hour.</p>
+      <p style="margin:0 0 20px">If this was not you, you can ignore this email. Your password has not changed, and nobody can use the link unless they can read this inbox.</p>
+      <p style="margin:0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">HomeBridge Cooperative</p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  return sendEmail({ to: input.to, subject: "Reset your HomeBridge password", text, html });
+}

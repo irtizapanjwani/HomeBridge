@@ -123,6 +123,16 @@ export type MemberDoc = {
   /** scrypt hash of the password set at registration. Never the password itself. */
   passwordHash?: string;
 
+  /**
+   * An outstanding password-reset request. Only the token's hash is stored, so a leaked backup
+   * cannot be turned into a working reset link.
+   */
+  passwordReset?: {
+    tokenHash: string;
+    expiresAt: Date;
+    requestedAt: Date;
+  };
+
   source: "homebridge" | "vekat";
   submittedAt: Date;
   updatedAt: Date;
@@ -178,6 +188,9 @@ export function ensureIndexes() {
       members.createIndex({ submittedAt: -1 }),
       members.createIndex({ status: 1 }),
       members.createIndex({ "payment.reference": 1 }),
+      // Reset links are looked up by token hash on every click, and sparse keeps the index to the
+      // handful of members with a request outstanding rather than every member ever.
+      members.createIndex({ "passwordReset.tokenHash": 1 }, { sparse: true }),
       enquiries.createIndex({ reference: 1 }, { unique: true }),
       enquiries.createIndex({ personRef: 1 }),
       enquiries.createIndex({ submittedAt: -1 }),

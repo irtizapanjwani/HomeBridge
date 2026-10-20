@@ -61,9 +61,14 @@ export function MemberSignIn({ configured }: { configured: boolean }) {
               className={inputClass}
             />
 
-            <label htmlFor="password" className="mt-4 mb-1.5 block text-[15px] font-semibold text-ink">
-              Password
-            </label>
+            <div className="mt-4 mb-1.5 flex flex-wrap items-baseline justify-between gap-x-4">
+              <label htmlFor="password" className="block text-[15px] font-semibold text-ink">
+                Password
+              </label>
+              <Link href="/forgot" className="text-[14px] font-semibold text-forest-800 underline underline-offset-[3px]">
+                Forgotten your password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"
@@ -100,7 +105,7 @@ export function MemberSignIn({ configured }: { configured: boolean }) {
 
         <p className="mt-5 mb-0 flex gap-2.5 text-[13.5px] leading-snug text-muted">
           <LockIcon size={18} className="mt-0.5 shrink-0 text-forest-700" />
-          <span>Nobody from HomeBridge will ever ask you for your password. If you have forgotten it, contact the office.</span>
+          <span>Nobody from HomeBridge will ever ask you for your password. We can only ever send you a link to set a new one.</span>
         </p>
       </Card>
     </div>
