@@ -43,7 +43,8 @@ export function FeeStep({
     url.searchParams.set("client_reference_id", token);
     const email = draft.email || (draft.contactMethod === "email" ? draft.contact : "");
     if (isEmail(email)) url.searchParams.set("prefilled_email", email);
-    set({ paymentReference: draft.paymentReference || token });
+    // The transaction id is left for the payer to copy from their own Stripe receipt. Filling it
+    // with our token would look like a confirmed payment while proving only that they clicked Pay.
     window.open(url.toString(), "_blank");
     setOpened(true);
   }

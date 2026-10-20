@@ -8,6 +8,7 @@ import {
   NIGERIAN_STATES,
   ageOn,
   emptyDraft,
+  feeFor,
   firstInvalidStep,
   flowFor,
   validateStep,
@@ -17,6 +18,7 @@ import {
   type Route,
 } from "@/lib/register-data";
 import { HEARD_OPTIONS } from "@/lib/content";
+import { isEmailConfigured, sendApplicationConfirmation } from "@/lib/email";
 import { BANK_METHOD, CARD_METHOD } from "@/lib/payment-methods";
 import { RECEIPT_MAX_BASE64, RECEIPT_MAX_BYTES, isReceiptType } from "@/lib/receipt";
 import { isDbConfigured } from "@/lib/db";
@@ -184,6 +186,26 @@ export async function POST(req: Request) {
 
     // Signed in straight away, so they land in their account rather than a sign-in form.
     await createMemberSession(reference);
+
+    // Sent only after the record is safely stored, and a mail failure never fails the
+    // application: the applicant has their reference on screen either way, and the error is
+    // logged so it can be chased. The address is never logged with the error.
+    const to = draft.email || (draft.contactMethod === "email" ? draft.contact : "");
+    if (isEmailConfigured() && to) {
+      const sent = await sendApplicationConfirmation({
+        to,
+        firstName: fullName.trim().split(/\s+/)[0] ?? "",
+        reference,
+        supporter,
+        fee: supporter ? undefined : feeFor(draft).fee,
+        paymentMethod: draft.paymentMethod,
+        paymentReference: draft.paymentReference,
+      });
+      if (!sent.ok) console.error("[apply] confirmation email not sent:", sent.error);
+    } else if (!isEmailConfigured()) {
+      console.warn("[apply] RESEND_API_KEY is not set — no confirmation email was sent.");
+    }
+
     return NextResponse.json({ ok: true, reference, status: supporter ? "Supporter" : "Submitted" });
   } catch (err) {
     // Never let the error text out: a Mongo error can carry the connection string.
