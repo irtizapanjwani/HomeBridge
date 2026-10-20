@@ -117,7 +117,9 @@ export function useAdmin() {
 export const VOTING_STATUSES: Member["status"][] = ["Active", "Reminder sent"];
 
 export function AdminStoreProvider({ children, initialApps }: { children: React.ReactNode; initialApps?: Application[] }) {
-  const [roleId, setRoleId] = useState("finance");
+  // The KYC officer opens the back office: the Applications queue is what someone signing in is
+  // nearly always here for, and it is the one screen Finance cannot act on.
+  const [roleId, setRoleId] = useState("kyc");
   const [screen, setScreen] = useState<ScreenId>("register");
   // Every screen opens at the top, not where the previous screen was scrolled to (runs after the new screen renders).
   useEffect(() => {

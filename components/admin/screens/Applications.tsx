@@ -375,6 +375,10 @@ export function ApplicationsScreen() {
                           {a.type} · {CHAPTERS[a.chapter]} · {a.id}
                           {a.source === "gform" ? " · Google Form" : ""}
                         </span>
+                        <span className="block text-[12.5px] text-muted">
+                          Submitted {fmtDate(a.submittedAt, true)}
+                          {a.submittedTime ? ` at ${a.submittedTime}` : ""}
+                        </span>
                         {pending ? (
                           <span className={cx("block text-[12.5px]", left < 7 ? "font-semibold text-danger" : "text-muted")}>
                             {left >= 0 ? `Decide by ${fmtDate(due, true)} (${left} days)` : `Overdue since ${fmtDate(due, true)}`}
@@ -478,7 +482,7 @@ function Detail({
               ["Lives in", a.livesIn],
               ["Residence route", a.route],
               ["Land / home", a.landLocation ?? "—"],
-              ["Submitted", fmtDate(a.submittedAt)],
+              ["Submitted", `${fmtDate(a.submittedAt)}${a.submittedTime ? ` at ${a.submittedTime} (Lagos)` : ""}`],
               ["Decide by", pending ? `${fmtDate(due)} · ${worked} working day${worked === 1 ? "" : "s"} so far (target 2)` : "—"],
               ["Nominees", a.type === "Group" ? "Not applicable (group)" : a.nominees.length ? `${a.nominees.length} named · total ${nomTotal}%` : "None yet"],
             ]}

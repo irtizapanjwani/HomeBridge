@@ -26,6 +26,24 @@ const ID_TYPE: Record<string, KycCheck["idType"]> = {
   "uk/eu/other national id or driving licence": "Passport",
 };
 
+// Both the date and the time are read in Lagos. Taking the date from toISOString() and the time
+// from here would disagree either side of midnight: 23:30 UTC is 00:30 the next day in Lagos.
+// Nigeria keeps one offset all year, so neither needs a daylight-saving caveat.
+const LAGOS_TIME = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Africa/Lagos",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** en-CA gives yyyy-mm-dd, which is the shape the rest of the admin screens compare and sort on. */
+const LAGOS_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Africa/Lagos",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 const idTypeOf = (v: string) => ID_TYPE[v] ?? ID_TYPE[v.trim().toLowerCase()] ?? "NIN";
 
 const STATUS: Record<MemberDoc["status"], AppStatus> = {
@@ -99,7 +117,8 @@ export function toApplication(m: MemberDoc): Application {
     landLocation: m.routeDetail || undefined,
     dob: m.dob,
     goodCharacter: goodCharacterOf(m),
-    submittedAt: m.submittedAt.toISOString().slice(0, 10),
+    submittedAt: LAGOS_DATE.format(m.submittedAt),
+    submittedTime: LAGOS_TIME.format(m.submittedAt),
     status: m.supporter ? "Supporter" : (STATUS[m.status] ?? "Submitted"),
     source: "web",
     // `source` on the admin type only knows "web" and "gform"; which site it came from is in the note.

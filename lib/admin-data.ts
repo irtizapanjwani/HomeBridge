@@ -507,6 +507,12 @@ export type Application = {
   note?: string;
   phone: string;
   email: string;
+  /**
+   * The time of day the registration arrived, as HH:MM in Lagos. Formatted on the server in one
+   * fixed zone rather than the viewer's, so officers in Benin City, Abuja and the UK all read the
+   * same clock and the page cannot hydrate differently from how it rendered.
+   */
+  submittedTime?: string;
   /** Set when the applicant uploaded a payment receipt. The bytes are fetched separately. */
   receipt?: { name: string; type: string; bytes: number };
   /** Whose account paid, when it was not the applicant's own. */
