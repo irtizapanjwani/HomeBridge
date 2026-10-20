@@ -110,13 +110,13 @@ export function SiteHeader() {
               href="/app"
               className="hidden min-h-11 items-center rounded-full border border-forest-800 px-4 text-[14.5px] font-semibold text-forest-800 no-underline transition hover:bg-forest-800 hover:text-cream sm:inline-flex"
             >
-              Member sign in
+              Login
             </Link>
             <Link
               href="/register"
               className="hidden min-h-11 items-center rounded-full bg-forest-800 px-4 text-[14.5px] font-semibold text-cream no-underline transition hover:bg-forest-900 hover:text-cream sm:inline-flex"
             >
-              Join HomeBridge
+              Registration
             </Link>
             <button
               type="button"
@@ -152,10 +152,10 @@ export function SiteHeader() {
             </ul>
             <div className="mt-4 grid gap-2.5 sm:hidden">
               <Link href="/register" className="rounded-full bg-forest-800 px-5 py-3.5 text-center font-semibold text-cream no-underline hover:text-cream">
-                Join HomeBridge
+                Registration
               </Link>
               <Link href="/app" className="rounded-full border border-forest-800 px-5 py-3.5 text-center font-semibold text-forest-800 no-underline">
-                Member sign in
+                Login
               </Link>
             </div>
           </nav>
