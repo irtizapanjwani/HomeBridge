@@ -58,9 +58,9 @@ export function SubmittedToast({ result, onClose }: { result: Submission; onClos
       ]
     : [
         "A membership officer reviews your application. We decide within 30 days, and aim for 2 working days.",
-        `If you’re approved, we send you a link to pay the joining fee (${result.fee ?? `£${JOINING_FEE.gbp} abroad or ₦${JOINING_FEE.ngn.toLocaleString("en-GB")} in Nigeria`}) to ${JOINING_FEE.payee}. It is not a share and is not refundable.`,
+        `We confirm your joining fee (${result.fee ?? `£${JOINING_FEE.gbp} abroad or ₦${JOINING_FEE.ngn.toLocaleString("en-GB")} in Nigeria`}) against our account with ${JOINING_FEE.payee}. It is not a share and is not refundable.`,
         "You’ll complete the secure ID check with our verification partner once your account opens.",
-        "You become a member when the fee is paid, you buy your first share and your name is on the register.",
+        "You become a member when the fee is confirmed, you buy your first share and your name is on the register.",
       ];
 
   return (

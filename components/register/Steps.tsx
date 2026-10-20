@@ -597,6 +597,13 @@ export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number
         <Row label="Declarations" value={Object.values(draft.decl).every(Boolean) ? "All four confirmed" : "Not all confirmed yet"} />
       </Group>
 
+      <Group step="fee" index={5} onEdit={onEdit}>
+        <Row label="How you paid" value={draft.paymentMethod || "Not chosen yet"} />
+        <Row label="Date paid" value={draft.datePaid || "Not given"} />
+        <Row label="Reference" value={draft.paymentReference || "Not given"} />
+        {draft.payerName ? <Row label="Paid by" value={draft.payerName} /> : null}
+      </Group>
+
       <section aria-labelledby="next-h" className="rounded-[20px] bg-mist p-5 sm:p-6">
         <h2 id="next-h" className="font-display text-[20px] text-forest-900">
           What happens next
@@ -604,8 +611,8 @@ export function ReviewStep({ draft, onEdit }: { draft: Draft; onEdit: (i: number
         <ol className="mt-3 space-y-3">
           {[
             "A membership officer reviews your application. We decide within 30 days, and aim for 2 working days (bye-law 6.2).",
-            `If you are approved, we send you a link to pay the joining fee of ${fee.fee}${fee.note ? ` (${fee.note})` : ""}. It is paid to ${JOINING_FEE.payee}, ${JOINING_FEE.payeeRole}. It is not a share and is not refundable.`,
-            "You become a member once the fee is paid, you have bought at least one share, and your name is on the register of members (bye-law 6.4).",
+            `We confirm your joining fee of ${fee.fee}${fee.note ? ` (${fee.note})` : ""} against our account. It is paid to ${JOINING_FEE.payee}, ${JOINING_FEE.payeeRole}. It is not a share and is not refundable.`,
+            "You become a member once the fee is confirmed, you have bought at least one share, and your name is on the register of members (bye-law 6.4).",
             "If we can’t approve you, we tell you why. You can ask the next general meeting to review the decision.",
           ].map((t, i) => (
             <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-forest-900">

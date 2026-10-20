@@ -16,6 +16,8 @@ import {
   type StepId,
 } from "@/lib/register-data";
 import { AboutStep, AccountStep, IdentityStep, JoinStep, NomineeStep, ReviewStep, SupporterStep } from "./Steps";
+import { FeeStep } from "./FeeStep";
+import type { ReceiptUpload as Receipt } from "@/lib/receipt";
 import { ProgressBar, StepList, ChoicesCard, PayNothingNote } from "./Sidebar";
 import { SubmittedToast, type Submission } from "./SubmittedToast";
 import { RegisterTopBar } from "./TopBar";
@@ -76,6 +78,9 @@ export function RegisterApp() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [done, setDone] = useState<Submission | null>(null);
+  // Deliberately not part of the draft: it is written to storage on every change, and a base64
+  // image there would exceed the quota and take the whole application with it.
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -176,7 +181,7 @@ export function RegisterApp() {
       const res = await fetch("/api/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({ ...draft, receipt }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; reference?: string; step?: StepId };
       if (res.ok && data.ok && data.reference) {
@@ -192,6 +197,7 @@ export function RegisterApp() {
         setDone(result);
         // Back to a blank first step, so the panel is a confirmation rather than a dead end.
         setDraft(emptyDraft());
+        setReceipt(null);
         setFurthest(0);
         goTo(0);
         return;
@@ -232,6 +238,7 @@ export function RegisterApp() {
     writeJSON(DRAFT_KEY, null);
     writeJSON(DONE_KEY, null);
     setDraft(emptyDraft());
+    setReceipt(null);
     setFurthest(0);
     setDone(null);
     goTo(0);
@@ -304,6 +311,7 @@ export function RegisterApp() {
                 {stepId === "join" && <JoinStep draft={draft} set={set} errors={errors} />}
                 {stepId === "identity" && <IdentityStep draft={draft} set={set} errors={errors} />}
                 {stepId === "nominee" && <NomineeStep draft={draft} set={set} errors={errors} />}
+                {stepId === "fee" && <FeeStep draft={draft} set={set} errors={errors} receipt={receipt} onReceipt={setReceipt} />}
                 {stepId === "review" && <ReviewStep draft={draft} onEdit={goTo} />}
                 {stepId === "supporter" && <SupporterStep draft={draft} set={set} errors={errors} onEdit={goTo} />}
 

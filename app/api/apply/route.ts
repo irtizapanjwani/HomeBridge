@@ -17,8 +17,10 @@ import {
   type Route,
 } from "@/lib/register-data";
 import { HEARD_OPTIONS } from "@/lib/content";
+import { BANK_METHOD, CARD_METHOD } from "@/lib/payment-methods";
+import { RECEIPT_MAX_BASE64, RECEIPT_MAX_BYTES, isReceiptType } from "@/lib/receipt";
 import { isDbConfigured } from "@/lib/db";
-import { collections, draftToMember, ensureIndexes, makeReference, upsertPerson } from "@/lib/members";
+import { collections, draftToMember, ensureIndexes, makeReference, upsertPerson, type StoredReceipt } from "@/lib/members";
 import { createMemberSession, hashPassword, isMemberAuthConfigured, passwordProblem } from "@/lib/member-auth";
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -31,6 +33,30 @@ const ROUTES: Route[] = ["lives", "land", "other", "none"];
 const TYPES = MEMBERSHIP_TYPES.map((t) => t.value) as MemberType[];
 const ID_VALUES = [...ID_OPTIONS.nigeria, ...ID_OPTIONS.abroad].map((o) => o.value as string);
 const DOC_VALUES = GROUP_DOC_OPTIONS.map((o) => o.value as string);
+
+/**
+ * Decodes an uploaded payment receipt, or returns null.
+ *
+ * Never throws and never fails the application: a receipt that is the wrong type or too large is
+ * dropped with a log line, because it can be chased by email while a refused application cannot.
+ */
+function toReceipt(raw: unknown): StoredReceipt | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const type = str(r.type, 80);
+  const data = typeof r.data === "string" ? r.data : "";
+  if (!isReceiptType(type) || !data || data.length > RECEIPT_MAX_BASE64) {
+    console.warn("[apply] a receipt was dropped: unsupported type or too large");
+    return null;
+  }
+  // Base64 of the wrong thing decodes to something far shorter than it claimed.
+  const bytes = Buffer.from(data, "base64");
+  if (bytes.length === 0 || bytes.length > RECEIPT_MAX_BYTES) {
+    console.warn("[apply] a receipt was dropped: decoded size out of range");
+    return null;
+  }
+  return { name: str(r.name, 120) || "receipt", type, bytes: bytes.length, data: bytes };
+}
 
 /**
  * Rebuilds a Draft from untrusted JSON using only known fields, so anything else in the body
@@ -76,6 +102,12 @@ function toDraft(body: Record<string, unknown>): Draft {
         share: str(n.share, 3),
       };
     }),
+    paymentMethod: oneOf(body.paymentMethod, [BANK_METHOD, CARD_METHOD]),
+    stripeSessionId: str(body.stripeSessionId, 80),
+    datePaid: str(body.datePaid, 10),
+    paymentReference: str(body.paymentReference, 80),
+    payerName: str(body.payerName, 120),
+    receiptConfirmed: body.receiptConfirmed === true,
     decl: {
       character: decl.character === true,
       bylaws: decl.bylaws === true,
@@ -104,6 +136,7 @@ export async function POST(req: Request) {
   }
 
   const draft = toDraft(body);
+  const receipt = toReceipt(body.receipt);
   const today = new Date();
   const flow = flowFor(draft);
   const bad = firstInvalidStep(draft, today);
@@ -147,7 +180,7 @@ export async function POST(req: Request) {
     const { members } = await collections();
     const reference = makeReference(supporter ? "SUP" : "APP");
     const passwordHash = await hashPassword(draft.password);
-    await members.insertOne(draftToMember(draft, { reference, personRef, fullName, passwordHash }));
+    await members.insertOne(draftToMember(draft, { reference, personRef, fullName, passwordHash, receipt }));
 
     // Signed in straight away, so they land in their account rather than a sign-in form.
     await createMemberSession(reference);

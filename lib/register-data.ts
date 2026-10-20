@@ -3,6 +3,7 @@
 // so both apply the same bye-law rules (5.1 age and character, 5.2 residence route, 10.1 nominees).
 
 import { FOUNDING_BLOCK, JOINING_FEE, MIN_MONTHLY } from "@/lib/settings";
+import { BANK_METHOD, CARD_METHOD } from "@/lib/payment-methods";
 
 /** Long enough to be worth hashing. Length beats punctuation rules. */
 export const MIN_PASSWORD_LENGTH = 10;
@@ -113,6 +114,16 @@ export type Draft = {
   nominees: Nominee[];
   decl: Declarations;
   supporterConsent: boolean;
+
+  /** How the joining fee was paid, and what the applicant can tell us about it. */
+  paymentMethod: string;
+  /** Set by the site when Stripe confirms a card payment; proof the member cannot type. */
+  stripeSessionId: string;
+  datePaid: string;
+  paymentReference: string;
+  /** Whose account the money came from, when a joint or family account paid. */
+  payerName: string;
+  receiptConfirmed: boolean;
 };
 
 export const newNominee = (share = ""): Nominee => ({
@@ -150,11 +161,17 @@ export const emptyDraft = (): Draft => ({
   nominees: [newNominee("100")],
   decl: { character: false, bylaws: false, risk: false, privacy: false },
   supporterConsent: false,
+  paymentMethod: "",
+  stripeSessionId: "",
+  datePaid: "",
+  paymentReference: "",
+  payerName: "",
+  receiptConfirmed: false,
 });
 
 // ---------- Steps ----------
 
-export type StepId = "account" | "about" | "join" | "identity" | "nominee" | "review" | "supporter";
+export type StepId = "account" | "about" | "join" | "identity" | "nominee" | "fee" | "review" | "supporter";
 
 export const STEP_LABELS: Record<StepId, string> = {
   account: "Account",
@@ -162,11 +179,12 @@ export const STEP_LABELS: Record<StepId, string> = {
   join: "How you join",
   identity: "Identity",
   nominee: "Nominee and agreements",
+  fee: "Joining fee",
   review: "Check and send",
   supporter: "Supporter list",
 };
 
-const MEMBER_FLOW: StepId[] = ["account", "about", "join", "identity", "nominee", "review"];
+const MEMBER_FLOW: StepId[] = ["account", "about", "join", "identity", "nominee", "fee", "review"];
 const SUPPORTER_FLOW: StepId[] = ["account", "about", "join", "supporter"];
 
 /** Bye-law 5.2: with no link to Edo or the FCT the applicant joins the Supporter list instead. */
@@ -307,6 +325,14 @@ export function validateStep(step: StepId, d: Draft, today: Date = new Date()): 
     }
     case "supporter": {
       need(e, "supporterConsent", d.supporterConsent, "Please confirm we may contact you.");
+      break;
+    }
+    case "fee": {
+      need(e, "paymentMethod", d.paymentMethod === BANK_METHOD || d.paymentMethod === CARD_METHOD, "Choose how you are paying the joining fee.");
+      // The date and reference are optional: a receipt can be uploaded instead, or sent within
+      // seven days. They are still checked when given, so a half-typed date is not stored as fact.
+      if (d.datePaid) need(e, "datePaid", /^\d{4}-\d{2}-\d{2}$/.test(d.datePaid) && d.datePaid <= today.toISOString().slice(0, 10), "Enter the date you paid. It cannot be in the future.");
+      if (d.paymentReference) need(e, "paymentReference", d.paymentReference.trim().length >= 3, "Enter at least 3 characters, or leave it blank.");
       break;
     }
     case "review":

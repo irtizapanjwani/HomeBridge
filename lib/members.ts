@@ -8,7 +8,7 @@
 // A person is matched across the two sites by email or phone, so registering on both does not
 // create two records: the second submission attaches to the person the first one created.
 
-import type { Collection, Db } from "mongodb";
+import { Binary, type Collection, type Db } from "mongodb";
 import { getDb } from "@/lib/db";
 import type { Declarations, Draft, Nominee } from "@/lib/register-data";
 
@@ -234,9 +234,19 @@ export async function upsertPerson(input: { name: string; email?: string; phone?
 }
 
 /** Turns a validated Draft into the stored document. */
+/** A receipt that the route has already decoded and checked. */
+export type StoredReceipt = { name: string; type: string; bytes: number; data: Buffer };
+
 export function draftToMember(
   d: Draft,
-  opts: { reference: string; personRef: string; fullName: string; passwordHash: string },
+  opts: {
+    reference: string;
+    personRef: string;
+    fullName: string;
+    passwordHash: string;
+    /** The payment receipt the applicant uploaded, already decoded and checked by the route. */
+    receipt?: StoredReceipt | null;
+  },
 ): MemberDoc {
   const supporter = d.route === "none";
   const now = new Date();
@@ -285,6 +295,37 @@ export function draftToMember(
             share: Number(n.share) || 0,
           })),
     declarations: supporter ? null : d.decl,
+
+    // Supporters pay nothing, so they carry no fee record at all.
+    ...(supporter
+      ? {}
+      : {
+          payment: {
+            // Claimed, never Verified: nothing here has been checked against the money yet. An
+            // officer verifies it, or the VEKAT Stripe webhook does when it recognises the payment.
+            status: "Claimed" as const,
+            method: d.paymentMethod,
+            datePaid: d.datePaid,
+            reference: d.paymentReference,
+            receiptEmailed: d.receiptConfirmed,
+            payerName: d.payerName,
+            verifiedAt: null,
+            verifiedBy: null,
+            amount: null,
+          },
+        }),
+
+    ...(opts.receipt
+      ? {
+          receipt: {
+            name: opts.receipt.name,
+            type: opts.receipt.type,
+            bytes: opts.receipt.bytes,
+            data: new Binary(opts.receipt.data),
+            uploadedAt: now,
+          },
+        }
+      : {}),
 
     passwordHash: opts.passwordHash,
 
