@@ -116,7 +116,15 @@ export function useAdmin() {
 
 export const VOTING_STATUSES: Member["status"][] = ["Active", "Reminder sent"];
 
-export function AdminStoreProvider({ children, initialApps }: { children: React.ReactNode; initialApps?: Application[] }) {
+export function AdminStoreProvider({
+  children,
+  initialApps,
+  initialLog,
+}: {
+  children: React.ReactNode;
+  initialApps?: Application[];
+  initialLog?: LogEntry[];
+}) {
   // The KYC officer opens the back office: the Applications queue is what someone signing in is
   // nearly always here for, and it is the one screen Finance cannot act on.
   const [roleId, setRoleId] = useState("kyc");
@@ -144,7 +152,8 @@ export function AdminStoreProvider({ children, initialApps }: { children: React.
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [pending, setPending] = useState(PENDING_CHANGES);
   const [staff, setStaff] = useState(STAFF);
-  const [log, setLog] = useState(LOG);
+  // The real audit trail when the database is connected; the sample log otherwise.
+  const [log, setLog] = useState(initialLog?.length ? initialLog : LOG);
   const [profileNo, setProfileNo] = useState<string | null>(null);
   const [uiState, setUiState] = useState<Record<string, unknown>>({});
   const logSeq = useRef(100);

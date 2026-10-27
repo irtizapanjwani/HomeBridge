@@ -4,8 +4,9 @@ import { SignIn } from "@/components/admin/SignIn";
 import { ToastProvider } from "@/components/ui/Toast";
 import { isAuthConfigured, isSignedIn } from "@/lib/admin-auth";
 import { listApplications } from "@/lib/applications";
+import { listAuditForAdmin } from "@/lib/audit";
 import { isDbConfigured } from "@/lib/db";
-import type { Application } from "@/lib/admin-data";
+import type { Application, LogEntry } from "@/lib/admin-data";
 
 // Route-only page: nothing on the public site links here, and it is kept out of search engines.
 export const metadata: Metadata = {
@@ -22,19 +23,20 @@ export default async function AdminPage() {
   }
 
   let applications: Application[] = [];
+  let auditEntries: LogEntry[] = [];
   let dbError = false;
   if (isDbConfigured()) {
     try {
-      applications = await listApplications();
+      [applications, auditEntries] = await Promise.all([listApplications(), listAuditForAdmin()]);
     } catch (err) {
-      console.error("[admin] could not read applications:", err instanceof Error ? err.message : "unknown error");
+      console.error("[admin] could not read from the database:", err instanceof Error ? err.message : "unknown error");
       dbError = true;
     }
   }
 
   return (
     <ToastProvider>
-      <AdminApp initialApps={applications} dbConnected={isDbConfigured() && !dbError} />
+      <AdminApp initialApps={applications} initialLog={auditEntries} dbConnected={isDbConfigured() && !dbError} />
     </ToastProvider>
   );
 }

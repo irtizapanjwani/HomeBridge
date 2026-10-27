@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PENDING_APP, ROLES, type Application, type ScreenId } from "@/lib/admin-data";
+import { PENDING_APP, ROLES, type Application, type LogEntry, type ScreenId } from "@/lib/admin-data";
 import { LockIcon, MenuIcon } from "@/components/ui/Icons";
 import { LogoMark } from "@/components/ui/Logo";
 import { AdminStoreProvider, useAdmin } from "./store";
@@ -31,9 +31,17 @@ const NAV: { id: ScreenId; label: string; what: string; group: 1 | 2 }[] = [
   { id: "settings", label: "Settings", what: "settings", group: 2 },
 ];
 
-export function AdminApp({ initialApps, dbConnected = false }: { initialApps?: Application[]; dbConnected?: boolean }) {
+export function AdminApp({
+  initialApps,
+  initialLog,
+  dbConnected = false,
+}: {
+  initialApps?: Application[];
+  initialLog?: LogEntry[];
+  dbConnected?: boolean;
+}) {
   return (
-    <AdminStoreProvider initialApps={initialApps}>
+    <AdminStoreProvider initialApps={initialApps} initialLog={initialLog}>
       <Shell dbConnected={dbConnected} />
     </AdminStoreProvider>
   );
@@ -224,7 +232,7 @@ function Screen({ id, dbConnected }: { id: ScreenId; dbConnected: boolean }) {
     case "reports":
       return <ReportsScreen />;
     case "audit":
-      return <AuditLogScreen />;
+      return <AuditLogScreen dbConnected={dbConnected} />;
     case "settings":
       return <SettingsScreen />;
   }

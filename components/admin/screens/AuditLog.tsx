@@ -6,7 +6,7 @@ import { useAdmin } from "../store";
 import { auditReport, exportReport } from "../exports";
 import { Btn, Card, Empty, Field, PageHeader, Table, Td, Th, inputCls } from "../ui";
 
-export function AuditLogScreen() {
+export function AuditLogScreen({ dbConnected = false }: { dbConnected?: boolean }) {
   const s = useAdmin();
   const [q, setQ] = s.ui("log.q", "");
   const [who, setWho] = s.ui("log.role", "all");
@@ -24,6 +24,7 @@ export function AuditLogScreen() {
       <PageHeader
         title="Audit log"
         subtitle="Append-only · every admin action · kept at least 7 years"
+        live={dbConnected}
         actions={
           <Btn
             onClick={() => {
@@ -58,7 +59,7 @@ export function AuditLogScreen() {
         </p>
         <div className="mt-3">
           {rows.length === 0 ? (
-            <Empty title={`No entries match “${q}”.`}>Try a member number such as HB-ED-UK-000045, a person, or a word like “approved”.</Empty>
+            <Empty title={`No entries match “${q}”.`}>Try a member number such as HBC-EDO-26-00002, an application reference, or a word like “approved”.</Empty>
           ) : (
             <Table minWidth={980} label="Audit log entries">
               <thead>
