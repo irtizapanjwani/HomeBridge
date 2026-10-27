@@ -133,9 +133,68 @@ export type MemberDoc = {
     requestedAt: Date;
   };
 
+  /**
+   * Set once, when an officer approves the application, and never changed afterwards (brief p.6:
+   * "Numbers are immutable after issue; chapter changes update the members table only"). Its
+   * absence is what marks an application as not yet admitted.
+   */
+  membership?: {
+    /** HBC-ZONE-YY-NNNNN. */
+    memberNo: string;
+    /** The zone code at the time of admission; a later move does not renumber the member. */
+    zone: string;
+    /** The cooperative-wide sequence value behind the last five digits. */
+    seq: number;
+    admittedAt: Date;
+  };
+
+  /**
+   * The most recent vetting decision. Every decision is also appended to the audit log, which is
+   * the permanent record; this is just the current state, for the queue to read quickly.
+   */
+  decision?: {
+    outcome: MemberStatus;
+    /** Required for a decline, optional otherwise (brief p.4: "decline (with reason)"). */
+    reason?: string;
+    /** The officer who decided, as recorded in the audit log. */
+    by: string;
+    at: Date;
+  };
+
   source: "homebridge" | "vekat";
   submittedAt: Date;
   updatedAt: Date;
+};
+
+/**
+ * A named counter, used for the cooperative-wide membership sequence. Incremented with a single
+ * atomic findOneAndUpdate so two officers approving at the same moment can never read the same
+ * value. See lib/numbering.ts.
+ */
+export type CounterDoc = {
+  _id: string;
+  value: number;
+};
+
+/**
+ * Append-only record of everything that matters for the audit trail (brief p.6): every approval,
+ * every number issued, every change to account details, every view of an ID document.
+ *
+ * Nothing in the app ever updates or deletes a row here.
+ */
+export type AuditDoc = {
+  /** What happened, e.g. "application.approved", "member.number_issued". */
+  action: string;
+  /** The officer's name or account id. */
+  actor: string;
+  /** What it happened to — an application reference or a membership number. */
+  subject: string;
+  /** Short human-readable summary shown in the admin audit screen. */
+  detail: string;
+  /** Status before and after, where the action changed one. */
+  before?: string;
+  after?: string;
+  at: Date;
 };
 
 export type EnquiryDoc = {
@@ -160,6 +219,8 @@ export async function collections(): Promise<{
   people: Collection<PersonDoc>;
   members: Collection<MemberDoc>;
   enquiries: Collection<EnquiryDoc>;
+  counters: Collection<CounterDoc>;
+  auditLog: Collection<AuditDoc>;
 }> {
   const db = await getDb();
   return {
@@ -167,6 +228,8 @@ export async function collections(): Promise<{
     people: db.collection<PersonDoc>("people"),
     members: db.collection<MemberDoc>("members"),
     enquiries: db.collection<EnquiryDoc>("enquiries"),
+    counters: db.collection<CounterDoc>("counters"),
+    auditLog: db.collection<AuditDoc>("audit_log"),
   };
 }
 
@@ -178,8 +241,13 @@ export async function collections(): Promise<{
 let indexesReady: Promise<void> | null = null;
 export function ensureIndexes() {
   indexesReady ??= (async () => {
-    const { people, members, enquiries } = await collections();
+    const { people, members, enquiries, auditLog } = await collections();
     await Promise.all([
+      // A membership number can only ever belong to one member. Sparse, because an application
+      // that has not been approved has no membership block at all.
+      members.createIndex({ "membership.memberNo": 1 }, { unique: true, sparse: true }),
+      auditLog.createIndex({ at: -1 }),
+      auditLog.createIndex({ subject: 1 }),
       people.createIndex({ reference: 1 }, { unique: true }),
       people.createIndex({ emails: 1 }),
       people.createIndex({ phones: 1 }),

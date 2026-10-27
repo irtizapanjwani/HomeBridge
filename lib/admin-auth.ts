@@ -65,6 +65,19 @@ export async function clearSession() {
   store.delete(SESSION_COOKIE);
 }
 
+/**
+ * Who the audit log should name for an action taken in the admin area.
+ *
+ * Everyone shares one password today, so the honest answer is that we do not know which officer it
+ * was, and the log says exactly that rather than inventing a name. Once each officer has their own
+ * account, return their name here and every entry written from then on identifies a person. The
+ * brief requires that (p.2, "Users and permissions"; p.6, audit log) before real members are
+ * onboarded, because an audit trail that cannot name anyone proves nothing.
+ */
+export async function currentOfficer(): Promise<string> {
+  return "VEKAT admin (shared login)";
+}
+
 /** True when the request carries a session this server signed, and it has not expired. */
 export async function isSignedIn() {
   if (!isAuthConfigured()) return false;

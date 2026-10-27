@@ -137,6 +137,10 @@ export function toApplication(m: MemberDoc): Application {
       result: m.idDocsEmailed ? "Pending" : "Not started",
     },
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
+    // Issued on approval and never changed afterwards; absent until then.
+    ...(m.membership ? { memberNo: m.membership.memberNo } : {}),
+    ...(m.decision ? { decidedBy: m.decision.by } : {}),
+    ...(m.decision?.reason ? { decisionReason: m.decision.reason } : {}),
     ...(m.receipt ? { receipt: { name: m.receipt.name, type: m.receipt.type, bytes: m.receipt.bytes } } : {}),
     ...(m.payment?.payerName ? { payerName: m.payment.payerName } : {}),
     note: [

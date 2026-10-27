@@ -57,6 +57,7 @@ export function ApplicationsScreen() {
   const [query, setQuery] = s.ui<string>("app.query", "");
   const [mode, setMode] = useState<null | "info" | "refuse" | "delete">(null);
   const [deleting, setDeleting] = useState(false);
+  const [deciding, setDeciding] = useState(false);
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
 
@@ -86,25 +87,58 @@ export function ApplicationsScreen() {
     setErr("");
   }
 
-  function approve(a: Application) {
-    const seq = String(s.nextSeq()).padStart(6, "0");
-    const memberNo = `HB-${a.society}-${a.chapter}-${seq}`;
-    update(a.id, { status: "Approved (fee due)", memberNo, decidedBy: s.role.person, note: undefined, kyc: { ...a.kyc, reviewer: s.role.person } });
-    s.addLog("Approved application", a.id, a.status, `Approved (fee due) · issued ${memberNo}`);
-    toast(`${a.name} approved. Member number ${memberNo} issued — joining-fee link sent.`);
+  /**
+   * Records a decision on the server.
+   *
+   * The decision and, for an approval, the membership number are written to the database inside
+   * one transaction, and the audit log is written with them. Nothing is changed on screen unless
+   * that succeeded, so what an officer sees is always what is stored.
+   */
+  async function decide(a: Application, outcome: "approve" | "decline" | "request-info", why?: string) {
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome, reason: why }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; memberNo?: string };
+      if (!res.ok || !data.ok) {
+        setErr(data.error || "The decision could not be saved. Nothing was changed.");
+        return null;
+      }
+      return data;
+    } catch {
+      setErr("We could not reach the server. Nothing was saved.");
+      return null;
+    } finally {
+      setDeciding(false);
+    }
   }
 
-  function submitReason(a: Application) {
+  async function approve(a: Application) {
+    const saved = await decide(a, "approve");
+    if (!saved) return;
+    const memberNo = saved.memberNo;
+    update(a.id, { status: "Approved (fee due)", memberNo, decidedBy: s.role.person, note: undefined, kyc: { ...a.kyc, reviewer: s.role.person } });
+    s.addLog("Approved application", a.id, a.status, `Approved (fee due) · issued ${memberNo}`);
+    toast(`${a.name} approved. Member number ${memberNo} issued.`);
+  }
+
+  async function submitReason(a: Application) {
     const r = reason.trim();
     if (r.length < 5) {
       setErr(mode === "refuse" ? "Please give a reason for refusing — it is recorded and shown to the applicant." : "Please say what you need from the applicant.");
       return;
     }
     if (mode === "info") {
+      if (!(await decide(a, "request-info", r))) return;
       update(a.id, { status: "Info requested", note: r });
       s.addLog("Requested information", a.id, a.status, `Info requested: ${r}`);
-      toast(`Information request sent to ${a.name} by WhatsApp and email.`);
+      toast(`Information request recorded for ${a.name}.`);
     } else {
+      if (!(await decide(a, "decline", r))) return;
       update(a.id, { status: "Refused", decisionReason: r, decidedBy: s.role.person });
       s.addLog("Refused application", a.id, a.status, `Refused: ${r}`);
       toast(`${a.name} refused. Reason recorded; they may ask the next general meeting to review it (6.2).`);
@@ -412,6 +446,7 @@ export function ApplicationsScreen() {
             onRegister={enterRegister}
             onDelete={destroy}
             deleting={deleting}
+            deciding={deciding}
             canDecide={canDecide}
           />
         </div>
@@ -435,6 +470,7 @@ function Detail({
   onRegister,
   onDelete,
   deleting,
+  deciding,
   canDecide,
 }: {
   a: Application;
@@ -444,13 +480,14 @@ function Detail({
   setReason: (v: string) => void;
   err: string;
   decideReason?: string;
-  onApprove: (a: Application) => void;
-  onSubmitReason: (a: Application) => void;
+  onApprove: (a: Application) => void | Promise<void>;
+  onSubmitReason: (a: Application) => void | Promise<void>;
   onSupporter: (a: Application) => void;
   onIdLink: (a: Application) => void;
   onRegister: (a: Application) => void;
   onDelete: (a: Application) => void;
   deleting: boolean;
+  deciding: boolean;
   canDecide: boolean;
 }) {
   const s = useAdmin();
@@ -542,8 +579,12 @@ function Detail({
                 Move to Supporter list
               </Btn>
             ) : (
-              <Btn variant="primary" reason={decideReason ?? (failing ? `Cannot approve: ${failing.why}` : undefined)} onClick={() => onApprove(a)}>
-                Approve
+              <Btn
+                variant="primary"
+                reason={decideReason ?? (failing ? `Cannot approve: ${failing.why}` : undefined)}
+                disabled={deciding}
+                onClick={() => onApprove(a)}>
+                {deciding ? "Saving…" : "Approve"}
               </Btn>
             )}
             {a.kyc.result === "Not started" ? (
@@ -579,8 +620,8 @@ function Detail({
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <Btn variant={mode === "info" ? "primary" : "danger"} onClick={() => onSubmitReason(a)}>
-                  {mode === "info" ? "Send request" : "Confirm refusal"}
+                <Btn variant={mode === "info" ? "primary" : "danger"} disabled={deciding} onClick={() => onSubmitReason(a)}>
+                  {deciding ? "Saving…" : mode === "info" ? "Send request" : "Confirm refusal"}
                 </Btn>
                 <Btn variant="ghost" onClick={() => setMode(null)}>
                   Cancel
