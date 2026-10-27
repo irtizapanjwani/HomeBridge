@@ -14,23 +14,43 @@
 import { readFileSync } from "node:fs";
 import { MongoClient } from "mongodb";
 
+/** The env files Next.js itself would read, in the order it reads them. */
+const ENV_FILES = [".env.local", ".env.development.local", ".env.development", ".env"];
+
 function loadEnv() {
-  if (process.env.MONGODB_URI) return;
-  try {
-    for (const line of readFileSync(new URL("../.env.local", import.meta.url), "utf8").split("\n")) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  if (process.env.MONGODB_URI) return [];
+  const read = [];
+  for (const name of ENV_FILES) {
+    try {
+      const text = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
+      read.push(name);
+      for (const line of text.split("\n")) {
+        const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+        if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+      }
+    } catch {
+      // Not present; try the next one.
     }
-  } catch {
-    // No .env.local; the environment is expected to carry MONGODB_URI.
   }
+  return read;
 }
 
-loadEnv();
+const envFilesFound = loadEnv();
 
 const uri = process.env.MONGODB_URI;
 if (!uri) {
-  console.error("MONGODB_URI is not set. Add it to .env.local or the environment.");
+  console.error("MONGODB_URI is not set, so this script cannot reach the database.\n");
+  console.error(
+    envFilesFound.length
+      ? `Looked in ${envFilesFound.join(", ")} but found no MONGODB_URI there.`
+      : `Looked for ${ENV_FILES.join(", ")} next to the project and found none.`,
+  );
+  console.error(
+    "\nIf the site runs on Vercel, copy the value from Settings > Environment Variables, then:\n" +
+      '  PowerShell:  $env:MONGODB_URI="..."; node scripts/reset-member-sequence.mjs\n' +
+      '  bash:        MONGODB_URI="..." node scripts/reset-member-sequence.mjs\n' +
+      "\nThe string holds the database password: keep it out of commits and chat.",
+  );
   process.exit(1);
 }
 
