@@ -98,6 +98,71 @@ export type ConfirmationInput = {
   paymentReference?: string;
 };
 
+export type FeeReceiptEmail = {
+  to: string;
+  firstName: string;
+  reference: string;
+  receiptNo: string;
+  /** The amount as it should read, e.g. "£10.00". */
+  amount: string;
+  receipt: Attachment;
+};
+
+/**
+ * The email an applicant gets when their joining fee is confirmed, with the VEKAT receipt
+ * attached.
+ *
+ * The client's workflow issues the receipt at the "fee paid" step, before vetting starts, rather
+ * than holding it back until admission — so this goes out well before the welcome pack, which
+ * carries a copy of the same receipt.
+ */
+export async function sendFeeReceipt(input: FeeReceiptEmail): Promise<SendResult> {
+  const name = input.firstName.trim() || "there";
+
+  const text = [
+    `Hello ${name},`,
+    ``,
+    `We have received your joining fee of ${input.amount}. Your receipt is attached.`,
+    ``,
+    `Receipt number: ${input.receiptNo}`,
+    `Application reference: ${input.reference}`,
+    ``,
+    `This is the one-off joining fee, paid to VEKAT, the cooperative's appointed manager. It is separate from your monthly share contributions, which are paid to HomeBridge Cooperative's own accounts once you are a member.`,
+    ``,
+    `A membership officer is reviewing your application. We will email you again with the outcome. There is nothing further for you to do.`,
+    ``,
+    `HomeBridge Cooperative`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px">Hello ${esc(name)},</p>
+      <p style="margin:0 0 16px">We have received your joining fee of <strong>${esc(input.amount)}</strong>. Your receipt is attached.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#F3F1EA;border-radius:8px">
+        <tr><td style="padding:16px;text-align:center">
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B6A61">Receipt number</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:.04em;margin-top:4px">${esc(input.receiptNo)}</div>
+          <div style="font-size:13px;color:#6B6A61;margin-top:8px">Application ${esc(input.reference)}</div>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px">This is the one-off joining fee, paid to VEKAT, the cooperative&rsquo;s appointed manager. It is separate from your monthly share contributions, which are paid to HomeBridge Cooperative&rsquo;s own accounts once you are a member.</p>
+      <p style="margin:0 0 20px">A membership officer is reviewing your application. We will email you again with the outcome. There is nothing further for you to do.</p>
+      <p style="margin:0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">HomeBridge Cooperative</p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  return sendEmail({
+    to: input.to,
+    subject: `Your HomeBridge joining fee receipt — ${input.receiptNo}`,
+    text,
+    html,
+    attachments: [input.receipt],
+  });
+}
+
 /**
  * The email a member gets the moment their application is stored.
  *

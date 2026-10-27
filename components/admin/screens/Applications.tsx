@@ -221,14 +221,18 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string; emailed?: boolean };
       if (!res.ok || !data.ok) {
         setErr(data.error || "The fee could not be confirmed. Nothing was changed.");
         return;
       }
       update(a.id, { status: "Fee paid", receiptNo: data.receiptNo });
       s.addLog("Confirmed joining fee", a.id, a.status, `Fee paid · receipt ${data.receiptNo}`);
-      toast(`Fee confirmed for ${a.name}. Receipt ${data.receiptNo} issued.`);
+      toast(
+        data.emailed
+          ? `Fee confirmed. Receipt ${data.receiptNo} emailed to ${a.email}.`
+          : `Fee confirmed and receipt ${data.receiptNo} issued, but the email did not go — check the audit log.`,
+      );
     } catch {
       setErr("We could not reach the server. Nothing was saved.");
     } finally {

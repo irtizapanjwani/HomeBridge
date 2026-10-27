@@ -11,8 +11,11 @@
 import "server-only";
 
 import { recordAudit } from "@/lib/audit";
+import { sendFeeReceipt } from "@/lib/email";
 import { collections } from "@/lib/members";
 import { formatReceiptNo, nextReceiptSeq } from "@/lib/numbering";
+import { buildReceipt } from "@/lib/pdf/receipt";
+import { JOINING_FEE } from "@/lib/settings";
 
 export type ConfirmFeeInput = {
   reference: string;
@@ -26,7 +29,7 @@ export type ConfirmFeeInput = {
 };
 
 export type ConfirmFeeResult =
-  | { ok: true; receiptNo: string }
+  | { ok: true; receiptNo: string; emailed: boolean }
   | { ok: false; error: string; code: "not_found" | "already" };
 
 /**
@@ -82,5 +85,46 @@ export async function confirmFeePayment(input: ConfirmFeeInput): Promise<Confirm
     after: "Verified",
   });
 
-  return { ok: true, receiptNo };
+  // The client's workflow issues the receipt at this step, not at admission, so it goes out now.
+  // A mail failure must not undo a confirmed payment: the receipt number stands either way and an
+  // officer can send it again from the application.
+  const home = member.country === "Nigeria";
+  let emailed = false;
+  try {
+    const pdf = await buildReceipt({
+      receiptNo,
+      fullName: member.fullName,
+      applicationRef: member.reference,
+      memberNo: member.membership?.memberNo,
+      category: home ? "Home" : "Diaspora",
+      amount: home ? JOINING_FEE.ngn : JOINING_FEE.gbp,
+      currency: home ? "NGN" : "GBP",
+      method: input.method || member.payment?.method || "Not recorded",
+      transactionRef: input.transactionRef || member.payment?.reference,
+      receivedAt: confirmedAt,
+      payee: JOINING_FEE.payee,
+      payeeRole: JOINING_FEE.payeeRole,
+    });
+    const sent = await sendFeeReceipt({
+      to: member.email,
+      firstName: member.firstName?.trim() || member.fullName.split(/\s+/)[0],
+      reference: member.reference,
+      receiptNo,
+      amount: home ? `₦${JOINING_FEE.ngn.toLocaleString("en-GB")}` : `£${JOINING_FEE.gbp.toFixed(2)}`,
+      receipt: { filename: `Joining Fee Receipt ${receiptNo}.pdf`, content: pdf },
+    });
+    emailed = sent.ok;
+    await recordAudit({
+      action: sent.ok ? "fee.receipt_emailed" : "fee.receipt_email_failed",
+      actor,
+      subject: reference,
+      detail: sent.ok
+        ? `Receipt ${receiptNo} emailed to ${member.email}`
+        : `Receipt ${receiptNo} could not be emailed to ${member.email}: ${sent.error}`,
+    }).catch(() => {});
+  } catch (err) {
+    console.error("[fees] could not email the receipt:", err instanceof Error ? err.message : "unknown error");
+  }
+
+  return { ok: true, receiptNo, emailed };
 }

@@ -50,7 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
         { status: result.code === "not_found" ? 404 : 409 },
       );
     }
-    return NextResponse.json({ ok: true, receiptNo: result.receiptNo });
+    return NextResponse.json({ ok: true, receiptNo: result.receiptNo, emailed: result.emailed });
   } catch (err) {
     // Never returned to the browser: a Mongo error can carry the connection string.
     console.error("[admin] could not confirm the fee:", err instanceof Error ? err.message : "unknown error");
