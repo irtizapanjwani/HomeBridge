@@ -195,7 +195,8 @@ export type MemberDoc = {
     documents: string[];
   };
 
-  source: "homebridge" | "vekat";
+  /** Which form the registration came through. "gform" is an import of the old Google Form. */
+  source: "homebridge" | "vekat" | "gform";
   submittedAt: Date;
   updatedAt: Date;
 };

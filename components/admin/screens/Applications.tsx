@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { CHAPTERS, PENDING_APP, TODAY, type Application, type AppStatus, type MemberType, type Region } from "@/lib/admin-data";
+import type { ImportPreview } from "@/lib/gform-import";
 import { useToast } from "@/components/ui/Toast";
 import { BinIcon, CheckIcon, DownloadIcon, FileIcon, XIcon } from "@/components/ui/Icons";
 import { useAdmin } from "../store";
 import { addDays, daysBetween, download, fmtDate, naira, parseCsv, workingDaysBetween } from "../lib";
-import { Banner, Btn, Card, CardTitle, Empty, KeyVals, PageHeader, Pill, ReadOnly, cx, inputCls } from "../ui";
+import { Banner, Btn, Card, CardTitle, Empty, KeyVals, PageHeader, Pill, ReadOnly, Table, Td, Th, cx, inputCls } from "../ui";
 
 type Filter = "pending" | "fee" | "decided" | "all";
 
@@ -58,6 +59,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
   const [mode, setMode] = useState<null | "info" | "refuse" | "delete">(null);
   const [deleting, setDeleting] = useState(false);
   const [deciding, setDeciding] = useState(false);
+  const [preview, setPreview] = useState<(ImportPreview & { csv: string; name: string }) | null>(null);
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
 
@@ -295,62 +297,66 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
     toast(`${a.memberNo} entered in the register. They become Active when the first share is paid (6.4).`);
   }
 
+  /**
+   * Reads a Google Form export.
+   *
+   * Two steps on purpose. The first upload only reports what the server made of the columns,
+   * because the real export has not been seen yet and a sheet read wrongly would fill the
+   * register with mangled rows. Nothing is written until the officer confirms.
+   */
   async function importForm(f: File) {
-    const rows = parseCsv(await f.text());
-    if (rows.length && /timestamp|name/i.test(rows[0].join(","))) rows.shift();
-    const added: Application[] = [];
-    let skipped = 0;
-    const errors: string[] = [];
-    rows.forEach((r, i) => {
-      const [ts, name, dob, country, state, city, phone, email, typeRaw, societyRaw, chapterRaw, routeRaw, land, idType] = r;
-      if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(dob ?? "")) {
-        errors.push(`Row ${i + 2}: needs a name and a date of birth (YYYY-MM-DD).`);
-        return;
-      }
-      if ([...s.apps, ...added].some((a) => a.name === name && a.phone === phone)) {
-        skipped++;
-        return;
-      }
-      const nigeria = /nigeria/i.test(country ?? "");
-      const region: Region = nigeria ? (/edo/i.test(state) ? "NG-ED" : /fct|abuja/i.test(state) ? "NG-FC" : "NG-OTHER") : /^(united kingdom|uk|england|scotland|wales|northern ireland)$/i.test(country ?? "") ? "UK" : /^(united states|usa|us)$/i.test(country ?? "") ? "US" : "AFRICA";
-      const society = /fct|fc|abuja/i.test(societyRaw ?? "") ? "FC" : "ED";
-      const chapter = (chapterRaw ?? "").toUpperCase() in CHAPTERS ? (chapterRaw ?? "").toUpperCase() : { "NG-ED": "ED", "NG-FC": "AB", "NG-OTHER": "LA", UK: "UK", US: "US", AFRICA: "GH" }[region];
-      const route = routeRaw || "Not given";
-      const routeKind: Application["routeKind"] = /none/i.test(route) ? "none" : /group/i.test(route) ? "group" : /land/i.test(route) ? "land" : /home/i.test(route) ? "home" : /lives/i.test(route) ? "lives" : "other";
-      const types: MemberType[] = ["Home", "Diaspora", "Founding", "Professional", "Group"];
-      const type = types.find((t) => t.toLowerCase() === (typeRaw ?? "").toLowerCase()) ?? (nigeria ? "Home" : "Diaspora");
-      const id = (["BVN", "NIN", "NR-BVN", "Passport"] as const).find((x) => x.toLowerCase() === (idType ?? "").toLowerCase()) ?? (nigeria ? "NIN" : "Passport");
-      added.push({
-        id: `APP-${String(appSeq++).padStart(4, "0")}`,
-        name,
-        type,
-        society,
-        chapter,
-        base: nigeria ? "home" : "diaspora",
-        livesIn: [city, nigeria ? state : country].filter(Boolean).join(", "),
-        region,
-        routeKind,
-        route,
-        landLocation: land || undefined,
-        dob,
-        goodCharacter: false,
-        submittedAt: /^\d{4}-\d{2}-\d{2}/.test(ts ?? "") ? ts.slice(0, 10) : TODAY,
-        status: routeKind === "none" ? "Supporter" : "Submitted",
-        source: "gform",
-        phone: phone ?? "",
-        email: email ?? "",
-        kyc: { idType: id, provider: "—", providerRef: "—", liveness: "Pending", docMatch: "Pending", addressOk: false, result: "Not started" },
-        nominees: [],
-        note: "Imported from the Google Form — ID check, nominees and declarations still to collect.",
+    const csv = await f.text();
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/import/google-form", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv }),
       });
-    });
-    s.setApps((cur) => [...cur, ...added]);
-    s.addLog("Imported Google Form responses", f.name, "—", `${added.length} applications (source = gform) · ${skipped} duplicates skipped · ${errors.length} errors`);
-    if (added[0]) {
-      setFilter("pending");
-      select(added[0].id);
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; preview?: ImportPreview };
+      if (!res.ok || !data.ok || !data.preview) {
+        setErr(data.error || "That file could not be read.");
+        return;
+      }
+      setPreview({ csv, name: f.name, ...data.preview });
+    } catch {
+      setErr("We could not reach the server. Nothing was imported.");
+    } finally {
+      setDeciding(false);
     }
-    toast(`Imported ${added.length} Google Form response(s)${skipped ? `, ${skipped} duplicate(s) skipped` : ""}${errors.length ? `, ${errors.length} row(s) with errors` : ""}.`, errors.length ? "warn" : "info");
+  }
+
+  /** Writes the rows the preview said could be imported. */
+  async function confirmImport() {
+    if (!preview) return;
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/import/google-form", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv: preview.csv, confirm: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        result?: { imported: number; skipped: number };
+      };
+      if (!res.ok || !data.ok || !data.result) {
+        setErr(data.error || "The import could not be completed.");
+        return;
+      }
+      s.addLog("Imported Google Form responses", preview.name, "—", `${data.result.imported} applications`);
+      toast(
+        `Imported ${data.result.imported} applicant(s)${data.result.skipped ? `, ${data.result.skipped} skipped` : ""}. Reload to see them in the queue.`,
+      );
+      setPreview(null);
+    } catch {
+      setErr("We could not reach the server. Nothing was imported.");
+    } finally {
+      setDeciding(false);
+    }
   }
 
   const readOnly = s.access("applications") !== "act";
@@ -388,6 +394,75 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
       />
 
       {readOnly ? <ReadOnly why={`${s.role.title} can see the queue and decisions; only the KYC officer approves, asks for information or refuses.`} /> : null}
+
+      {preview ? (
+        <Card className="flex flex-col gap-3 p-5" aria-label="Google Form import preview">
+          <CardTitle>Import preview · {preview.name}</CardTitle>
+          {preview.missingFields.length ? (
+            <Banner tone="danger" title="This sheet is missing a column we need.">
+              No column matched: {preview.missingFields.join(", ")}. Rename the heading in the sheet, or send it over and the importer can be taught that spelling.
+            </Banner>
+          ) : null}
+          <p className="m-0 text-[14px]">
+            <b>{preview.importable}</b> to import · <b>{preview.duplicates}</b> already on file ·{" "}
+            <b>{preview.problems}</b> that cannot be read
+          </p>
+          {preview.unmatched.length ? (
+            <p className="m-0 text-[13px] text-muted">
+              Columns not used: {preview.unmatched.join(", ")}. Check none of these matter before importing.
+            </p>
+          ) : null}
+          {preview.rows.length ? (
+            <Table minWidth={760} label="Rows found in the file">
+              <thead>
+                <tr>
+                  <Th>Row</Th>
+                  <Th>Name</Th>
+                  <Th>Email</Th>
+                  <Th>Phone</Th>
+                  <Th>Born</Th>
+                  <Th>Outcome</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.rows.slice(0, 25).map((r) => (
+                  <tr key={r.line}>
+                    <Td className="text-[13px] text-muted">{r.line}</Td>
+                    <Td>{r.fullName || <span className="text-muted">—</span>}</Td>
+                    <Td className="text-[13.5px]">{r.email || <span className="text-muted">—</span>}</Td>
+                    <Td className="text-[13.5px]">{r.phone || <span className="text-muted">—</span>}</Td>
+                    <Td className="text-[13.5px]">{r.dob || <span className="text-muted">—</span>}</Td>
+                    <Td className="text-[13px]">
+                      {r.problem ? (
+                        <span className="text-danger">{r.problem}</span>
+                      ) : r.duplicateOf ? (
+                        <span className="text-muted">Already on file ({r.duplicateOf})</span>
+                      ) : (
+                        <span className="font-semibold text-forest-800">Will import</span>
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <Empty title="No rows found in that file.">Check it is the responses sheet exported as CSV.</Empty>
+          )}
+          {preview.rows.length > 25 ? (
+            <p className="m-0 text-[13px] text-muted">Showing the first 25 of {preview.rows.length} rows.</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Btn
+              variant="primary"
+              disabled={deciding || preview.importable === 0 || preview.missingFields.length > 0}
+              onClick={() => void confirmImport()}
+            >
+              {deciding ? "Importing…" : `Import ${preview.importable} applicant(s)`}
+            </Btn>
+            <Btn onClick={() => setPreview(null)}>Cancel</Btn>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Filter applications" className="flex flex-wrap gap-1.5">

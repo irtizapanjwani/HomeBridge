@@ -120,7 +120,7 @@ export function toApplication(m: MemberDoc): Application {
     submittedAt: LAGOS_DATE.format(m.submittedAt),
     submittedTime: LAGOS_TIME.format(m.submittedAt),
     status: m.supporter ? "Supporter" : (STATUS[m.status] ?? "Submitted"),
-    source: "web",
+    source: m.source === "gform" ? "gform" : "web",
     // `source` on the admin type only knows "web" and "gform"; which site it came from is in the note.
     phone: m.whatsapp || m.contact,
     email: m.email,
@@ -147,7 +147,7 @@ export function toApplication(m: MemberDoc): Application {
     ...(m.payment?.receiptNo ? { receiptNo: m.payment.receiptNo } : {}),
     ...(m.welcomePack ? { welcomeSentAt: `${LAGOS_DATE.format(m.welcomePack.sentAt)}, ${LAGOS_TIME.format(m.welcomePack.sentAt)}` } : {}),
     note: [
-      m.source === "vekat" ? "Registered on vekat.org." : "",
+      m.source === "vekat" ? "Registered on vekat.org." : m.source === "gform" ? "Imported from the Google Form." : "",
       m.payment?.status === "Verified"
         ? `Fee verified automatically by ${m.payment.provider ?? "the provider"}${m.payment.amount ? ` — ${m.payment.amount}` : ""}.`
         : m.payment?.status === "Claimed"
