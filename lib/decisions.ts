@@ -118,7 +118,7 @@ async function approve(
   before: MemberStatus,
 ): Promise<DecisionResult> {
   const { members } = await collections();
-  const zone = zoneFor({ country: member.country, countryOther: undefined, state: member.state });
+  const zone = zoneFor({ chapter: member.chapter, country: member.country, state: member.state });
   const admittedAt = new Date();
 
   // A number held for this person is issued exactly as reserved, and does not touch the counter;

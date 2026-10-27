@@ -79,21 +79,57 @@ export const COUNTRY_ZONES: Record<string, string> = {
  */
 export const UNKNOWN_ZONE = "INT";
 
+/**
+ * The chapters the registration form offers today, mapped to their codes.
+ *
+ * The zone is the member's *chapter*, not where they happen to live: "ZONE — the member's chapter"
+ * (welcome pack), and "if a member later moves chapter, keep their original number and update the
+ * zone in the register only". Someone living in Ekiti who joined the Edo chapter is EDO.
+ *
+ * Chapters are matched loosely, so "HomeBridge Edo" and "Edo State (Benin City)" both give EDO and
+ * a renamed chapter keeps working.
+ */
+const CHAPTER_PATTERNS: { test: RegExp; zone: string }[] = [
+  { test: /abuja|fct/i, zone: "FCT" },
+  { test: /\bedo\b|benin city/i, zone: "EDO" },
+  { test: /united kingdom|\buk\b|britain/i, zone: "UK" },
+];
+
+/** True when a member has not picked a chapter yet, so their zone falls back to where they live. */
+const NO_CHAPTER = /^\s*$|none yet/i;
+
 export type ZoneInput = {
+  /** The member's chapter, e.g. "HomeBridge Edo". Takes precedence over country and state. */
+  chapter?: string;
   country: string;
   countryOther?: string;
   state: string;
 };
 
 /**
- * Works out the zone code for a member. Nigeria-resident members are zoned by state, everyone else
- * by country. Returns UNKNOWN_ZONE rather than throwing, so an approval is never blocked by a
- * country missing from the table.
+ * Works out the zone code for a member.
+ *
+ * The chapter decides it. Only when a member has no chapter yet does this fall back to where they
+ * live — by state inside Nigeria, by country abroad — so a number can still be issued rather than
+ * the approval being blocked. Returns UNKNOWN_ZONE rather than throwing for anything unrecognised.
  */
-export function zoneFor({ country, countryOther, state }: ZoneInput): string {
+export function zoneFor({ chapter, country, countryOther, state }: ZoneInput): string {
+  const named = (chapter ?? "").trim();
+  if (named && !NO_CHAPTER.test(named)) {
+    const hit = CHAPTER_PATTERNS.find((c) => c.test.test(named));
+    if (hit) return hit.zone;
+    // A chapter the patterns do not know yet: try it as a state or country name before giving up,
+    // so adding "HomeBridge Lagos" works without a code change.
+    const bare = named.replace(/^homebridge\s+/i, "").trim();
+    const asState = Object.entries(STATE_ZONES).find(([s]) => s.toLowerCase() === bare.toLowerCase());
+    if (asState) return asState[1];
+    const asCountry = Object.entries(COUNTRY_ZONES).find(([c]) => c.toLowerCase() === bare.toLowerCase());
+    if (asCountry) return asCountry[1];
+  }
+
   if (country === "Nigeria") return STATE_ZONES[state] ?? UNKNOWN_ZONE;
-  const named = COUNTRY_ZONES[country];
-  if (named) return named;
+  const byCountry = COUNTRY_ZONES[country];
+  if (byCountry) return byCountry;
   // "Another country" with free text: match the typed name against the table before giving up.
   const typed = (countryOther ?? "").trim().toLowerCase();
   if (typed) {
