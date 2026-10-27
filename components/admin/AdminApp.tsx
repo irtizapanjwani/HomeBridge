@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PENDING_APP, ROLES, type Application, type LogEntry, type ScreenId } from "@/lib/admin-data";
+import { PENDING_APP, ROLES, type Application, type LogEntry, type Member, type ScreenId } from "@/lib/admin-data";
 import { LockIcon, MenuIcon } from "@/components/ui/Icons";
 import { LogoMark } from "@/components/ui/Logo";
 import { AdminStoreProvider, useAdmin } from "./store";
@@ -34,14 +34,16 @@ const NAV: { id: ScreenId; label: string; what: string; group: 1 | 2 }[] = [
 export function AdminApp({
   initialApps,
   initialLog,
+  initialMembers,
   dbConnected = false,
 }: {
   initialApps?: Application[];
   initialLog?: LogEntry[];
+  initialMembers?: Member[];
   dbConnected?: boolean;
 }) {
   return (
-    <AdminStoreProvider initialApps={initialApps} initialLog={initialLog}>
+    <AdminStoreProvider initialApps={initialApps} initialLog={initialLog} initialMembers={initialMembers}>
       <Shell dbConnected={dbConnected} />
     </AdminStoreProvider>
   );
@@ -216,7 +218,7 @@ function SignOutButton({ className }: { className?: string }) {
 function Screen({ id, dbConnected }: { id: ScreenId; dbConnected: boolean }) {
   switch (id) {
     case "register":
-      return <RegisterScreen />;
+      return <RegisterScreen dbConnected={dbConnected} />;
     case "contributions":
       return <ContributionsScreen />;
     case "applications":

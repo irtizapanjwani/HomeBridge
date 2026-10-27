@@ -120,10 +120,12 @@ export function AdminStoreProvider({
   children,
   initialApps,
   initialLog,
+  initialMembers,
 }: {
   children: React.ReactNode;
   initialApps?: Application[];
   initialLog?: LogEntry[];
+  initialMembers?: Member[];
 }) {
   // The KYC officer opens the back office: the Applications queue is what someone signing in is
   // nearly always here for, and it is the one screen Finance cannot act on.
@@ -136,7 +138,8 @@ export function AdminStoreProvider({
     const id = requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "instant" }));
     return () => cancelAnimationFrame(id);
   }, [screen]);
-  const [members, setMembers] = useState(MEMBERS);
+  // The real register when the database is connected; the sample members otherwise.
+  const [members, setMembers] = useState(initialMembers?.length ? initialMembers : MEMBERS);
   const [lines, setLines] = useState(BANK_LINES);
   const [txs, setTxs] = useState(SHARE_TXS);
   const [transfers, setTransfers] = useState(TRANSFERS);

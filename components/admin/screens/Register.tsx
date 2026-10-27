@@ -12,7 +12,7 @@ import { Btn, Card, Empty, Field, PageHeader, Pill, StatTile, Table, Td, Th, inp
 const TYPES: MemberType[] = ["Home", "Diaspora", "Founding", "Professional", "Group"];
 const STATUSES: MemberStatus[] = ["Active", "Reminder sent", "Dormant", "Suspended", "Awaiting first share", "Withdrawn", "Deceased"];
 
-export function RegisterScreen() {
+export function RegisterScreen({ dbConnected = false }: { dbConnected?: boolean }) {
   const s = useAdmin();
   const toast = useToast();
   const [q, setQ] = s.ui("reg.q", "");
@@ -60,6 +60,7 @@ export function RegisterScreen() {
   return (
     <>
       <PageHeader
+        live={dbConnected}
         title="Member register"
         subtitle="Statutory register of members · Edo and FCT societies"
         actions={

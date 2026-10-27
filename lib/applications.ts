@@ -6,7 +6,7 @@ import { collections } from "@/lib/members";
 import type { MemberDoc } from "@/lib/members";
 import type { Application, AppStatus, KycCheck, MemberType, Region, Society } from "@/lib/admin-data";
 
-const TYPE: Record<string, MemberType> = {
+export const TYPE: Record<string, MemberType> = {
   home: "Home",
   diaspora: "Diaspora",
   founding: "Founding",
@@ -37,14 +37,14 @@ const LAGOS_TIME = new Intl.DateTimeFormat("en-GB", {
 });
 
 /** en-CA gives yyyy-mm-dd, which is the shape the rest of the admin screens compare and sort on. */
-const LAGOS_DATE = new Intl.DateTimeFormat("en-CA", {
+export const LAGOS_DATE = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Africa/Lagos",
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
 });
 
-const idTypeOf = (v: string) => ID_TYPE[v] ?? ID_TYPE[v.trim().toLowerCase()] ?? "NIN";
+export const idTypeOf = (v: string) => ID_TYPE[v] ?? ID_TYPE[v.trim().toLowerCase()] ?? "NIN";
 
 const STATUS: Record<MemberDoc["status"], AppStatus> = {
   Submitted: "Submitted",
@@ -54,7 +54,7 @@ const STATUS: Record<MemberDoc["status"], AppStatus> = {
   Declined: "Refused",
 };
 
-function regionOf(m: MemberDoc): Region {
+export function regionOf(m: MemberDoc): Region {
   if (m.country === "Nigeria") {
     if (m.state === "Edo") return "NG-ED";
     if (m.state === "FCT (Abuja)") return "NG-FC";
@@ -70,20 +70,20 @@ function regionOf(m: MemberDoc): Region {
  * The chapter or cohort the applicant chose decides the society they join. The two sites word it
  * differently ("HomeBridge Abuja" and "Abuja FCT"), so match on the place name.
  */
-const societyOf = (m: MemberDoc): Society => (/abuja|fct/i.test(m.chapter) ? "FC" : "ED");
+export const societyOf = (m: MemberDoc): Society => (/abuja|fct/i.test(m.chapter) ? "FC" : "ED");
 
 /** "HomeBridge Edo" and "Edo State (Benin City)" both show as "Edo". */
-const chapterOf = (m: MemberDoc) => {
+export const chapterOf = (m: MemberDoc) => {
   const c = m.chapter.replace(/^HomeBridge\s+/i, "").trim();
   if (/abuja|fct/i.test(c)) return "AB";
   if (/^edo/i.test(c)) return "ED";
   return c || "None yet";
 };
 
-const routeKindOf = (m: MemberDoc): Application["routeKind"] =>
+export const routeKindOf = (m: MemberDoc): Application["routeKind"] =>
   m.memberType === "group" ? "group" : m.route === "lives" || m.route === "land" || m.route === "other" || m.route === "none" ? m.route : "other";
 
-const ROUTE_LABEL: Record<string, string> = {
+export const ROUTE_LABEL: Record<string, string> = {
   lives: "Lives in Edo State or Abuja FCT",
   land: "Owns or holds land or a home in Edo or FCT",
   other: "Another link (sent for Director approval)",
