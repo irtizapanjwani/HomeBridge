@@ -590,10 +590,22 @@ function Detail({
       ) : null}
 
       {a.memberNo && a.status !== "Refused" ? (
-        <p className="m-0 flex flex-wrap items-center gap-2 rounded-[12px] bg-forest-800 px-4 py-3 text-[14px] text-cream">
-          <CheckIcon size={18} className="text-gold" /> Member number issued: <b className="font-display tracking-wide text-gold">{a.memberNo}</b>
-          <span className="text-[12.5px] text-[#C9D3CC]">— the payment reference for life</span>
-        </p>
+        <div className="flex flex-col gap-2 rounded-[12px] bg-forest-800 px-4 py-3 text-cream">
+          <p className="m-0 flex flex-wrap items-center gap-2 text-[14px]">
+            <CheckIcon size={18} className="text-gold" /> Member number issued: <b className="font-display tracking-wide text-gold">{a.memberNo}</b>
+            <span className="text-[12.5px] text-[#C9D3CC]">— the payment reference for life</span>
+          </p>
+          {/^HBC-/.test(a.memberNo) ? (
+            <a
+              href={`/api/admin/members/${encodeURIComponent(a.memberNo)}/certificate`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-2 rounded-[10px] border border-[#C9D3CC]/40 px-3 py-1.5 text-[13px] font-semibold text-cream hover:bg-white/10"
+            >
+              <DownloadIcon size={16} /> Membership certificate (PDF)
+            </a>
+          ) : null}
+        </div>
       ) : null}
 
       {pending ? (
