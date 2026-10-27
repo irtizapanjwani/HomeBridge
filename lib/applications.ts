@@ -187,8 +187,30 @@ export async function findReceipt(reference: string) {
 }
 
 /** Removes one registration for good. Returns false when there was nothing to remove. */
+/**
+ * Removes a registration for good, and the person behind it when nothing else refers to them.
+ *
+ * The people collection is shared with the VEKAT site, so a person is only removed once they hold
+ * no other registration and no enquiry: otherwise deleting one test record would cut the link
+ * under a real one. Deleting the registration alone would leave the person's name, email and
+ * phone behind with nothing pointing at them, which is not what "delete" should mean.
+ */
 export async function deleteApplication(reference: string) {
-  const { members } = await collections();
+  const { members, enquiries, people } = await collections();
+  const doc = await members.findOne({ reference }, { projection: { personRef: 1 } });
+  if (!doc) return false;
+
   const res = await members.deleteOne({ reference });
-  return res.deletedCount === 1;
+  if (res.deletedCount !== 1) return false;
+
+  if (doc.personRef) {
+    const [stillMember, stillEnquiry] = await Promise.all([
+      members.countDocuments({ personRef: doc.personRef }, { limit: 1 }),
+      enquiries.countDocuments({ personRef: doc.personRef }, { limit: 1 }),
+    ]);
+    if (stillMember === 0 && stillEnquiry === 0) {
+      await people.deleteOne({ reference: doc.personRef });
+    }
+  }
+  return true;
 }

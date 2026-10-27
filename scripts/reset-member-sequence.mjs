@@ -1,14 +1,16 @@
 /**
- * Sets the membership counter so the next number issued is the one you give it.
+ * Sets a counter so the next number issued is the one you give it.
  *
- * For tidying up before go-live, when a test approval has used a number that a real member should
- * have had. Once real members exist, numbers are never reused (brief p.6) — so this refuses to
- * move the counter backwards past a number that is actually in use.
+ * For tidying up before go-live, when a test record has used a number a real member should have
+ * had. Once real members exist, numbers are never reused (brief p.6) — so this refuses to move a
+ * counter back past a number that is actually in use.
  *
- *   node scripts/reset-member-sequence.mjs            # show where the counter is
- *   node scripts/reset-member-sequence.mjs 2          # next member becomes 00002
+ *   node scripts/reset-member-sequence.mjs              # show both counters and what is in use
+ *   node scripts/reset-member-sequence.mjs 2            # next membership number becomes 00002
+ *   node scripts/reset-member-sequence.mjs receipt 1    # next receipt number becomes 00001
  *
- * Reads MONGODB_URI from the environment or .env.local.
+ * Delete the test registration in the admin first: this only moves counters, it does not remove
+ * anybody. Reads MONGODB_URI from the environment or a .env file.
  */
 
 import { readFileSync } from "node:fs";
@@ -54,7 +56,10 @@ if (!uri) {
   process.exit(1);
 }
 
-const arg = process.argv[2];
+const args = process.argv.slice(2);
+const which = args[0] === "receipt" || args[0] === "member" ? args.shift() : "member";
+const arg = args[0];
+
 const client = new MongoClient(uri);
 
 try {
@@ -63,20 +68,39 @@ try {
   const counters = db.collection("counters");
   const members = db.collection("members");
 
-  const current = (await counters.findOne({ _id: "member_seq" }))?.value ?? 0;
+  const at = async (id) => (await counters.findOne({ _id: id }))?.value ?? 0;
+  const memberSeq = await at("member_seq");
+  const receiptSeq = await at("receipt_seq");
+
   const issued = await members
-    .find({ "membership.memberNo": { $exists: true } }, { projection: { "membership.memberNo": 1, fullName: 1, _id: 0 } })
+    .find(
+      { "membership.memberNo": { $exists: true } },
+      { projection: { "membership.memberNo": 1, "membership.seq": 1, fullName: 1, _id: 0 } },
+    )
+    .toArray();
+  const receipts = await members
+    .find(
+      { "payment.receiptNo": { $exists: true } },
+      { projection: { "payment.receiptNo": 1, fullName: 1, _id: 0 } },
+    )
     .toArray();
 
-  console.log(`Counter is at ${current}; the next ordinary number would be ${current + 1}.`);
+  console.log(`Membership counter: ${memberSeq} — next ordinary number would be ${memberSeq + 1}.`);
   console.log(
     issued.length
-      ? `Numbers in use (${issued.length}):\n  ${issued.map((m) => `${m.membership.memberNo}  ${m.fullName}`).join("\n  ")}`
-      : "No membership numbers have been issued.",
+      ? `  in use:\n    ${issued.map((m) => `${m.membership.memberNo}  ${m.fullName}`).join("\n    ")}`
+      : "  none issued.",
+  );
+  console.log(`Receipt counter: ${receiptSeq} — next receipt would be ${receiptSeq + 1}.`);
+  console.log(
+    receipts.length
+      ? `  in use:\n    ${receipts.map((m) => `${m.payment.receiptNo}  ${m.fullName}`).join("\n    ")}`
+      : "  none issued.",
   );
 
   if (arg === undefined) {
-    console.log("\nPass the next number you want, e.g. `node scripts/reset-member-sequence.mjs 2`.");
+    console.log("\nPass the next number you want, e.g. `node scripts/reset-member-sequence.mjs 2`");
+    console.log("or, for receipts, `node scripts/reset-member-sequence.mjs receipt 1`.");
     process.exit(0);
   }
 
@@ -86,19 +110,25 @@ try {
     process.exit(1);
   }
 
-  // Refuse to point the counter at a number a member already holds: two members with the same
+  // Refuse to point a counter at a number something already holds: two records with the same
   // number is the one failure this whole scheme exists to prevent.
-  const clash = issued.find((m) => Number(m.membership.memberNo.slice(-5)) >= next);
+  const digitsOf = (s) => Number(String(s).slice(-5));
+  const clash =
+    which === "member"
+      ? issued.find((m) => digitsOf(m.membership.memberNo) >= next)
+      : receipts.find((m) => digitsOf(m.payment.receiptNo) >= next);
   if (clash) {
+    const held = which === "member" ? clash.membership.memberNo : clash.payment.receiptNo;
     console.error(
-      `\nRefusing: ${clash.membership.memberNo} (${clash.fullName}) is at or above ${next}, so the ` +
-        `next member would reuse a number. Delete that registration first if it was a test.`,
+      `\nRefusing: ${held} (${clash.fullName}) is at or above ${next}, so the next one would ` +
+        `reuse a number. Delete that registration in the admin first if it was a test.`,
     );
     process.exit(1);
   }
 
-  await counters.updateOne({ _id: "member_seq" }, { $set: { value: next - 1 } }, { upsert: true });
-  console.log(`\nDone. The next ordinary membership number will be ${String(next).padStart(5, "0")}.`);
+  const id = which === "member" ? "member_seq" : "receipt_seq";
+  await counters.updateOne({ _id: id }, { $set: { value: next - 1 } }, { upsert: true });
+  console.log(`\nDone. The next ${which === "member" ? "membership" : "receipt"} number will be ${String(next).padStart(5, "0")}.`);
 } finally {
   await client.close();
 }
