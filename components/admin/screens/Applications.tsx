@@ -190,6 +190,27 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
    * Approval reads the stored result, so this is what lets an application be approved at all:
    * until an officer records a pass, the Approve button stays blocked.
    */
+  /** Sends the welcome pack, or sends it again. */
+  async function sendWelcome(a: Application) {
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}/welcome-pack`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; sentAt?: string; documents?: string[] };
+      if (!res.ok || !data.ok) {
+        setErr(data.error || "The welcome pack could not be sent. Nothing was changed.");
+        return;
+      }
+      update(a.id, { welcomeSentAt: "just now" });
+      s.addLog(a.welcomeSentAt ? "Resent welcome pack" : "Sent welcome pack", a.id, "—", `${data.documents?.length ?? 0} documents to ${a.email}`);
+      toast(`Welcome pack sent to ${a.email} with ${data.documents?.length ?? 0} documents.`);
+    } catch {
+      setErr("We could not reach the server. Nothing was sent.");
+    } finally {
+      setDeciding(false);
+    }
+  }
+
   /** Confirms the joining fee on the server, which issues the VEKAT receipt number. */
   async function confirmFee(a: Application) {
     setDeciding(true);
@@ -494,6 +515,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
             onSupporter={toSupporter}
             onIdCheck={recordIdCheck}
             onConfirmFee={confirmFee}
+            onSendWelcome={sendWelcome}
             onRegister={enterRegister}
             onDelete={destroy}
             deleting={deleting}
@@ -519,6 +541,7 @@ function Detail({
   onSupporter,
   onIdCheck,
   onConfirmFee,
+  onSendWelcome,
   onRegister,
   onDelete,
   deleting,
@@ -537,6 +560,7 @@ function Detail({
   onSupporter: (a: Application) => void;
   onIdCheck: (a: Application, result: "Pass" | "Refer" | "Fail") => void | Promise<void>;
   onConfirmFee: (a: Application) => void | Promise<void>;
+  onSendWelcome: (a: Application) => void | Promise<void>;
   onRegister: (a: Application) => void;
   onDelete: (a: Application) => void;
   deleting: boolean;
@@ -644,7 +668,18 @@ function Detail({
                 <DownloadIcon size={16} /> Fee receipt {a.receiptNo}
               </a>
             ) : null}
+            <button
+              type="button"
+              disabled={deciding}
+              onClick={() => onSendWelcome(a)}
+              className="inline-flex w-fit items-center gap-2 rounded-[10px] bg-gold px-3 py-1.5 text-[13px] font-semibold text-ink hover:brightness-95 disabled:opacity-60"
+            >
+              {deciding ? "Sending…" : a.welcomeSentAt ? "Resend welcome pack" : "Send welcome pack"}
+            </button>
           </div>
+          {a.welcomeSentAt ? (
+            <p className="m-0 text-[12.5px] text-[#C9D3CC]">Welcome pack sent {a.welcomeSentAt} to {a.email}.</p>
+          ) : null}
         </div>
       ) : null}
 

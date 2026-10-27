@@ -519,6 +519,8 @@ export type Application = {
   payerName?: string;
   /** VKT-RCP-YY-NNNNN, present once the joining fee has been confirmed. */
   receiptNo?: string;
+  /** When the welcome pack was last sent, formatted in Lagos. Absent until it has been. */
+  welcomeSentAt?: string;
 };
 
 export const APPLICATIONS: Application[] = [

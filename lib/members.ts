@@ -182,6 +182,19 @@ export type MemberDoc = {
     at: Date;
   };
 
+  /**
+   * When the welcome pack went out, and what it contained (brief p.4: "Log send time; allow admin
+   * resend"). Overwritten on a resend; the audit log keeps the full history of sends.
+   */
+  welcomePack?: {
+    sentAt: Date;
+    to: string;
+    by: string;
+    /** Resend's id for the message, for tracing a delivery complaint. */
+    messageId: string;
+    documents: string[];
+  };
+
   source: "homebridge" | "vekat";
   submittedAt: Date;
   updatedAt: Date;

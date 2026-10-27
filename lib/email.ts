@@ -21,11 +21,17 @@ export const isEmailConfigured = () => Boolean(apiKey);
 
 export type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
+export type Attachment = {
+  filename: string;
+  content: Uint8Array | Buffer;
+};
+
 type SendInput = {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: Attachment[];
 };
 
 /**
@@ -50,6 +56,15 @@ export async function sendEmail(input: SendInput): Promise<SendResult> {
         text: input.text,
         html: input.html,
         ...(bcc ? { bcc: [bcc] } : {}),
+        // Resend takes attachment bytes base64-encoded.
+        ...(input.attachments?.length
+          ? {
+              attachments: input.attachments.map((a) => ({
+                filename: a.filename,
+                content: Buffer.from(a.content).toString("base64"),
+              })),
+            }
+          : {}),
         // A no-reply sender has no mailbox behind it, so replies are pointed at one that does.
         ...(replyTo ? { reply_to: [replyTo] } : {}),
       }),
