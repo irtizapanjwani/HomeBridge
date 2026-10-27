@@ -4,8 +4,7 @@ import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { recordIdCheck, type IdCheckResult } from "@/lib/decisions";
 
-/** A reference as either site issues it, so a stray path segment never reaches the query. */
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 const RESULTS: IdCheckResult[] = ["Pass", "Refer", "Fail"];
 

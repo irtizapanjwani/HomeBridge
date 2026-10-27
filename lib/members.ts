@@ -15,6 +15,18 @@ import type { Declarations, Draft, Nominee } from "@/lib/register-data";
 /** Reference alphabet without look-alike characters (0/O, 1/I). */
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+/**
+ * The shapes a registration reference can take.
+ *
+ *   HBC-UK-26-00001   a membership number, issued at registration since October 2026
+ *   APP-FT9343        the random reference issued before that; still held by real applicants
+ *   SUP-XXXXXX        a supporter, who is not a member and never gets a membership number
+ *   HB-...            references created on the VEKAT site
+ *
+ * The older shapes are not retired: people are holding them in their inbox and quoting them.
+ */
+export const isApplicationReference = (v: string) => /^(HBC|APP|SUP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+
 export function makeReference(prefix: string) {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   return `${prefix}-${Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("")}`;

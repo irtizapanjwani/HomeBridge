@@ -4,8 +4,7 @@ import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { confirmFeePayment } from "@/lib/fees";
 
-/** A reference as either site issues it, so a stray path segment never reaches the query. */
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 /**
  * Confirms that the joining fee has been received, and issues the VEKAT receipt number.

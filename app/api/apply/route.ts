@@ -23,6 +23,7 @@ import { BANK_METHOD, CARD_METHOD } from "@/lib/payment-methods";
 import { RECEIPT_MAX_BASE64, RECEIPT_MAX_BYTES, isReceiptType } from "@/lib/receipt";
 import { isDbConfigured } from "@/lib/db";
 import { collections, draftToMember, ensureIndexes, makeReference, upsertPerson, type StoredReceipt } from "@/lib/members";
+import { issueRegistrationNumber } from "@/lib/numbering";
 import { createMemberSession, hashPassword, isMemberAuthConfigured, passwordProblem } from "@/lib/member-auth";
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -180,7 +181,17 @@ export async function POST(req: Request) {
     });
 
     const { members } = await collections();
-    const reference = makeReference(supporter ? "SUP" : "APP");
+    // A member's reference is their membership number, issued here at registration rather than on
+    // approval, at the client's request. Supporters are not members and never get one.
+    const reference = supporter
+      ? makeReference("SUP")
+      : (
+          await issueRegistrationNumber({
+            chapter: draft.chapter,
+            country: draft.country === "Another country" ? draft.countryOther : draft.country,
+            state: draft.state,
+          })
+        ).memberNo;
     const passwordHash = await hashPassword(draft.password);
     await members.insertOne(draftToMember(draft, { reference, personRef, fullName, passwordHash, receipt }));
 

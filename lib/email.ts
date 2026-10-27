@@ -173,6 +173,13 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
   const name = input.firstName.trim() || "there";
   const ref = input.reference;
   const payRef = input.paymentReference?.trim() || "";
+  // Since the membership number is issued at registration, the number in this email is the
+  // member's permanent one rather than a temporary application reference, and is named as such.
+  const isMemberNo = ref.startsWith("HBC-");
+  const refLabel = isMemberNo ? "Your membership number" : "Your reference";
+  const keepIt = isMemberNo
+    ? "Please keep it safe. It is your permanent reference with HomeBridge: quote it on every payment, form and enquiry."
+    : "Please keep it. Quote it in any message to us about your membership.";
 
   const feeLine = input.supporter
     ? {
@@ -191,8 +198,8 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
       ? `Thank you for joining the HomeBridge Cooperative Supporter list.`
       : `Thank you for applying to join HomeBridge Cooperative. We have your application.`,
     ``,
-    `Your reference: ${ref}`,
-    `Please keep it. Quote it in any message to us about your membership.`,
+    `${refLabel}: ${ref}`,
+    keepIt,
     ``,
     feeLine.text,
     ``,
@@ -215,11 +222,11 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
       }</p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#F3F1EA;border-radius:8px">
         <tr><td style="padding:16px;text-align:center">
-          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B6A61">Your reference</div>
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B6A61">${esc(refLabel)}</div>
           <div style="font-size:22px;font-weight:700;letter-spacing:.04em;margin-top:4px">${esc(ref)}</div>
         </td></tr>
       </table>
-      <p style="margin:0 0 16px">Please keep it. Quote it in any message to us about your membership.</p>
+      <p style="margin:0 0 16px">${esc(keepIt)}</p>
       <p style="margin:0 0 16px">${feeLine.html}</p>
       <p style="margin:0 0 20px">${
         input.supporter
@@ -233,7 +240,11 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
 
   return sendEmail({
     to: input.to,
-    subject: input.supporter ? `You're on the HomeBridge Supporter list — ${ref}` : `Your HomeBridge application — ${ref}`,
+    subject: input.supporter
+      ? `You're on the HomeBridge Supporter list — ${ref}`
+      : isMemberNo
+        ? `Your HomeBridge membership number — ${ref}`
+        : `Your HomeBridge application — ${ref}`,
     text,
     html,
   });

@@ -7,8 +7,7 @@ import { collections } from "@/lib/members";
 import { buildReceipt } from "@/lib/pdf/receipt";
 import { JOINING_FEE } from "@/lib/settings";
 
-/** A reference as either site issues it, so a stray path segment never reaches the query. */
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 const CATEGORY: Record<string, string> = {
   home: "Home",

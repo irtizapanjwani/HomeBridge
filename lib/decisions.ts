@@ -121,13 +121,26 @@ async function approve(
   const zone = zoneFor({ chapter: member.chapter, country: member.country, state: member.state });
   const admittedAt = new Date();
 
+  // Since October 2026 a member's reference IS their membership number, issued when they
+  // registered, so approval confirms it rather than handing out a second one. Applicants who
+  // registered before that still carry an APP- reference and are numbered here as they always were.
+  const alreadyNumbered = member.reference.startsWith("HBC-");
+
   // A number held for this person is issued exactly as reserved, and does not touch the counter;
   // the counter steps over reserved positions for everyone else.
-  const reserved = reservationFor(member.reference);
+  const reserved = alreadyNumbered ? undefined : reservationFor(member.reference);
 
   const write = async (session?: ClientSession): Promise<string> => {
-    const seq = reserved ? reserved.seq : await nextMemberSeq(session);
-    const memberNo = reserved ? reserved.memberNo : formatMemberNo(zone, admittedAt, seq);
+    const seq = alreadyNumbered
+      ? Number(member.reference.slice(-5))
+      : reserved
+        ? reserved.seq
+        : await nextMemberSeq(session);
+    const memberNo = alreadyNumbered
+      ? member.reference
+      : reserved
+        ? reserved.memberNo
+        : formatMemberNo(zone, admittedAt, seq);
 
     // Guarded on the status so a second approval arriving at the same moment matches nothing and
     // we can tell the caller rather than issuing a second number for the same person.
@@ -136,7 +149,7 @@ async function approve(
       {
         $set: {
           status: "Approved" as MemberStatus,
-          membership: { memberNo, zone: reserved ? zoneOf(reserved.memberNo) : zone, seq, admittedAt },
+          membership: { memberNo, zone: memberNo === reserved?.memberNo || alreadyNumbered ? zoneOf(memberNo) : zone, seq, admittedAt },
           decision: { outcome: "Approved" as MemberStatus, reason, by: actor, at: admittedAt },
           updatedAt: admittedAt,
         },
@@ -150,7 +163,7 @@ async function approve(
         action: AUDIT_ACTION.approve,
         actor,
         subject: member.reference,
-        detail: `Approved — issued ${memberNo}`,
+        detail: alreadyNumbered ? `Approved — ${memberNo} confirmed` : `Approved — issued ${memberNo}`,
         before,
         after: "Approved",
       },
@@ -158,10 +171,12 @@ async function approve(
     );
     await recordAudit(
       {
-        action: "member.number_issued",
+        action: alreadyNumbered ? "member.number_confirmed" : "member.number_issued",
         actor,
         subject: memberNo,
-        detail: `Membership number ${memberNo} issued to ${member.fullName} (${member.reference})`,
+        detail: alreadyNumbered
+          ? `Membership number ${memberNo} confirmed for ${member.fullName} on admission`
+          : `Membership number ${memberNo} issued to ${member.fullName} (${member.reference})`,
       },
       session,
     );

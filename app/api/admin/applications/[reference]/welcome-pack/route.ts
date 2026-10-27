@@ -5,8 +5,7 @@ import { isDbConfigured } from "@/lib/db";
 import { isEmailConfigured } from "@/lib/email";
 import { sendWelcomePack } from "@/lib/welcome-pack";
 
-/** A reference as either site issues it, so a stray path segment never reaches the query. */
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 /**
  * Sends the welcome pack to an admitted member, or sends it again.

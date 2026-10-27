@@ -39,6 +39,16 @@ const ACTION_LABEL: Record<string, string> = {
   "application.in_review": "Marked in review",
   "application.id_checked": "Recorded ID check",
   "member.number_issued": "Issued membership number",
+  "member.number_confirmed": "Confirmed membership number",
+  "member.certificate_issued": "Generated certificate",
+  "fee.confirmed": "Confirmed joining fee",
+  "fee.receipt_issued": "Generated fee receipt",
+  "fee.receipt_emailed": "Emailed fee receipt",
+  "fee.receipt_email_failed": "Fee receipt email failed",
+  "welcome_pack.sent": "Sent welcome pack",
+  "welcome_pack.resent": "Resent welcome pack",
+  "welcome_pack.failed": "Welcome pack failed to send",
+  "applications.imported": "Imported Google Form applicants",
 };
 
 // One fixed zone, so officers in Benin City, Abuja and the UK read the same clock and the page

@@ -24,6 +24,7 @@ import type { ClientSession } from "mongodb";
 import { getClient } from "@/lib/db";
 import { collections } from "@/lib/members";
 import { RESERVED_SEQS } from "@/lib/reserved-numbers";
+import { zoneFor } from "@/lib/zones";
 
 export const MEMBER_SEQUENCE = "member_seq";
 export const RECEIPT_SEQUENCE = "receipt_seq";
@@ -56,6 +57,30 @@ export async function nextMemberSeq(session?: ClientSession): Promise<number> {
     if (!RESERVED_SEQS.has(doc.value)) return doc.value;
   }
   throw new Error("Could not take the next membership number past the reserved ones");
+}
+
+/**
+ * Issues the membership number a new applicant is given at registration.
+ *
+ * The client asked for one number for the whole journey: the same HBC-ZONE-YY-NNNNN is the
+ * applicant's reference from the moment they register and stays their membership number after
+ * approval. That departs from the brief, which issues it only on approval so that "declined
+ * applicants never receive a membership number, so the member sequence has no gaps" (p.3). With
+ * the number given out up front, anyone declined keeps theirs and the register will have gaps.
+ * The client has accepted that.
+ *
+ * Reserved numbers are still stepped over, so a held number cannot be taken by a new registration.
+ */
+export async function issueRegistrationNumber(input: {
+  chapter?: string;
+  country: string;
+  state: string;
+  at?: Date;
+}): Promise<{ memberNo: string; zone: string; seq: number }> {
+  const at = input.at ?? new Date();
+  const zone = zoneFor({ chapter: input.chapter, country: input.country, state: input.state });
+  const seq = await nextMemberSeq();
+  return { memberNo: formatMemberNo(zone, at, seq), zone, seq };
 }
 
 /** VKT-RCP-YY-NNNNN — the VEKAT joining fee receipt (brief p.5). */

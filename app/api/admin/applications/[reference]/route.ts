@@ -3,8 +3,7 @@ import { isSignedIn } from "@/lib/admin-auth";
 import { deleteApplication } from "@/lib/applications";
 import { isDbConfigured } from "@/lib/db";
 
-/** A reference as either site issues it, so a stray path segment never reaches the query. */
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 /**
  * Deletes one registration for good.

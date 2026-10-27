@@ -3,7 +3,7 @@ import { isSignedIn } from "@/lib/admin-auth";
 import { findReceipt } from "@/lib/applications";
 import { isDbConfigured } from "@/lib/db";
 
-const isReference = (v: string) => /^(APP|HB)-[A-Z0-9-]{4,40}$/.test(v);
+import { isApplicationReference as isReference } from "@/lib/members";
 
 /** Only what a receipt may be, so a stored type cannot turn into something the browser executes. */
 const SERVABLE = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"]);
