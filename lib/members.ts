@@ -149,6 +149,22 @@ export type MemberDoc = {
   };
 
   /**
+   * The officer's identity check (brief p.2: the VEKAT Administrator "review[s] applications,
+   * verif[ies] ID, approve[s] or decline[s]"). An application cannot be approved until this says
+   * Pass, so the check is a deliberate, recorded act rather than something assumed.
+   *
+   * This records the officer's conclusion, not the documents: ID numbers and images are never
+   * stored here.
+   */
+  idCheck?: {
+    result: "Pass" | "Refer" | "Fail";
+    /** Optional note, e.g. which document was seen. Never the document number itself. */
+    note?: string;
+    by: string;
+    at: Date;
+  };
+
+  /**
    * The most recent vetting decision. Every decision is also appended to the audit log, which is
    * the permanent record; this is just the current state, for the queue to read quickly.
    */

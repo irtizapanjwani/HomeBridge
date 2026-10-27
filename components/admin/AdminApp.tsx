@@ -177,7 +177,7 @@ function Shell({ dbConnected }: { dbConnected: boolean }) {
               <NoAccess role={`The ${s.role.title} role`} what={current.what} />
             </>
           ) : (
-            <Screen id={s.screen} />
+            <Screen id={s.screen} dbConnected={dbConnected} />
           )}
         </main>
       </div>
@@ -205,14 +205,14 @@ function SignOutButton({ className }: { className?: string }) {
   );
 }
 
-function Screen({ id }: { id: ScreenId }) {
+function Screen({ id, dbConnected }: { id: ScreenId; dbConnected: boolean }) {
   switch (id) {
     case "register":
       return <RegisterScreen />;
     case "contributions":
       return <ContributionsScreen />;
     case "applications":
-      return <ApplicationsScreen />;
+      return <ApplicationsScreen dbConnected={dbConnected} />;
     case "fees":
       return <JoiningFeesScreen />;
     case "withdrawals":

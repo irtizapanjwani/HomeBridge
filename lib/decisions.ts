@@ -195,3 +195,61 @@ async function withoutTransaction(write: () => Promise<string>): Promise<string>
 }
 
 class AlreadyDecided extends Error {}
+
+export type IdCheckResult = "Pass" | "Refer" | "Fail";
+
+export type IdCheckInput = {
+  reference: string;
+  result: IdCheckResult;
+  actor: string;
+  note?: string;
+};
+
+export type IdCheckOutcome =
+  | { ok: true; result: IdCheckResult }
+  | { ok: false; error: string; code: "not_found" | "settled" };
+
+/**
+ * Records an officer's identity check against an application.
+ *
+ * Kept separate from the decision itself: verifying who someone is and deciding whether to admit
+ * them are two acts by two different standards, and the brief's checklist treats them that way.
+ * Approval reads the stored result, so an application can only be approved once an officer has
+ * actually recorded a pass.
+ *
+ * Only the conclusion is stored. The ID number and any document image stay where they are.
+ */
+export async function recordIdCheck(input: IdCheckInput): Promise<IdCheckOutcome> {
+  const { reference, result, actor } = input;
+  const note = input.note?.trim().slice(0, 300) || undefined;
+
+  const { members } = await collections();
+  const existing = await members.findOne({ reference });
+  if (!existing) {
+    return { ok: false, error: "That registration no longer exists", code: "not_found" };
+  }
+  if (!DECIDABLE.includes(existing.status)) {
+    return {
+      ok: false,
+      error: `This application is already ${existing.status.toLowerCase()}`,
+      code: "settled",
+    };
+  }
+
+  const at = new Date();
+  await members.updateOne(
+    { reference, status: { $in: DECIDABLE } },
+    { $set: { idCheck: { result, note, by: actor, at }, updatedAt: at } },
+  );
+
+  await recordAudit({
+    action: "application.id_checked",
+    actor,
+    subject: reference,
+    detail: note ? `ID check recorded as ${result} — ${note}` : `ID check recorded as ${result}`,
+    before: existing.idCheck?.result ?? "Not started",
+    after: result,
+  });
+
+  return { ok: true, result };
+}

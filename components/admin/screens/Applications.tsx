@@ -48,7 +48,7 @@ function checks(a: Application) {
   return list;
 }
 
-export function ApplicationsScreen() {
+export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: boolean }) {
   const s = useAdmin();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -184,10 +184,34 @@ export function ApplicationsScreen() {
     toast(`${a.name} added to the free Supporter list.`);
   }
 
-  function sendIdLink(a: Application) {
-    update(a.id, { status: "In review", kyc: { ...a.kyc, result: "Pending", liveness: "Pending", docMatch: "Pending" } });
-    s.addLog("Sent ID-check link", a.id, `${a.status} · ID ${a.kyc.result}`, "In review · ID check pending");
-    toast(`ID-check link sent to ${a.name}. The provider result will appear here.`);
+  /**
+   * Records the officer's identity check on the server.
+   *
+   * Approval reads the stored result, so this is what lets an application be approved at all:
+   * until an officer records a pass, the Approve button stays blocked.
+   */
+  async function recordIdCheck(a: Application, result: "Pass" | "Refer" | "Fail") {
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}/id-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setErr(data.error || "The ID check could not be saved. Nothing was changed.");
+        return;
+      }
+      update(a.id, { kyc: { ...a.kyc, result, reviewer: s.role.person } });
+      s.addLog("Recorded ID check", a.id, `ID ${a.kyc.result}`, `ID ${result}`);
+      toast(`ID check recorded as ${result} for ${a.name}.`);
+    } catch {
+      setErr("We could not reach the server. Nothing was saved.");
+    } finally {
+      setDeciding(false);
+    }
   }
 
   function enterRegister(a: Application) {
@@ -286,6 +310,7 @@ export function ApplicationsScreen() {
       <PageHeader
         title="Applications"
         subtitle="KYC queue · decide within 30 days, target 2 working days (6.2)"
+        live={dbConnected}
         actions={
           <>
             <Btn onClick={() => download("homebridge-google-form-sample.csv", GFORM_SAMPLE)}>
@@ -442,7 +467,7 @@ export function ApplicationsScreen() {
             onApprove={approve}
             onSubmitReason={submitReason}
             onSupporter={toSupporter}
-            onIdLink={sendIdLink}
+            onIdCheck={recordIdCheck}
             onRegister={enterRegister}
             onDelete={destroy}
             deleting={deleting}
@@ -466,7 +491,7 @@ function Detail({
   onApprove,
   onSubmitReason,
   onSupporter,
-  onIdLink,
+  onIdCheck,
   onRegister,
   onDelete,
   deleting,
@@ -483,7 +508,7 @@ function Detail({
   onApprove: (a: Application) => void | Promise<void>;
   onSubmitReason: (a: Application) => void | Promise<void>;
   onSupporter: (a: Application) => void;
-  onIdLink: (a: Application) => void;
+  onIdCheck: (a: Application, result: "Pass" | "Refer" | "Fail") => void | Promise<void>;
   onRegister: (a: Application) => void;
   onDelete: (a: Application) => void;
   deleting: boolean;
@@ -587,9 +612,14 @@ function Detail({
                 {deciding ? "Saving…" : "Approve"}
               </Btn>
             )}
-            {a.kyc.result === "Not started" ? (
-              <Btn reason={decideReason} onClick={() => onIdLink(a)}>
-                Send ID-check link
+            {a.kyc.result !== "Pass" ? (
+              <Btn variant="primary" reason={decideReason} disabled={deciding} onClick={() => onIdCheck(a, "Pass")}>
+                {deciding ? "Saving…" : "ID checked — passed"}
+              </Btn>
+            ) : null}
+            {a.kyc.result !== "Fail" ? (
+              <Btn reason={decideReason} disabled={deciding} onClick={() => onIdCheck(a, "Fail")}>
+                ID check failed
               </Btn>
             ) : null}
             <Btn reason={decideReason} aria-pressed={mode === "info"} onClick={() => setMode(mode === "info" ? null : "info")}>

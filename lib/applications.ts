@@ -133,8 +133,9 @@ export function toApplication(m: MemberDoc): Application {
       liveness: "Not required",
       docMatch: "Pending",
       addressOk: false,
-      // The applicant says they have sent their documents; an officer still has to check them.
-      result: m.idDocsEmailed ? "Pending" : "Not started",
+      // An officer's recorded check wins. Without one, the applicant saying they have sent their
+      // documents only means the check is waiting to be done, never that it passed.
+      result: m.idCheck?.result ?? (m.idDocsEmailed ? "Pending" : "Not started"),
     },
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, percent: n.share })),
     // Issued on approval and never changed afterwards; absent until then.

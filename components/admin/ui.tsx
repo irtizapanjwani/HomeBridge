@@ -15,15 +15,24 @@ export function SampleData() {
   return <span className="inline-flex items-center rounded-full bg-[#EDE4C4] px-2.5 py-0.5 text-[12px] font-semibold text-[#5B5232]">Sample data</span>;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
+/**
+ * `live` marks a screen whose data comes from the database rather than the sample set, so the
+ * "Sample data" pill is not shown there. It was unconditional, which told officers that real
+ * registrations were fake.
+ */
+export function PageHeader({ title, subtitle, actions, live }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode; live?: boolean }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <h1 className="m-0 font-display text-[clamp(26px,3vw,34px)] leading-tight font-bold text-forest-800">{title}</h1>
         <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-muted">
           {subtitle}
-          {subtitle ? <span aria-hidden="true">·</span> : null}
-          <SampleData />
+          {live ? null : (
+            <>
+              {subtitle ? <span aria-hidden="true">·</span> : null}
+              <SampleData />
+            </>
+          )}
         </p>
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2.5">{actions}</div> : null}
