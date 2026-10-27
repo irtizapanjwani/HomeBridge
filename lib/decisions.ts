@@ -16,6 +16,7 @@ import { getClient } from "@/lib/db";
 import { recordAudit } from "@/lib/audit";
 import { type MemberDoc, type MemberStatus, collections, ensureIndexes } from "@/lib/members";
 import { formatMemberNo, nextMemberSeq, supportsTransactions } from "@/lib/numbering";
+import { reservationFor } from "@/lib/reserved-numbers";
 import { zoneFor } from "@/lib/zones";
 
 export type Outcome = "approve" | "decline" | "request-info" | "review";
@@ -120,9 +121,13 @@ async function approve(
   const zone = zoneFor({ country: member.country, countryOther: undefined, state: member.state });
   const admittedAt = new Date();
 
+  // A number held for this person is issued exactly as reserved, and does not touch the counter;
+  // the counter steps over reserved positions for everyone else.
+  const reserved = reservationFor(member.reference);
+
   const write = async (session?: ClientSession): Promise<string> => {
-    const seq = await nextMemberSeq(session);
-    const memberNo = formatMemberNo(zone, admittedAt, seq);
+    const seq = reserved ? reserved.seq : await nextMemberSeq(session);
+    const memberNo = reserved ? reserved.memberNo : formatMemberNo(zone, admittedAt, seq);
 
     // Guarded on the status so a second approval arriving at the same moment matches nothing and
     // we can tell the caller rather than issuing a second number for the same person.
@@ -131,7 +136,7 @@ async function approve(
       {
         $set: {
           status: "Approved" as MemberStatus,
-          membership: { memberNo, zone, seq, admittedAt },
+          membership: { memberNo, zone: reserved ? zoneOf(reserved.memberNo) : zone, seq, admittedAt },
           decision: { outcome: "Approved" as MemberStatus, reason, by: actor, at: admittedAt },
           updatedAt: admittedAt,
         },
@@ -192,6 +197,11 @@ async function withoutTransaction(write: () => Promise<string>): Promise<string>
       "record are written in sequence. Use a replica set (any Atlas cluster) in production.",
   );
   return write();
+}
+
+/** The zone segment of an already-formatted number, e.g. "UK" from HBC-UK-26-00001. */
+function zoneOf(memberNo: string): string {
+  return memberNo.split("-")[1] ?? "";
 }
 
 class AlreadyDecided extends Error {}

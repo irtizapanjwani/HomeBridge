@@ -23,6 +23,7 @@ import type { ClientSession } from "mongodb";
 
 import { getClient } from "@/lib/db";
 import { collections } from "@/lib/members";
+import { RESERVED_SEQS } from "@/lib/reserved-numbers";
 
 export const MEMBER_SEQUENCE = "member_seq";
 
@@ -41,13 +42,19 @@ export function formatMemberNo(zone: string, admittedAt: Date, seq: number): str
  */
 export async function nextMemberSeq(session?: ClientSession): Promise<number> {
   const { counters } = await collections();
-  const doc = await counters.findOneAndUpdate(
-    { _id: MEMBER_SEQUENCE },
-    { $inc: { value: 1 } },
-    { upsert: true, returnDocument: "after", session },
-  );
-  if (!doc) throw new Error("Could not take the next membership number");
-  return doc.value;
+  // A reserved position is stepped over rather than handed out, so the number held for someone
+  // cannot be given to whoever is approved first. Each pass advances the counter by one, so at
+  // most one extra pass per reservation is ever needed.
+  for (let attempt = 0; attempt <= RESERVED_SEQS.size; attempt++) {
+    const doc = await counters.findOneAndUpdate(
+      { _id: MEMBER_SEQUENCE },
+      { $inc: { value: 1 } },
+      { upsert: true, returnDocument: "after", session },
+    );
+    if (!doc) throw new Error("Could not take the next membership number");
+    if (!RESERVED_SEQS.has(doc.value)) return doc.value;
+  }
+  throw new Error("Could not take the next membership number past the reserved ones");
 }
 
 /**
