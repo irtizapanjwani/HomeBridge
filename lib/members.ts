@@ -99,6 +99,11 @@ export type MemberDoc = {
     eventId?: string;
     /** Whose account the money came from, when a joint or family account paid. */
     payerName?: string;
+    /**
+     * VKT-RCP-YY-NNNNN, issued once when the fee is confirmed and never changed. Its absence is
+     * what marks a payment as still unconfirmed.
+     */
+    receiptNo?: string;
   };
 
   /**

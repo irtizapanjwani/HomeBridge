@@ -26,6 +26,7 @@ import { collections } from "@/lib/members";
 import { RESERVED_SEQS } from "@/lib/reserved-numbers";
 
 export const MEMBER_SEQUENCE = "member_seq";
+export const RECEIPT_SEQUENCE = "receipt_seq";
 
 /** Formats the parts into the number the brief specifies. */
 export function formatMemberNo(zone: string, admittedAt: Date, seq: number): string {
@@ -55,6 +56,27 @@ export async function nextMemberSeq(session?: ClientSession): Promise<number> {
     if (!RESERVED_SEQS.has(doc.value)) return doc.value;
   }
   throw new Error("Could not take the next membership number past the reserved ones");
+}
+
+/** VKT-RCP-YY-NNNNN — the VEKAT joining fee receipt (brief p.5). */
+export function formatReceiptNo(confirmedAt: Date, seq: number): string {
+  const yy = String(confirmedAt.getUTCFullYear()).slice(-2);
+  return `VKT-RCP-${yy}-${String(seq).padStart(5, "0")}`;
+}
+
+/**
+ * Takes the next receipt number. Its own counter, separate from the membership sequence: the fee
+ * is VEKAT's and the membership is the cooperative's, and the brief keeps the two ledgers apart.
+ */
+export async function nextReceiptSeq(session?: ClientSession): Promise<number> {
+  const { counters } = await collections();
+  const doc = await counters.findOneAndUpdate(
+    { _id: RECEIPT_SEQUENCE },
+    { $inc: { value: 1 } },
+    { upsert: true, returnDocument: "after", session },
+  );
+  if (!doc) throw new Error("Could not take the next receipt number");
+  return doc.value;
 }
 
 /**

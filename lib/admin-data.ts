@@ -517,6 +517,8 @@ export type Application = {
   receipt?: { name: string; type: string; bytes: number };
   /** Whose account paid, when it was not the applicant's own. */
   payerName?: string;
+  /** VKT-RCP-YY-NNNNN, present once the joining fee has been confirmed. */
+  receiptNo?: string;
 };
 
 export const APPLICATIONS: Application[] = [

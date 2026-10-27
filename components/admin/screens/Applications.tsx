@@ -190,6 +190,31 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
    * Approval reads the stored result, so this is what lets an application be approved at all:
    * until an officer records a pass, the Approve button stays blocked.
    */
+  /** Confirms the joining fee on the server, which issues the VEKAT receipt number. */
+  async function confirmFee(a: Application) {
+    setDeciding(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}/fee`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string };
+      if (!res.ok || !data.ok) {
+        setErr(data.error || "The fee could not be confirmed. Nothing was changed.");
+        return;
+      }
+      update(a.id, { status: "Fee paid", receiptNo: data.receiptNo });
+      s.addLog("Confirmed joining fee", a.id, a.status, `Fee paid · receipt ${data.receiptNo}`);
+      toast(`Fee confirmed for ${a.name}. Receipt ${data.receiptNo} issued.`);
+    } catch {
+      setErr("We could not reach the server. Nothing was saved.");
+    } finally {
+      setDeciding(false);
+    }
+  }
+
   async function recordIdCheck(a: Application, result: "Pass" | "Refer" | "Fail") {
     setDeciding(true);
     setErr("");
@@ -468,6 +493,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
             onSubmitReason={submitReason}
             onSupporter={toSupporter}
             onIdCheck={recordIdCheck}
+            onConfirmFee={confirmFee}
             onRegister={enterRegister}
             onDelete={destroy}
             deleting={deleting}
@@ -492,6 +518,7 @@ function Detail({
   onSubmitReason,
   onSupporter,
   onIdCheck,
+  onConfirmFee,
   onRegister,
   onDelete,
   deleting,
@@ -509,6 +536,7 @@ function Detail({
   onSubmitReason: (a: Application) => void | Promise<void>;
   onSupporter: (a: Application) => void;
   onIdCheck: (a: Application, result: "Pass" | "Refer" | "Fail") => void | Promise<void>;
+  onConfirmFee: (a: Application) => void | Promise<void>;
   onRegister: (a: Application) => void;
   onDelete: (a: Application) => void;
   deleting: boolean;
@@ -595,16 +623,28 @@ function Detail({
             <CheckIcon size={18} className="text-gold" /> Member number issued: <b className="font-display tracking-wide text-gold">{a.memberNo}</b>
             <span className="text-[12.5px] text-[#C9D3CC]">— the payment reference for life</span>
           </p>
-          {/^HBC-/.test(a.memberNo) ? (
-            <a
-              href={`/api/admin/members/${encodeURIComponent(a.memberNo)}/certificate`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-2 rounded-[10px] border border-[#C9D3CC]/40 px-3 py-1.5 text-[13px] font-semibold text-cream hover:bg-white/10"
-            >
-              <DownloadIcon size={16} /> Membership certificate (PDF)
-            </a>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {/^HBC-/.test(a.memberNo) ? (
+              <a
+                href={`/api/admin/members/${encodeURIComponent(a.memberNo)}/certificate`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-[10px] border border-[#C9D3CC]/40 px-3 py-1.5 text-[13px] font-semibold text-cream hover:bg-white/10"
+              >
+                <DownloadIcon size={16} /> Membership certificate (PDF)
+              </a>
+            ) : null}
+            {a.receiptNo ? (
+              <a
+                href={`/api/admin/applications/${encodeURIComponent(a.id)}/fee-receipt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-[10px] border border-[#C9D3CC]/40 px-3 py-1.5 text-[13px] font-semibold text-cream hover:bg-white/10"
+              >
+                <DownloadIcon size={16} /> Fee receipt {a.receiptNo}
+              </a>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -673,11 +713,26 @@ function Detail({
           ) : null}
         </>
       ) : a.status === "Approved (fee due)" ? (
-        <Banner tone="info" title="Waiting for the joining fee.">
-          {fee} to {s.settings.joiningFeePayee} by Stripe or First Bank. Not share capital. Track it under Joining fees.
-        </Banner>
+        <div className="flex flex-col gap-2">
+          <Banner tone="info" title="Waiting for the joining fee.">
+            {fee} to {s.settings.joiningFeePayee} by Stripe or First Bank. Not share capital. Track it under Joining fees.
+          </Banner>
+          <Btn variant="primary" reason={decideReason} disabled={deciding} onClick={() => onConfirmFee(a)}>
+            {deciding ? "Saving…" : "Confirm fee received"}
+          </Btn>
+        </div>
       ) : a.status === "Fee paid" ? (
         <div className="flex flex-col gap-2">
+          {a.receiptNo && !a.memberNo ? (
+            <a
+              href={`/api/admin/applications/${encodeURIComponent(a.id)}/fee-receipt`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-2 rounded-[10px] border border-line px-3 py-1.5 text-[13px] font-semibold text-forest-800 hover:bg-mint/40"
+            >
+              <DownloadIcon size={16} /> Fee receipt {a.receiptNo}
+            </a>
+          ) : null}
           <p className="m-0 text-[14px] text-muted">
             Fee paid. Under 6.4 the person becomes a member once they are entered in the register and their first share is paid.
           </p>

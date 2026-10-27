@@ -144,6 +144,7 @@ export function toApplication(m: MemberDoc): Application {
     ...(m.decision?.reason ? { decisionReason: m.decision.reason } : {}),
     ...(m.receipt ? { receipt: { name: m.receipt.name, type: m.receipt.type, bytes: m.receipt.bytes } } : {}),
     ...(m.payment?.payerName ? { payerName: m.payment.payerName } : {}),
+    ...(m.payment?.receiptNo ? { receiptNo: m.payment.receiptNo } : {}),
     note: [
       m.source === "vekat" ? "Registered on vekat.org." : "",
       m.payment?.status === "Verified"

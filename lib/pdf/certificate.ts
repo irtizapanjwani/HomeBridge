@@ -10,11 +10,10 @@
 
 import "server-only";
 
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+
+import { embeddableFonts } from "@/lib/pdf/fonts";
 
 /** Brand colours, from the client's design. */
 const GREEN = rgb(0x17 / 255, 0x45 / 255, 0x2f / 255);
@@ -23,26 +22,6 @@ const INK = rgb(0x1a / 255, 0x1d / 255, 0x1a / 255);
 const MUTED = rgb(0x5e / 255, 0x68 / 255, 0x62 / 255);
 
 const A4_LANDSCAPE: [number, number] = [841.89, 595.28];
-
-const FONT_DIR = path.join(process.cwd(), "assets", "fonts");
-
-/** Read once per server instance: the files never change and each is ~150KB. */
-let fontCache: Promise<Record<"loraBold" | "loraRegular" | "poppins" | "poppinsSemi", Buffer>> | null = null;
-function fontFiles() {
-  fontCache ??= (async () => {
-    const [loraBold, loraRegular, poppins, poppinsSemi] = await Promise.all([
-      readFile(path.join(FONT_DIR, "Lora_700Bold.ttf")),
-      readFile(path.join(FONT_DIR, "Lora_400Regular.ttf")),
-      readFile(path.join(FONT_DIR, "Poppins_400Regular.ttf")),
-      readFile(path.join(FONT_DIR, "Poppins_600SemiBold.ttf")),
-    ]);
-    return { loraBold, loraRegular, poppins, poppinsSemi };
-  })().catch((err) => {
-    fontCache = null;
-    throw err;
-  });
-  return fontCache;
-}
 
 export type CertificateInput = {
   /** HBC-MC-NNNNN. */
@@ -112,7 +91,7 @@ function centreWrapped(
 
 /** Builds the certificate and returns the PDF bytes. */
 export async function buildCertificate(input: CertificateInput): Promise<Uint8Array> {
-  const files = await fontFiles();
+  const files = await embeddableFonts();
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
 
