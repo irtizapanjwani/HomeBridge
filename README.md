@@ -40,8 +40,9 @@ People are matched across the sites by email or phone (`lib/members.ts`), so a s
 attaches to the person the first one created rather than making a duplicate. Indexes are created on
 first write — there is no migration step to run.
 
-Copy `.env.example` to `.env.local` and set `MONGODB_URI`, `MONGODB_DB`, `MEMBER_SESSION_SECRET`
-and `ADMIN_PASSWORD`.
+Copy `.env.example` to `.env.local` and set `MONGODB_URI`, `MONGODB_DB`, `MEMBER_SESSION_SECRET`,
+`ADMIN_PASSWORD` and `DOCUMENTS_KEY` (`openssl rand -base64 32`; keep a safe copy — it decrypts every
+stored ID document).
 
 ## Member accounts
 

@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { CheckIcon, LockIcon } from "@/components/ui/Icons";
 import { CONTACT } from "@/lib/content";
 import { JOINING_FEE } from "@/lib/settings";
+import type { DocMeta } from "@/lib/document-types";
 import { Card, btnSecondary, textLink } from "./bits";
+import { DocumentsCard, InfoRequestCard } from "./Documents";
 
 export type AccountView = {
   reference: string;
@@ -24,7 +26,16 @@ export type AccountView = {
   idLabel: string;
   nominees: { name: string; relationship: string; share: number }[];
   payment: { claimed: boolean; verified: boolean; method: string; datePaid: string; reference: string } | null;
+  /** The applicant's uploaded ID and proof of address, metadata only. */
+  documents: DocMeta[];
+  /** Present while an officer is waiting on the applicant (Email B). */
+  infoRequest?: { needed: string; by: string };
+  /** When the applicant last answered an information request. */
+  infoRepliedAt?: string;
 };
+
+/** Statuses in which the application is still being decided, so documents can still be added. */
+const OPEN = ["Submitted", "In review", "Info requested"];
 
 function greetingFor(hour: number) {
   if (hour < 12) return "Good morning";
@@ -51,11 +62,12 @@ export function Account({ view }: { view: AccountView }) {
         "If the membership rules change so you can join, you'll hear from us first.",
       ]
     : [
-        "A membership officer reviews your application. We decide within 30 days, and aim for 2 working days.",
-        `If you're approved, we send you a link to pay the joining fee to ${JOINING_FEE.payee}. It is not a share and is not refundable.`,
-        "You'll complete the secure ID check with our verification partner once your account opens.",
-        "You become a member when the fee is paid, you buy your first share and your name is on the register.",
+        `We check your joining fee payment to ${JOINING_FEE.payee} against the bank or card record. It is not a share and is not refundable.`,
+        "A membership officer checks your ID and proof of address and reviews your application. We decide within 30 days, and aim for 2 working days.",
+        "If you're approved, we email your membership number, certificate and welcome pack.",
+        "You become an active member when you buy your first share and your name is on the register.",
       ];
+  const open = !view.supporter && OPEN.includes(view.status);
 
   return (
     <div className="mx-auto max-w-[1240px] px-[clamp(16px,4vw,28px)] pt-[clamp(24px,4vw,40px)]">
@@ -95,6 +107,8 @@ export function Account({ view }: { view: AccountView }) {
 
       <div className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="grid gap-5">
+          {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
+
           <Card>
             <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your application</h2>
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -103,6 +117,11 @@ export function Account({ view }: { view: AccountView }) {
               </span>
               <span className="text-[14.5px] text-muted">Sent {view.submittedAt}</span>
             </div>
+            {view.infoRepliedAt && view.status === "In review" && (
+              <p className="mt-3 mb-0 text-[14.5px] text-body">
+                We received your reply on {view.infoRepliedAt}. An officer will look at it and let you know.
+              </p>
+            )}
 
             <h3 className="mt-7 mb-3 font-sans text-[15px] font-semibold text-forest-800">What happens next</h3>
             <ol className="m-0 flex list-none flex-col gap-3 p-0">
@@ -116,6 +135,8 @@ export function Account({ view }: { view: AccountView }) {
               ))}
             </ol>
           </Card>
+
+          {!view.supporter && <DocumentsCard documents={view.documents} canUpload={open} />}
 
           {view.payment && (
             <Card>

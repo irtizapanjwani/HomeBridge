@@ -1,0 +1,44 @@
+// What an applicant may upload, shared by the browser (to check a file before sending it) and the
+// server (which checks again, because the browser's word is not proof).
+//
+// Brief p.3 (Application form): "ID upload (passport, national ID, NIN slip or UK driving licence)
+// and proof of address". Brief p.5 (Data model): a documents table with owner, type, storage path
+// and uploaded_at.
+
+export const DOC_TYPES = ["id", "address", "info"] as const;
+export type DocType = (typeof DOC_TYPES)[number];
+
+export const DOC_LABEL: Record<DocType, string> = {
+  id: "ID document",
+  address: "Proof of address",
+  info: "Sent with requested information",
+};
+
+export const isDocType = (v: unknown): v is DocType => typeof v === "string" && (DOC_TYPES as readonly string[]).includes(v);
+
+/** A phone photo, a scan or a PDF covers every ID and every utility bill. */
+export const DOC_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"] as const;
+
+export const isDocContentType = (v: string) => (DOC_CONTENT_TYPES as readonly string[]).includes(v);
+
+/**
+ * The largest file accepted. Each file is sent on its own as multipart form data (no base64), and
+ * Vercel rejects a request body over about 4.5MB before any of our code runs, so 4MB leaves room.
+ * Photos are shrunk in the browser first, so a typical ID photo arrives well under 1MB.
+ */
+export const DOC_MAX_BYTES = 4 * 1024 * 1024;
+
+/** The longest message an applicant can send with a response to an information request. */
+export const INFO_MESSAGE_MAX = 1000;
+
+/** Document metadata as the screens see it. The bytes are never part of this. */
+export type DocMeta = {
+  id: string;
+  type: DocType;
+  label: string;
+  name: string;
+  contentType: string;
+  bytes: number;
+  /** Formatted in Lagos, e.g. "30 Oct 2026, 09:14". */
+  uploadedAt: string;
+};

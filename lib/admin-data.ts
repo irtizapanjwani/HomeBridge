@@ -521,6 +521,10 @@ export type Application = {
   receiptNo?: string;
   /** When the welcome pack was last sent, formatted in Lagos. Absent until it has been. */
   welcomeSentAt?: string;
+  /** The applicant's uploaded ID, proof of address and replies; metadata only, bytes fetched on view. */
+  documents?: import("@/lib/document-types").DocMeta[];
+  /** The applicant's answer to "more information needed", sent from their account. */
+  infoResponse?: { message: string; at: string };
 };
 
 export const APPLICATIONS: Application[] = [

@@ -23,6 +23,7 @@ import {
   type StepId,
 } from "@/lib/register-data";
 import { CheckIcon, CloseIcon, IdIcon, LockIcon, PeopleIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { DocumentPicker, type PickedFile } from "@/components/ui/DocumentPicker";
 import { Checkbox, ChoiceGroup, ErrorText, Field, Note, inputClass } from "./fields";
 
 export type StepProps = {
@@ -304,7 +305,15 @@ export function JoinStep({ draft, set, errors }: StepProps) {
 
 /* ---------------- 4. Identity ---------------- */
 
-export function IdentityStep({ draft, set, errors }: StepProps) {
+/** The two files the brief asks for (p.3). Held in memory by RegisterApp and sent after the form. */
+export type IdentityFiles = {
+  idDoc: PickedFile | null;
+  addressDoc: PickedFile | null;
+  onIdDoc: (v: PickedFile | null) => void;
+  onAddressDoc: (v: PickedFile | null) => void;
+};
+
+export function IdentityStep({ draft, set, errors, files }: StepProps & { files: IdentityFiles }) {
   const group = draft.memberType === "group";
   const nigeria = livesInNigeria(draft);
   const idOptions = idOptionsFor(draft);
@@ -379,12 +388,32 @@ export function IdentityStep({ draft, set, errors }: StepProps) {
         </ul>
       </div>
 
+      <div className="grid gap-5 rounded-[20px] border border-line p-4 sm:p-5">
+        <DocumentPicker
+          id="idDoc"
+          label={group ? "Photo or scan of the representative’s ID" : "Photo or scan of your ID"}
+          hint="Passport, national ID card, NIN slip or UK driving licence. Make sure every corner is in the picture and the writing is clear."
+          value={files.idDoc}
+          onChange={files.onIdDoc}
+          error={errors.idDoc}
+        />
+        <DocumentPicker
+          id="addressDoc"
+          label={group ? "Proof of the group’s address" : "Proof of address"}
+          hint="A utility bill, bank statement or tenancy agreement from the last 3 months, showing your name and address."
+          value={files.addressDoc}
+          onChange={files.onAddressDoc}
+          error={errors.addressDoc}
+        />
+      </div>
+
       <Note>
         <span className="flex gap-2.5">
           <LockIcon size={20} className="mt-0.5 shrink-0" />
           <span>
-            You’ll complete the secure ID check with our verification partner once your account opens. We never store your BVN or NIN. Nothing is
-            uploaded on this page.
+            Your files are sent when you send your application, straight to HomeBridge’s private, encrypted storage. Only the officers who check
+            applications can open them, and every time they do is recorded. We never send ID documents by email, and we never ask for your
+            BVN or NIN number here.
           </span>
         </span>
       </Note>

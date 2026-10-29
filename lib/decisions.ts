@@ -46,6 +46,8 @@ export type DecisionInput = {
   actor: string;
   /** Required for a decline so the applicant can be told why (brief p.4). */
   reason?: string;
+  /** The site's address, for the "respond in your account" link in Email B. */
+  site?: string;
 };
 
 export type DecisionResult =
@@ -111,7 +113,7 @@ export async function decideApplication(input: DecisionInput): Promise<DecisionR
       after: status,
     });
     if (outcome === "request-info" || outcome === "decline") {
-      const emailed = await emailApplicant(existing, outcome, reason ?? "", actor, now);
+      const emailed = await emailApplicant(existing, outcome, reason ?? "", actor, now, input.site);
       return { ok: true, status, emailed };
     }
     return { ok: true, status };
@@ -133,6 +135,7 @@ async function emailApplicant(
   reason: string,
   actor: string,
   at: Date,
+  site?: string,
 ): Promise<boolean> {
   const label = outcome === "request-info" ? "Information request" : "Decline";
   const kind = outcome === "request-info" ? "info_request" : "decline";
@@ -148,7 +151,14 @@ async function emailApplicant(
       const firstName = member.firstName?.trim() || member.fullName.trim().split(/\s+/)[0] || "";
       const sent =
         outcome === "request-info"
-          ? await sendInfoRequest({ to, firstName, reference: member.reference, needed: reason, at })
+          ? await sendInfoRequest({
+              to,
+              firstName,
+              reference: member.reference,
+              needed: reason,
+              at,
+              ...(site ? { accountUrl: `${site.replace(/\/+$/, "")}/app` } : {}),
+            })
           : await sendDecline({ to, firstName, reference: member.reference, reason });
       if (!sent.ok) error = sent.error;
     } catch (err) {

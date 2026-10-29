@@ -16,6 +16,7 @@ import {
   type StepId,
 } from "@/lib/register-data";
 import { AboutStep, AccountStep, IdentityStep, JoinStep, NomineeStep, ReviewStep, SupporterStep } from "./Steps";
+import { uploadDocument, type PickedFile } from "@/components/ui/DocumentPicker";
 import { FeeStep } from "./FeeStep";
 import type { ReceiptUpload as Receipt } from "@/lib/receipt";
 import { ProgressBar, StepList, ChoicesCard, PayNothingNote } from "./Sidebar";
@@ -36,7 +37,7 @@ function lead(step: StepId, d: Draft) {
     case "join":
       return `Every membership has one vote and the same ₦${SHARE_PRICE_NGN.toLocaleString("en-GB")} share price.`;
     case "identity":
-      return "Tell us which ID you will use. You don’t need to upload anything today.";
+      return "Tell us which ID you will use, and add a photo of it and of your proof of address.";
     case "nominee":
       return d.memberType === "group"
         ? "Confirm four short declarations."
@@ -81,6 +82,10 @@ export function RegisterApp() {
   // Deliberately not part of the draft: it is written to storage on every change, and a base64
   // image there would exceed the quota and take the whole application with it.
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  // The ID and proof of address (brief p.3). Also kept out of the saved draft, for the same reason,
+  // and sent one at a time after the application is stored so no single request is too large.
+  const [idDoc, setIdDoc] = useState<PickedFile | null>(null);
+  const [addressDoc, setAddressDoc] = useState<PickedFile | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -192,12 +197,26 @@ export function RegisterApp() {
           contact: draft.contactMethod === "email" ? draft.contact : draft.whatsapp || draft.contact,
           fee: feeFor(draft).fee,
         };
+        // The application is stored and the applicant is now signed in, so the files go to their
+        // own record. A failed upload never undoes the application: they can add it from their
+        // account, and are told so.
+        const failed: string[] = [];
+        if (idDoc && (await uploadDocument("id", idDoc))) failed.push("your ID");
+        if (addressDoc && (await uploadDocument("address", addressDoc))) failed.push("your proof of address");
+        const missing = !result.supporter && (!idDoc || !addressDoc);
+        if (failed.length) {
+          toast(`Your application was sent, but ${failed.join(" and ")} could not be uploaded. Sign in to your account to add it.`, "warn");
+        } else if (missing) {
+          toast("Your application was sent. Sign in to your account to add your ID and proof of address.", "warn");
+        }
         writeJSON(DRAFT_KEY, null);
         writeJSON(DONE_KEY, result);
         setDone(result);
         // Back to a blank first step, so the panel is a confirmation rather than a dead end.
         setDraft(emptyDraft());
         setReceipt(null);
+        setIdDoc(null);
+        setAddressDoc(null);
         setFurthest(0);
         goTo(0);
         return;
@@ -227,6 +246,12 @@ export function RegisterApp() {
       return;
     }
     const errs = validateStep(stepId, draft);
+    // The files are not part of the saved draft, so they are checked here rather than in the shared
+    // validation the server also runs.
+    if (stepId === "identity") {
+      if (!idDoc) errs.idDoc = "Add a photo or scan of your ID.";
+      if (!addressDoc) errs.addressDoc = "Add your proof of address.";
+    }
     if (Object.keys(errs).length) return showErrors(errs);
     const to = current + 1;
     goTo(to);
@@ -239,6 +264,8 @@ export function RegisterApp() {
     writeJSON(DONE_KEY, null);
     setDraft(emptyDraft());
     setReceipt(null);
+    setIdDoc(null);
+    setAddressDoc(null);
     setFurthest(0);
     setDone(null);
     goTo(0);
@@ -309,7 +336,26 @@ export function RegisterApp() {
                 {stepId === "account" && <AccountStep draft={draft} set={set} errors={errors} />}
                 {stepId === "about" && <AboutStep draft={draft} set={set} errors={errors} />}
                 {stepId === "join" && <JoinStep draft={draft} set={set} errors={errors} />}
-                {stepId === "identity" && <IdentityStep draft={draft} set={set} errors={errors} />}
+                {stepId === "identity" && (
+                  <IdentityStep
+                    draft={draft}
+                    set={set}
+                    errors={errors}
+                    files={{
+                      idDoc,
+                      addressDoc,
+                      // Choosing a file clears that file's error straight away.
+                      onIdDoc: (v) => {
+                        setIdDoc(v);
+                        if (v) setErrors(({ idDoc: _gone, ...rest }) => rest);
+                      },
+                      onAddressDoc: (v) => {
+                        setAddressDoc(v);
+                        if (v) setErrors(({ addressDoc: _gone, ...rest }) => rest);
+                      },
+                    }}
+                  />
+                )}
                 {stepId === "nominee" && <NomineeStep draft={draft} set={set} errors={errors} />}
                 {stepId === "fee" && <FeeStep draft={draft} set={set} errors={errors} receipt={receipt} onReceipt={setReceipt} />}
                 {stepId === "review" && <ReviewStep draft={draft} onEdit={goTo} />}

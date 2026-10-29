@@ -713,6 +713,8 @@ function Detail({
         ))}
       </ul>
 
+      <IdDocuments a={a} />
+
       <Receipt a={a} />
 
       {a.note ? (
@@ -902,6 +904,78 @@ function Detail({
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * The applicant's ID, proof of address and replies to information requests (brief p.4: the vetting
+ * queue has an "ID viewer").
+ *
+ * Nothing is loaded until the officer clicks View. That asks the server for a link valid for five
+ * minutes, and opening it records the view in the audit log before the file is shown (brief p.6).
+ */
+function IdDocuments({ a }: { a: Application }) {
+  const toast = useToast();
+  const [opening, setOpening] = useState<string | null>(null);
+  const docs = a.documents ?? [];
+  const hasId = docs.some((d) => d.type === "id");
+  const hasAddress = docs.some((d) => d.type === "address");
+
+  async function view(id: string) {
+    // Opened before the request so the browser treats it as the click's own window, not a pop-up.
+    const tab = window.open("about:blank", "_blank");
+    setOpening(id);
+    try {
+      const res = await fetch(`/api/admin/documents/${encodeURIComponent(id)}/link`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
+      if (!res.ok || !data.ok || !data.url) throw new Error(data.error || "Could not open the document.");
+      if (tab) tab.location.href = data.url;
+      else window.location.href = data.url;
+    } catch (err) {
+      tab?.close();
+      toast(err instanceof Error ? err.message : "Could not open the document.", "warn");
+    } finally {
+      setOpening(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[14px] border border-line p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="m-0 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">ID and address documents</h3>
+        <span className="text-[12.5px] text-muted">Every view is recorded in the audit log</span>
+      </div>
+
+      {a.infoResponse ? (
+        <div className="rounded-[10px] bg-mist px-3 py-2.5 text-[13.5px]">
+          <strong>Applicant replied {a.infoResponse.at}:</strong> {a.infoResponse.message || "(no message — file attached)"}
+        </div>
+      ) : null}
+
+      {docs.length ? (
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {docs.map((d) => (
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 text-[13.5px]">
+              <span className="min-w-0">
+                <strong>{d.label}</strong> · {d.name} · {prettyBytes(d.bytes)}
+                <span className="block text-[12.5px] text-muted">Uploaded {d.uploadedAt}</span>
+              </span>
+              <Btn size="sm" disabled={opening === d.id} onClick={() => void view(d.id)}>
+                <FileIcon size={16} />
+                {opening === d.id ? "Opening…" : "View"}
+              </Btn>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {!hasId || !hasAddress ? (
+        <p className="m-0 text-[13px] text-danger">
+          Not yet uploaded: {[!hasId && "ID document", !hasAddress && "proof of address"].filter(Boolean).join(" and ")}. The applicant can add
+          {!hasId && !hasAddress ? " them" : " it"} from their account.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

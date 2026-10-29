@@ -2,6 +2,15 @@ import { Account, type AccountView } from "@/components/member/Account";
 import { MemberSignIn } from "@/components/member/SignIn";
 import { currentMemberRef, findMemberByRef, isMemberAuthConfigured } from "@/lib/member-auth";
 import { isDbConfigured } from "@/lib/db";
+import { listDocumentsFor } from "@/lib/documents";
+import { INFO_REQUEST_DAYS } from "@/lib/email";
+
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Africa/Lagos",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 // Always per request: it shows one signed-in member's own record.
 export const dynamic = "force-dynamic";
@@ -38,6 +47,9 @@ export default async function MemberAccountPage() {
   const m = await findMemberByRef(ref);
   if (!m) return <MemberSignIn configured={isMemberAuthConfigured() && isDbConfigured()} />;
 
+  // A failure to read documents must not take the whole account page down with it.
+  const documents = (await listDocumentsFor([m.reference]).catch(() => new Map())).get(m.reference) ?? [];
+
   const view: AccountView = {
     reference: m.reference,
     ...(m.membership ? { memberNo: m.membership.memberNo } : {}),
@@ -53,6 +65,17 @@ export default async function MemberAccountPage() {
     livesIn: [m.city, m.country === "Nigeria" ? m.state : "", m.country].filter(Boolean).join(", "),
     idLabel: ID_LABEL[m.idChoice] ?? "",
     nominees: m.nominees.map((n) => ({ name: n.name, relationship: n.relationship, share: n.share })),
+    documents,
+    // What the officer asked for, shown while the request is open (Email B says the same).
+    ...(m.status === "Info requested" && m.decision
+      ? {
+          infoRequest: {
+            needed: m.decision.reason ?? "",
+            by: LONG_DATE.format(new Date(m.decision.at.getTime() + INFO_REQUEST_DAYS * 86_400_000)),
+          },
+        }
+      : {}),
+    ...(m.infoResponse ? { infoRepliedAt: LONG_DATE.format(m.infoResponse.at) } : {}),
     payment: m.payment
       ? {
           claimed: m.payment.status === "Claimed",

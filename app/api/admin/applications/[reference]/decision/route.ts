@@ -5,6 +5,7 @@ import { isDbConfigured } from "@/lib/db";
 import { decideApplication, type Outcome } from "@/lib/decisions";
 
 import { isApplicationReference as isReference } from "@/lib/members";
+import { siteUrl } from "@/lib/site-url";
 
 const OUTCOMES: Outcome[] = ["approve", "decline", "request-info", "review"];
 
@@ -55,6 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
       outcome,
       reason,
       actor: await currentOfficer(),
+      site: siteUrl(req),
     });
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: STATUS_FOR_CODE[result.code] ?? 400 });

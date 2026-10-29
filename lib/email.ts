@@ -282,14 +282,17 @@ export type InfoRequestEmail = {
   needed: string;
   /** When the request was made; the reply-by date is counted from here. */
   at: Date;
+  /** The applicant's account page, where they can answer and upload. */
+  accountUrl?: string;
 };
 
 /**
  * Email B in the client's Email Set: "More information needed", sent when an officer asks the
  * applicant for something during vetting.
  *
- * The template offers "reply to this email or upload it through [link]". There is no upload page
- * for applicants yet, so this asks for a reply only; add the link here when the upload page exists.
+ * The template offers "reply to this email or upload it through [link]": the link is the
+ * applicant's account, where a box shows what was asked and takes a message and a file. Uploading
+ * there is the safer route for an ID copy, so it is offered first.
  */
 export async function sendInfoRequest(input: InfoRequestEmail): Promise<SendResult> {
   const name = input.firstName.trim() || "there";
@@ -302,7 +305,10 @@ export async function sendInfoRequest(input: InfoRequestEmail): Promise<SendResu
     ``,
     `Thank you for your application. To complete our checks, we need the following: ${input.needed}`,
     ``,
-    `Please reply to this email by ${by}, quoting ${input.reference}. Please do not send ID documents by WhatsApp.`,
+    input.accountUrl
+      ? `Please sign in to your HomeBridge account and send it from there, or reply to this email, by ${by}, quoting ${input.reference}: ${input.accountUrl}`
+      : `Please reply to this email by ${by}, quoting ${input.reference}.`,
+    `Please do not send ID documents by WhatsApp.`,
     ``,
     `Kind regards,`,
     `HomeBridge Membership Team`,
@@ -312,7 +318,15 @@ export async function sendInfoRequest(input: InfoRequestEmail): Promise<SendResu
     `Dear ${esc(name)},`,
     `Thank you for your application. To complete our checks, we need the following:`,
     `<span style="display:block;padding:12px 14px;background:#F3F1EA;border-radius:8px">${esc(input.needed)}</span>`,
-    `Please reply to this email by <strong>${esc(by)}</strong>, quoting <strong>${esc(input.reference)}</strong>. Please do not send ID documents by WhatsApp.`,
+    input.accountUrl
+      ? `Please sign in to your HomeBridge account and send it from there, or reply to this email, by <strong>${esc(by)}</strong>, quoting <strong>${esc(input.reference)}</strong>.`
+      : `Please reply to this email by <strong>${esc(by)}</strong>, quoting <strong>${esc(input.reference)}</strong>.`,
+    ...(input.accountUrl
+      ? [
+          `<a href="${esc(input.accountUrl)}" style="display:inline-block;background:#17452F;color:#FFFDF7;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">Respond in your account</a>`,
+        ]
+      : []),
+    `Please do not send ID documents by WhatsApp.`,
   ]);
 
   return sendEmail({

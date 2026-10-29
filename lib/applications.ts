@@ -2,6 +2,7 @@
 // Server-only: it reaches the database and handles ID numbers.
 
 import "server-only";
+import { deleteDocumentsFor, listDocumentsFor } from "@/lib/documents";
 import { collections } from "@/lib/members";
 import type { MemberDoc } from "@/lib/members";
 import type { Application, AppStatus, KycCheck, MemberType, Region, Society } from "@/lib/admin-data";
@@ -170,7 +171,20 @@ export async function listApplications(limit = 500): Promise<Application[]> {
     .sort({ submittedAt: -1 })
     .limit(limit)
     .toArray();
-  return docs.map(toApplication);
+  const apps = docs.map(toApplication);
+  // Document metadata in one query for the whole list. A failure here must not hide the queue.
+  const files = await listDocumentsFor(docs.map((d) => d.reference)).catch((err) => {
+    console.error("[admin] could not list documents:", err instanceof Error ? err.message : "unknown error");
+    return new Map();
+  });
+  return apps.map((a, i) => {
+    const r = docs[i].infoResponse;
+    return {
+      ...a,
+      ...(files.get(a.id)?.length ? { documents: files.get(a.id) } : {}),
+      ...(r ? { infoResponse: { message: r.message, at: `${LAGOS_DATE.format(r.at)}, ${LAGOS_TIME.format(r.at)}` } } : {}),
+    };
+  });
 }
 
 /** The stored receipt for one registration, bytes included. Admin routes only. */
@@ -202,6 +216,9 @@ export async function deleteApplication(reference: string) {
 
   const res = await members.deleteOne({ reference });
   if (res.deletedCount !== 1) return false;
+
+  // Their ID and proof of address go with them: "delete" must not leave identity documents behind.
+  await deleteDocumentsFor(reference);
 
   if (doc.personRef) {
     const [stillMember, stillEnquiry] = await Promise.all([

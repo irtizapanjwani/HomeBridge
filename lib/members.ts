@@ -10,6 +10,7 @@
 
 import { Binary, type Collection, type Db } from "mongodb";
 import { getDb } from "@/lib/db";
+import type { DocumentDoc } from "@/lib/documents";
 import type { Declarations, Draft, Nominee } from "@/lib/register-data";
 
 /** Reference alphabet without look-alike characters (0/O, 1/I). */
@@ -172,8 +173,8 @@ export type MemberDoc = {
    * verif[ies] ID, approve[s] or decline[s]"). An application cannot be approved until this says
    * Pass, so the check is a deliberate, recorded act rather than something assumed.
    *
-   * This records the officer's conclusion, not the documents: ID numbers and images are never
-   * stored here.
+   * This records the officer's conclusion, not the documents: ID numbers are never stored, and the
+   * uploaded ID images live encrypted in the documents collection (lib/documents.ts), not here.
    */
   idCheck?: {
     result: "Pass" | "Refer" | "Fail";
@@ -187,6 +188,16 @@ export type MemberDoc = {
    * The most recent vetting decision. Every decision is also appended to the audit log, which is
    * the permanent record; this is just the current state, for the queue to read quickly.
    */
+  /**
+   * The applicant's answer to an officer's request for more information, sent from their account.
+   * Any files they attached are in the documents collection under this application's reference.
+   */
+  infoResponse?: {
+    message: string;
+    at: Date;
+    documentIds: string[];
+  };
+
   decision?: {
     outcome: MemberStatus;
     /** Required for a decline, optional otherwise (brief p.4: "decline (with reason)"). */
@@ -270,6 +281,7 @@ export async function collections(): Promise<{
   enquiries: Collection<EnquiryDoc>;
   counters: Collection<CounterDoc>;
   auditLog: Collection<AuditDoc>;
+  documents: Collection<DocumentDoc>;
 }> {
   const db = await getDb();
   return {
@@ -279,6 +291,8 @@ export async function collections(): Promise<{
     enquiries: db.collection<EnquiryDoc>("enquiries"),
     counters: db.collection<CounterDoc>("counters"),
     auditLog: db.collection<AuditDoc>("audit_log"),
+    // ID documents and proof of address, encrypted (lib/documents.ts).
+    documents: db.collection<DocumentDoc>("documents"),
   };
 }
 
@@ -290,8 +304,9 @@ export async function collections(): Promise<{
 let indexesReady: Promise<void> | null = null;
 export function ensureIndexes() {
   indexesReady ??= (async () => {
-    const { people, members, enquiries, auditLog } = await collections();
+    const { people, members, enquiries, auditLog, documents } = await collections();
     await Promise.all([
+      documents.createIndex({ ownerRef: 1, uploadedAt: -1 }),
       // A membership number can only ever belong to one member. Sparse, because an application
       // that has not been approved has no membership block at all.
       members.createIndex({ "membership.memberNo": 1 }, { unique: true, sparse: true }),
