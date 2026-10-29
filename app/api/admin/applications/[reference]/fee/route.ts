@@ -5,6 +5,8 @@ import { isDbConfigured } from "@/lib/db";
 import { confirmFeePayment } from "@/lib/fees";
 
 import { isApplicationReference as isReference } from "@/lib/members";
+import { siteUrl } from "@/lib/site-url";
+import { maybeAutoSendWelcome } from "@/lib/welcome-pack";
 
 /**
  * Confirms that the joining fee has been received, and issues the VEKAT receipt number.
@@ -49,7 +51,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
         { status: result.code === "not_found" ? 404 : 409 },
       );
     }
-    return NextResponse.json({ ok: true, receiptNo: result.receiptNo, emailed: result.emailed });
+    // A fee confirmed for someone already approved completes the pair, so the welcome pack may go
+    // now. A failure here never undoes the confirmed payment.
+    const welcomeSent = await maybeAutoSendWelcome(reference, await currentOfficer(), siteUrl(req)).catch(() => false);
+    return NextResponse.json({ ok: true, receiptNo: result.receiptNo, emailed: result.emailed, welcomeSent });
   } catch (err) {
     // Never returned to the browser: a Mongo error can carry the connection string.
     console.error("[admin] could not confirm the fee:", err instanceof Error ? err.message : "unknown error");

@@ -49,6 +49,7 @@ const ACTION_LABEL: Record<string, string> = {
   "welcome_pack.resent": "Resent welcome pack",
   "welcome_pack.failed": "Welcome pack failed to send",
   "applications.imported": "Imported Google Form applicants",
+  "settings.changed": "Changed a setting",
   "document.uploaded": "Document uploaded",
   "document.viewed": "Viewed document",
   "application.info_received": "Applicant replied with information",

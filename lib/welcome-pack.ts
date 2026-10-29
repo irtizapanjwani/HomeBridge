@@ -13,6 +13,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isWelcomeAutoSend } from "@/lib/app-settings";
 import { recordAudit } from "@/lib/audit";
 import { sendEmail, type Attachment, type SendResult } from "@/lib/email";
 import { type MemberDoc, collections } from "@/lib/members";
@@ -310,4 +311,36 @@ ${detailRows
   }).catch(() => {});
 
   return { ok: true, sentAt, attachments: attachments.map((a) => a.filename) };
+}
+
+/**
+ * Sends the welcome pack by itself once a member is both approved and has a confirmed fee, if the
+ * office has switched automatic sending on (Settings). Called after each of those two events, so
+ * it fires on whichever comes second — the brief's "within 5 minutes of approval".
+ *
+ * Returns true when it sent, false when it tried and the send failed, and null when there was
+ * nothing to do (switched off, not yet ready, or already sent).
+ */
+export async function maybeAutoSendWelcome(reference: string, actor: string, site: string): Promise<boolean | null> {
+  if (!(await isWelcomeAutoSend())) return null;
+  const { members } = await collections();
+  // Claimed in one atomic write: if an approval and a fee confirmation land together, only one of
+  // them matches, so the member never gets the pack twice.
+  const claim = await members.updateOne(
+    {
+      reference,
+      "membership.memberNo": { $exists: true },
+      "payment.receiptNo": { $exists: true },
+      welcomePack: { $exists: false },
+      welcomeAutoClaim: { $exists: false },
+    },
+    { $set: { welcomeAutoClaim: new Date() } },
+  );
+  if (claim.matchedCount === 0) return null;
+
+  const result = await sendWelcomePack(reference, `${actor} (automatic)`, site).catch(() => null);
+  // Released whether it worked or not: on success welcomePack now stops any repeat, and on failure
+  // an officer can send it by hand or the next trigger can try again.
+  await members.updateOne({ reference }, { $unset: { welcomeAutoClaim: "" } });
+  return Boolean(result?.ok);
 }

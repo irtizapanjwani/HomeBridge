@@ -6,6 +6,7 @@ import { decideApplication, type Outcome } from "@/lib/decisions";
 
 import { isApplicationReference as isReference } from "@/lib/members";
 import { siteUrl } from "@/lib/site-url";
+import { maybeAutoSendWelcome } from "@/lib/welcome-pack";
 
 const OUTCOMES: Outcome[] = ["approve", "decline", "request-info", "review"];
 
@@ -61,7 +62,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: STATUS_FOR_CODE[result.code] ?? 400 });
     }
-    return NextResponse.json({ ok: true, status: result.status, memberNo: result.memberNo, emailed: result.emailed });
+    // An approval of someone whose fee is already confirmed completes the pair, so the welcome pack
+    // may go now. A failure here never undoes the approval.
+    const welcomeSent =
+      outcome === "approve"
+        ? await maybeAutoSendWelcome(reference, await currentOfficer(), siteUrl(req)).catch(() => false)
+        : null;
+    return NextResponse.json({
+      ok: true,
+      status: result.status,
+      memberNo: result.memberNo,
+      emailed: result.emailed,
+      welcomeSent,
+    });
   } catch (err) {
     // Never returned to the browser: a Mongo error can carry the connection string.
     console.error("[admin] could not record the decision:", err instanceof Error ? err.message : "unknown error");

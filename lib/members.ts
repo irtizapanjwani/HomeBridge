@@ -211,6 +211,9 @@ export type MemberDoc = {
    * When the welcome pack went out, and what it contained (brief p.4: "Log send time; allow admin
    * resend"). Overwritten on a resend; the audit log keeps the full history of sends.
    */
+  /** Set for the moment an automatic welcome-pack send is under way, so two triggers cannot both send. */
+  welcomeAutoClaim?: Date;
+
   welcomePack?: {
     sentAt: Date;
     to: string;

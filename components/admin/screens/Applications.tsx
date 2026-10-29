@@ -105,7 +105,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ outcome, reason: why }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; memberNo?: string; emailed?: boolean };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; memberNo?: string; emailed?: boolean; welcomeSent?: boolean | null };
       if (!res.ok || !data.ok) {
         setErr(data.error || "The decision could not be saved. Nothing was changed.");
         return null;
@@ -125,7 +125,15 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
     const memberNo = saved.memberNo;
     update(a.id, { status: "Approved (fee due)", memberNo, decidedBy: s.role.person, note: undefined, kyc: { ...a.kyc, reviewer: s.role.person } });
     s.addLog("Approved application", a.id, a.status, `Approved (fee due) · issued ${memberNo}`);
-    toast(`${a.name} approved. Member number ${memberNo} issued.`);
+    if (saved.welcomeSent) update(a.id, { welcomeSentAt: "just now" });
+    toast(
+      saved.welcomeSent
+        ? `${a.name} approved. Member number ${memberNo} issued and the welcome pack sent.`
+        : saved.welcomeSent === false
+          ? `${a.name} approved. Member number ${memberNo} issued, but the welcome pack did not send — use Send welcome pack.`
+          : `${a.name} approved. Member number ${memberNo} issued.`,
+      saved.welcomeSent === false ? "warn" : undefined,
+    );
   }
 
   async function submitReason(a: Application) {
@@ -230,17 +238,19 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string; emailed?: boolean };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string; emailed?: boolean; welcomeSent?: boolean | null };
       if (!res.ok || !data.ok) {
         setErr(data.error || "The fee could not be confirmed. Nothing was changed.");
         return;
       }
-      update(a.id, { status: "Fee paid", receiptNo: data.receiptNo });
+      update(a.id, { status: "Fee paid", receiptNo: data.receiptNo, ...(data.welcomeSent ? { welcomeSentAt: "just now" } : {}) });
       s.addLog("Confirmed joining fee", a.id, a.status, `Fee paid · receipt ${data.receiptNo}`);
+      const pack = data.welcomeSent ? " The welcome pack was sent too." : data.welcomeSent === false ? " The welcome pack did not send — use Send welcome pack." : "";
       toast(
-        data.emailed
+        (data.emailed
           ? `Fee confirmed. Receipt ${data.receiptNo} emailed to ${a.email}.`
-          : `Fee confirmed and receipt ${data.receiptNo} issued, but the email did not go — check the audit log.`,
+          : `Fee confirmed and receipt ${data.receiptNo} issued, but the email did not go — check the audit log.`) + pack,
+        data.welcomeSent === false || !data.emailed ? "warn" : undefined,
       );
     } catch {
       setErr("We could not reach the server. Nothing was saved.");
