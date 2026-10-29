@@ -17,18 +17,16 @@ import { recordAudit } from "@/lib/audit";
 import { sendEmail, type Attachment, type SendResult } from "@/lib/email";
 import { type MemberDoc, collections } from "@/lib/members";
 import { buildCertificate, certificateNoFor } from "@/lib/pdf/certificate";
+import { buildDeclarationForm, buildNomineeForm, buildPaymentGuide, returnByDate, type PackMember } from "@/lib/pdf/pack-forms";
 import { buildReceipt } from "@/lib/pdf/receipt";
 import { JOINING_FEE, MIN_MONTHLY } from "@/lib/settings";
 
 const PACK_DIR = path.join(process.cwd(), "assets", "pack");
 
 /**
- * The documents that are the same for every member, sent as they are.
- *
- * The three per-member forms from the pack — the payment guide, the declaration and the nominee
- * form — are not here yet: each needs the member's name and number merged in, like the
- * certificate, and they are still only templates. The bye-laws are not here either; the client's
- * own pack notes they stay a draft until the AGM adopts them.
+ * The documents that are the same for every member, sent as they are. The three per-member forms
+ * (payment guide, declaration, nominee form) are generated for each member in lib/pdf/pack-forms.ts.
+ * The bye-laws are not here: the client's own pack notes they stay a draft until the AGM adopts them.
  */
 const STANDARD_DOCUMENTS: { file: string; filename: string }[] = [
   { file: "03_Member_Handbook.pdf", filename: "HomeBridge Member Handbook.pdf" },
@@ -37,13 +35,8 @@ const STANDARD_DOCUMENTS: { file: string; filename: string }[] = [
   { file: "07_Governance_and_Contacts.pdf", filename: "HomeBridge Governance and Contacts.pdf" },
 ];
 
-/** Documents the client has supplied but which still need per-member merging before they go out. */
-export const PACK_ITEMS_PENDING = [
-  "Contribution and Payment Guide",
-  "Member Declaration Form",
-  "Nominee (Next of Kin) Form",
-  "Bye-laws",
-];
+/** Pack items not sent yet: the bye-laws go out once the AGM adopts them. */
+export const PACK_ITEMS_PENDING = ["Bye-laws"];
 
 let standardCache: Promise<Attachment[]> | null = null;
 function standardDocuments(): Promise<Attachment[]> {
@@ -116,7 +109,35 @@ export async function sendWelcomePack(
   const category = CATEGORY[member.memberType] ?? (home ? "Home" : "Diaspora");
   const firstName = member.firstName?.trim() || member.fullName.split(/\s+/)[0];
 
-  const attachments: Attachment[] = [...(await standardDocuments())];
+  const packMember: PackMember = {
+    fullName: member.fullName,
+    memberNo,
+    category,
+    home,
+    chapter: chapterName(member),
+    admittedAt: member.membership.admittedAt,
+    founding: member.memberType === "founding",
+    phone: member.whatsapp || member.contact,
+    email: member.email,
+    nominees: member.nominees.map((n) => ({ name: n.name, relationship: n.relationship, contact: n.contact, share: n.share })),
+  };
+  const [handbook, risk, privacy, governance] = await standardDocuments();
+  const [guide, declaration, nominee] = await Promise.all([
+    buildPaymentGuide(packMember),
+    buildDeclarationForm(packMember),
+    buildNomineeForm(packMember),
+  ]);
+
+  // In the order Email C lists its enclosures.
+  const attachments: Attachment[] = [
+    handbook,
+    { filename: `Contribution and Payment Guide ${memberNo}.pdf`, content: guide },
+    risk,
+    privacy,
+    governance,
+    { filename: `Member Declaration Form ${memberNo}.pdf`, content: declaration },
+    { filename: `Nominee Form ${memberNo}.pdf`, content: nominee },
+  ];
 
   const certificateNo = certificateNoFor(memberNo);
   attachments.unshift({
@@ -188,8 +209,8 @@ export async function sendWelcomePack(
     "",
     "Your next steps",
     "1. Read the attached Member Handbook.",
-    "2. Sign and return the Member Declaration and Nominee Forms within 14 days.",
-    `3. Set up your monthly contribution of at least ${minimum}, held as shares in your name.`,
+    `2. Sign and return the attached Member Declaration and Nominee Forms by ${returnByDate(member.membership.admittedAt)}.`,
+    `3. Set up your monthly contribution of at least ${minimum}, held as shares in your name, using the attached Contribution and Payment Guide.`,
     `4. ${portalStep} ${portal}`,
     "",
     `Always use ${memberNo} as your payment reference. HomeBridge will never ask you to pay into a personal account. If anyone does, do not pay, and contact us immediately.`,
@@ -237,8 +258,8 @@ ${detailRows
 <h2 style="margin:0 0 8px;font-size:16px;color:#17452F">Your next steps</h2>
 <ol style="margin:0 0 16px;padding-left:20px;font-size:14px;line-height:1.7">
 <li>Read the attached Member Handbook.</li>
-<li>Sign and return the Member Declaration and Nominee Forms within 14 days.</li>
-<li>Set up your monthly contribution of at least <strong>${esc(minimum)}</strong>, held as shares in your name.</li>
+<li>Sign and return the attached Member Declaration and Nominee Forms by <strong>${esc(returnByDate(member.membership.admittedAt))}</strong>.</li>
+<li>Set up your monthly contribution of at least <strong>${esc(minimum)}</strong>, held as shares in your name, using the attached Contribution and Payment Guide.</li>
 <li>${esc(portalStep)}</li>
 </ol>
 <p style="margin:0 0 18px"><a href="${esc(portal)}" style="display:inline-block;background:#17452F;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:999px">Open the member portal</a></p>
