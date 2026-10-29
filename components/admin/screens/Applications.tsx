@@ -928,7 +928,8 @@ function IdDocuments({ a }: { a: Application }) {
     try {
       const res = await fetch(`/api/admin/documents/${encodeURIComponent(id)}/link`, { method: "POST" });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
-      if (!res.ok || !data.ok || !data.url) throw new Error(data.error || "Could not open the document.");
+      // The status code makes a failure diagnosable from a screenshot; the server log has the detail.
+      if (!res.ok || !data.ok || !data.url) throw new Error(`${data.error || "Could not open the document"} (error ${res.status}).`);
       if (tab) tab.location.href = data.url;
       else window.location.href = data.url;
     } catch (err) {
