@@ -7,6 +7,7 @@ import { useAdmin } from "../store";
 import { exportReport, joiningFeeReport } from "../exports";
 import { fmtDate, money, naira } from "../lib";
 import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, StatTile, Table, Td, Th, cx, inputCls } from "../ui";
+import { StatementMatchCard } from "./StatementMatch";
 
 export function JoiningFeesScreen() {
   const s = useAdmin();
@@ -57,6 +58,8 @@ export function JoiningFeesScreen() {
           </>
         }
       />
+
+      <StatementMatchCard />
 
       <Banner tone="info" title="Two payees, never mixed.">
         The one-off joining fee ({naira(s.settings.joiningFeeNgn)} or £{s.settings.joiningFeeGbp}) is VEKAT’s charge for registration, ID checks and onboarding. It goes to{" "}
