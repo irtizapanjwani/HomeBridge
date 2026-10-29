@@ -1,7 +1,7 @@
 // All public-site copy lives here so it can be edited without touching layout code.
 
 export const CONTACT = {
-  email: "info@homebridge.org",
+  email: "info@homebridgecooperative.org",
   phoneDisplay: "0810 583 2602",
   phoneIntl: "+234 810 583 2602",
   phoneHref: "tel:+2348105832602",

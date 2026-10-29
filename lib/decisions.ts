@@ -14,6 +14,7 @@ import type { ClientSession } from "mongodb";
 
 import { getClient } from "@/lib/db";
 import { recordAudit } from "@/lib/audit";
+import { isEmailConfigured, sendDecline, sendInfoRequest } from "@/lib/email";
 import { type MemberDoc, type MemberStatus, collections, ensureIndexes } from "@/lib/members";
 import { formatMemberNo, nextMemberSeq, supportsTransactions } from "@/lib/numbering";
 import { reservationFor } from "@/lib/reserved-numbers";
@@ -48,7 +49,11 @@ export type DecisionInput = {
 };
 
 export type DecisionResult =
-  | { ok: true; status: MemberStatus; memberNo?: string }
+  /**
+   * `emailed` is set for the outcomes that email the applicant (request-info and decline): true when
+   * the email went, false when it could not be sent. The decision stands either way.
+   */
+  | { ok: true; status: MemberStatus; memberNo?: string; emailed?: boolean }
   | { ok: false; error: string; code: "not_found" | "settled" | "needs_reason" | "supporter" };
 
 /**
@@ -105,10 +110,60 @@ export async function decideApplication(input: DecisionInput): Promise<DecisionR
       before,
       after: status,
     });
+    if (outcome === "request-info" || outcome === "decline") {
+      const emailed = await emailApplicant(existing, outcome, reason ?? "", actor, now);
+      return { ok: true, status, emailed };
+    }
     return { ok: true, status };
   }
 
   return approve(existing, actor, reason, before);
+}
+
+/**
+ * Sends email B (more information needed) or D (not approved) from the client's Email Set, as the
+ * brief requires: "each action emails the applicant from a template" (p.4).
+ *
+ * Runs after the decision is saved and never throws, so a mail failure cannot undo a decision. Both
+ * outcomes, sent or failed, go in the audit log so an officer can see whether the applicant was told.
+ */
+async function emailApplicant(
+  member: MemberDoc,
+  outcome: "request-info" | "decline",
+  reason: string,
+  actor: string,
+  at: Date,
+): Promise<boolean> {
+  const label = outcome === "request-info" ? "Information request" : "Decline";
+  const kind = outcome === "request-info" ? "info_request" : "decline";
+
+  const to = member.email?.trim();
+  let error = "";
+  if (!to) error = "the applicant gave no email address";
+  else if (!isEmailConfigured()) error = "RESEND_API_KEY is not set";
+  else if (!reason.trim()) error = "no reason was recorded";
+
+  if (!error && to) {
+    try {
+      const firstName = member.firstName?.trim() || member.fullName.trim().split(/\s+/)[0] || "";
+      const sent =
+        outcome === "request-info"
+          ? await sendInfoRequest({ to, firstName, reference: member.reference, needed: reason, at })
+          : await sendDecline({ to, firstName, reference: member.reference, reason });
+      if (!sent.ok) error = sent.error;
+    } catch (err) {
+      error = err instanceof Error ? err.message : "unknown error";
+    }
+  }
+
+  await recordAudit({
+    action: error ? `email.${kind}_failed` : `email.${kind}_sent`,
+    actor,
+    subject: member.reference,
+    detail: error ? `${label} email not sent: ${error}` : `${label} email sent to ${to}`,
+  }).catch(() => {});
+  if (error) console.error(`[decisions] ${label.toLowerCase()} email not sent:`, error);
+  return !error;
 }
 
 async function approve(

@@ -1,7 +1,7 @@
 // The welcome pack (brief p.4, module 5).
 //
 //   "Merge member data into the welcome email and pack templates (as in the HomeBridge Welcome
-//    Pack doc). Send from info@homebridge.org with PDFs attached and a link to the member portal.
+//    Pack doc). Send from info@homebridgecooperative.org with PDFs attached and a link to the member portal.
 //    Log send time; allow admin resend."
 //
 // The wording is email C from the client's own set (10_Email_Set_A-E.docx) with the bracketed
@@ -95,7 +95,12 @@ export type WelcomePackResult =
  * message that tells the member what it is. The send is recorded on the member record and in the
  * audit log, and calling this again resends — which is what the brief asks for.
  */
-export async function sendWelcomePack(reference: string, actor: string): Promise<WelcomePackResult> {
+export async function sendWelcomePack(
+  reference: string,
+  actor: string,
+  /** The site's address, e.g. https://www.homebridgecooperative.org, for the member portal link. */
+  site: string,
+): Promise<WelcomePackResult> {
   const { members } = await collections();
   const member = await members.findOne({ reference });
   if (!member) return { ok: false, error: "That registration no longer exists", code: "not_found" };
@@ -148,6 +153,16 @@ export async function sendWelcomePack(reference: string, actor: string): Promise
     });
   }
 
+  // Brief p.4: the welcome email goes out "with PDFs attached and a link to the member portal".
+  const base = site.replace(/\/+$/, "");
+  const portal = `${base}/app`;
+  // Applicants imported from the Google Form never set a password, so they are sent to set one
+  // first; everyone who registered on the site signs in with the password they chose then.
+  const hasPassword = Boolean(member.passwordHash);
+  const portalStep = hasPassword
+    ? "Sign in to the member portal with the email and password you registered with."
+    : `Open the member portal. The first time, choose "Forgotten your password?" and enter ${member.email} to set your password.`;
+
   const subject = `Welcome to HomeBridge Cooperative – Your Membership is Confirmed (${memberNo})`;
   const admitted = DATE.format(member.membership.admittedAt);
 
@@ -169,12 +184,13 @@ export async function sendWelcomePack(reference: string, actor: string): Promise
     "Please keep your membership number safe. It is your permanent reference with HomeBridge; quote it on every payment, form and enquiry.",
     "",
     "What your membership means",
-    "HomeBridge is owned by its members and run on the principle of one member, one vote. The cooperative is managed day to day by VEKAT Nigeria Ltd, our appointed manager, under the oversight of the Governing Board and the Supervisory Committee.",
+    "HomeBridge is owned by its members and run on the principle of one member, one vote. The cooperative is managed day to day by VEKAT Group Ltd, our appointed manager, under the oversight of the Governing Board and the Supervisory Committee.",
     "",
     "Your next steps",
     "1. Read the attached Member Handbook.",
     "2. Sign and return the Member Declaration and Nominee Forms within 14 days.",
     `3. Set up your monthly contribution of at least ${minimum}, held as shares in your name.`,
+    `4. ${portalStep} ${portal}`,
     "",
     `Always use ${memberNo} as your payment reference. HomeBridge will never ask you to pay into a personal account. If anyone does, do not pay, and contact us immediately.`,
     "",
@@ -187,7 +203,7 @@ export async function sendWelcomePack(reference: string, actor: string): Promise
     "Dr Victor Evbuomwan",
     "Chairman and Initiator, HomeBridge Cooperative, on behalf of the Governing Board",
     "",
-    "HomeBridge Cooperative · Managed by VEKAT Nigeria Ltd",
+    "HomeBridge Cooperative · Managed by VEKAT Group Ltd",
     "4 Eregbowa Street, off Trinity Road, Ugbor Quarters, Benin City, Edo State",
   ];
 
@@ -217,13 +233,15 @@ ${detailRows
 </table>
 <p style="margin:0 0 16px;font-size:14px;line-height:1.55">Please keep your membership number safe. It is your permanent reference with HomeBridge; quote it on every payment, form and enquiry.</p>
 <h2 style="margin:0 0 8px;font-size:16px;color:#17452F">What your membership means</h2>
-<p style="margin:0 0 16px;font-size:14px;line-height:1.55">HomeBridge is owned by its members and run on the principle of one member, one vote. The cooperative is managed day to day by VEKAT Nigeria Ltd, our appointed manager, under the oversight of the Governing Board and the Supervisory Committee.</p>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.55">HomeBridge is owned by its members and run on the principle of one member, one vote. The cooperative is managed day to day by VEKAT Group Ltd, our appointed manager, under the oversight of the Governing Board and the Supervisory Committee.</p>
 <h2 style="margin:0 0 8px;font-size:16px;color:#17452F">Your next steps</h2>
 <ol style="margin:0 0 16px;padding-left:20px;font-size:14px;line-height:1.7">
 <li>Read the attached Member Handbook.</li>
 <li>Sign and return the Member Declaration and Nominee Forms within 14 days.</li>
 <li>Set up your monthly contribution of at least <strong>${esc(minimum)}</strong>, held as shares in your name.</li>
+<li>${esc(portalStep)}</li>
 </ol>
+<p style="margin:0 0 18px"><a href="${esc(portal)}" style="display:inline-block;background:#17452F;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:999px">Open the member portal</a></p>
 <p style="margin:0 0 16px;padding:12px 14px;background:#F7F0DA;border-radius:12px;font-size:13.5px;line-height:1.55">Always use <strong>${esc(memberNo)}</strong> as your payment reference. HomeBridge will never ask you to pay into a personal account. If anyone does, do not pay, and contact us immediately.</p>
 <h2 style="margin:0 0 8px;font-size:16px;color:#17452F">Upcoming: first AGM and official launch</h2>
 <p style="margin:0 0 16px;font-size:14px;line-height:1.55">Our first Annual General Meeting and official launch take place in the first week of December 2026. Formal notice with the date, venue and joining link will follow. As a member, you are entitled to attend, speak and vote.</p>
@@ -231,7 +249,7 @@ ${detailRows
 <p style="margin:16px 0 2px;font-size:14px">Yours sincerely,</p>
 <p style="margin:0;font-size:14px;font-weight:600">Dr Victor Evbuomwan</p>
 <p style="margin:0 0 18px;font-size:13px;color:#5E6862">Chairman and Initiator, HomeBridge Cooperative, on behalf of the Governing Board</p>
-<p style="margin:0;padding-top:14px;border-top:1px solid #ECE6D3;font-size:12px;color:#5E6862">HomeBridge Cooperative · Managed by VEKAT Nigeria Ltd<br>4 Eregbowa Street, off Trinity Road, Ugbor Quarters, Benin City, Edo State</p>
+<p style="margin:0;padding-top:14px;border-top:1px solid #ECE6D3;font-size:12px;color:#5E6862">HomeBridge Cooperative · Managed by VEKAT Group Ltd<br>4 Eregbowa Street, off Trinity Road, Ugbor Quarters, Benin City, Edo State</p>
 </div></body></html>`;
 
   const sent = await sendEmail({ to: member.email, subject, text: lines.join("\n"), html, attachments });

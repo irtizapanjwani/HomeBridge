@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: STATUS_FOR_CODE[result.code] ?? 400 });
     }
-    return NextResponse.json({ ok: true, status: result.status, memberNo: result.memberNo });
+    return NextResponse.json({ ok: true, status: result.status, memberNo: result.memberNo, emailed: result.emailed });
   } catch (err) {
     // Never returned to the browser: a Mongo error can carry the connection string.
     console.error("[admin] could not record the decision:", err instanceof Error ? err.message : "unknown error");

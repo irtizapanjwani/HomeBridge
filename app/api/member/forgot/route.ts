@@ -63,8 +63,11 @@ export async function POST(req: Request) {
 
   try {
     const member = await findMemberByEmail(email);
-    // A record with no password was registered before sign-in existed; there is nothing to reset.
-    if (member?.passwordHash) {
+    // A record with no password was registered before sign-in existed (or imported from the Google
+    // Form). Once VEKAT has admitted that person, the welcome email sends them here to set their
+    // first password, which the emailed link allows: it proves they own the address on file. An
+    // unadmitted record with no password still gets nothing.
+    if (member?.passwordHash || member?.membership) {
       const token = await createResetToken(member.reference);
       const origin = new URL(req.url).origin;
       const sent = await sendPasswordReset({

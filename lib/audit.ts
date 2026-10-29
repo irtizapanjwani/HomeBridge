@@ -49,6 +49,10 @@ const ACTION_LABEL: Record<string, string> = {
   "welcome_pack.resent": "Resent welcome pack",
   "welcome_pack.failed": "Welcome pack failed to send",
   "applications.imported": "Imported Google Form applicants",
+  "email.info_request_sent": "Emailed information request",
+  "email.info_request_failed": "Information request email failed",
+  "email.decline_sent": "Emailed decline",
+  "email.decline_failed": "Decline email failed",
 };
 
 // One fixed zone, so officers in Benin City, Abuja and the UK read the same clock and the page

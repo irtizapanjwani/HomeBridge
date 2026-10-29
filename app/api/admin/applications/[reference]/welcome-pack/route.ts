@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { isEmailConfigured } from "@/lib/email";
+import { siteUrl } from "@/lib/site-url";
 import { sendWelcomePack } from "@/lib/welcome-pack";
 
 import { isApplicationReference as isReference } from "@/lib/members";
@@ -16,7 +17,7 @@ import { isApplicationReference as isReference } from "@/lib/members";
  * outstanding per-member forms are settled. Calling sendWelcomePack from the approval is then a
  * one-line change.
  */
-export async function POST(_req: Request, { params }: { params: Promise<{ reference: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ reference: string }> }) {
   if (!(await isSignedIn())) {
     return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   }
@@ -36,7 +37,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ refere
   }
 
   try {
-    const result = await sendWelcomePack(reference, await currentOfficer());
+    const result = await sendWelcomePack(reference, await currentOfficer(), siteUrl(req));
     if (!result.ok) {
       const status = result.code === "not_found" ? 404 : result.code === "not_admitted" ? 409 : 502;
       return NextResponse.json({ ok: false, error: result.error }, { status });

@@ -105,7 +105,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ outcome, reason: why }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; memberNo?: string };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; memberNo?: string; emailed?: boolean };
       if (!res.ok || !data.ok) {
         setErr(data.error || "The decision could not be saved. Nothing was changed.");
         return null;
@@ -134,16 +134,23 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
       setErr(mode === "refuse" ? "Please give a reason for refusing — it is recorded and shown to the applicant." : "Please say what you need from the applicant.");
       return;
     }
+    // The decision is saved even when the email cannot go, so the officer is told which happened and
+    // can contact the applicant another way.
+    const notEmailed = " The email to the applicant could not be sent — see the audit log, and contact them directly.";
     if (mode === "info") {
-      if (!(await decide(a, "request-info", r))) return;
+      const saved = await decide(a, "request-info", r);
+      if (!saved) return;
       update(a.id, { status: "Info requested", note: r });
       s.addLog("Requested information", a.id, a.status, `Info requested: ${r}`);
-      toast(`Information request recorded for ${a.name}.`);
+      if (saved.emailed === false) toast(`Information request recorded for ${a.name}.${notEmailed}`, "warn");
+      else toast(`Information request recorded and emailed to ${a.name}.`);
     } else {
-      if (!(await decide(a, "decline", r))) return;
+      const saved = await decide(a, "decline", r);
+      if (!saved) return;
       update(a.id, { status: "Refused", decisionReason: r, decidedBy: s.role.person });
       s.addLog("Refused application", a.id, a.status, `Refused: ${r}`);
-      toast(`${a.name} refused. Reason recorded; they may ask the next general meeting to review it (6.2).`);
+      if (saved.emailed === false) toast(`${a.name} refused. Reason recorded.${notEmailed}`, "warn");
+      else toast(`${a.name} refused and emailed. Reason recorded; they may ask the next general meeting to review it (6.2).`);
     }
     setMode(null);
     setReason("");
