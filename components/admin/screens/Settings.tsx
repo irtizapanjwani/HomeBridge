@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAdmin, type Store } from "../store";
 import { naira, nowStamp } from "../lib";
 import { Banner, Btn, Card, CardTitle, Empty, Pill, PageHeader, ReadOnly, Table, Td, Th, cx, inputCls } from "../ui";
-import { WelcomeAutoSendCard } from "./LiveSettings";
+import { EmailTemplatesCard, WelcomeAutoSendCard } from "./LiveSettings";
 
 type Kind = "bank" | "fee" | "rule";
 type FieldDef = { key: string; label: string; kind: Kind; get: (s: SettingsState) => string | number; show?: (v: string) => string; numeric?: { min: number; max: number; int?: boolean } };
@@ -95,6 +95,7 @@ export function SettingsScreen() {
       {!anyEdit ? <ReadOnly why={`${s.role.title} can see settings and pending changes but cannot propose or approve them.`} /> : null}
 
       <WelcomeAutoSendCard />
+      <EmailTemplatesCard />
 
       <Card className="flex flex-col gap-3 p-5">
         <CardTitle id="pending-title" aside={<Pill tone={pendingList.length ? "warm" : "green"}>{pendingList.length ? `${pendingList.length} waiting` : "Nothing waiting"}</Pill>}>

@@ -10,6 +10,8 @@
 
 import "server-only";
 
+import { buttonBlock, highlightBox, quoteBox, renderTemplate } from "@/lib/email-templates";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 /** Resend's shared test sender. Deliverable only to the Resend account's own address. */
@@ -173,6 +175,20 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
   const name = input.firstName.trim() || "there";
   const ref = input.reference;
   const payRef = input.paymentReference?.trim() || "";
+
+  // Applicants get Email A, whose wording the office can edit in Settings. The Supporter-list
+  // confirmation below is not one of the client's emails and keeps its fixed wording.
+  if (!input.supporter) {
+    const feeNote = input.fee || payRef
+      ? `You told us you paid the joining fee${input.fee ? ` of ${input.fee}` : ""}${payRef ? `, with the reference ${payRef}` : ""}. We will confirm it against our account. There is nothing further for you to do.`
+      : "";
+    const email = await renderTemplate(
+      "A",
+      { FirstName: name, ApplicationRef: ref, Fee: input.fee ?? "", PaymentReference: payRef, FeeNote: feeNote },
+      { REFERENCE_BOX: highlightBox("Your application reference", ref) },
+    );
+    return sendEmail({ to: input.to, ...email });
+  }
   // Email A in the client's Email Set: the applicant gets an application reference here. Their
   // permanent membership number comes later, in the welcome email, once VEKAT approves them.
   const refLabel = input.supporter ? "Your reference" : "Your application reference";
@@ -247,9 +263,6 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
   });
 }
 
-/** The line every email in the client's Email Set opens with. */
-const MOTTO = "HOMEBRIDGE!!! Connecting People! Building Trust! Creating Wealth!";
-
 const LAGOS_LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
   day: "numeric",
@@ -259,20 +272,6 @@ const LAGOS_LONG_DATE = new Intl.DateTimeFormat("en-GB", {
 
 /** How long an applicant is given to send what was asked for. */
 export const INFO_REQUEST_DAYS = 14;
-
-/** The shared shell of the vetting emails, so B and D look like one family with A and C. */
-function vettingHtml(paragraphs: string[]): string {
-  return `<!doctype html>
-<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
-  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
-    <tr><td style="padding:28px">
-      <p style="margin:0 0 18px;font-size:12px;font-weight:700;letter-spacing:.06em;color:#17452F">${esc(MOTTO)}</p>
-      ${paragraphs.map((p) => `<p style="margin:0 0 16px">${p}</p>`).join("\n      ")}
-      <p style="margin:4px 0 0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">Kind regards,<br>HomeBridge Membership Team</p>
-    </td></tr>
-  </table>
-</body></html>`;
-}
 
 export type InfoRequestEmail = {
   to: string;
@@ -295,46 +294,22 @@ export type InfoRequestEmail = {
  * there is the safer route for an ID copy, so it is offered first.
  */
 export async function sendInfoRequest(input: InfoRequestEmail): Promise<SendResult> {
-  const name = input.firstName.trim() || "there";
   const by = LAGOS_LONG_DATE.format(new Date(input.at.getTime() + INFO_REQUEST_DAYS * 86_400_000));
-
-  const text = [
-    MOTTO,
-    ``,
-    `Dear ${name},`,
-    ``,
-    `Thank you for your application. To complete our checks, we need the following: ${input.needed}`,
-    ``,
-    input.accountUrl
-      ? `Please sign in to your HomeBridge account and send it from there, or reply to this email, by ${by}, quoting ${input.reference}: ${input.accountUrl}`
-      : `Please reply to this email by ${by}, quoting ${input.reference}.`,
-    `Please do not send ID documents by WhatsApp.`,
-    ``,
-    `Kind regards,`,
-    `HomeBridge Membership Team`,
-  ].join("\n");
-
-  const html = vettingHtml([
-    `Dear ${esc(name)},`,
-    `Thank you for your application. To complete our checks, we need the following:`,
-    `<span style="display:block;padding:12px 14px;background:#F3F1EA;border-radius:8px">${esc(input.needed)}</span>`,
-    input.accountUrl
-      ? `Please sign in to your HomeBridge account and send it from there, or reply to this email, by <strong>${esc(by)}</strong>, quoting <strong>${esc(input.reference)}</strong>.`
-      : `Please reply to this email by <strong>${esc(by)}</strong>, quoting <strong>${esc(input.reference)}</strong>.`,
-    ...(input.accountUrl
-      ? [
-          `<a href="${esc(input.accountUrl)}" style="display:inline-block;background:#17452F;color:#FFFDF7;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">Respond in your account</a>`,
-        ]
-      : []),
-    `Please do not send ID documents by WhatsApp.`,
-  ]);
-
-  return sendEmail({
-    to: input.to,
-    subject: `HomeBridge application ${input.reference}: information needed`,
-    text,
-    html,
-  });
+  const email = await renderTemplate(
+    "B",
+    {
+      FirstName: input.firstName.trim() || "there",
+      ApplicationRef: input.reference,
+      Needed: input.needed,
+      ReplyBy: by,
+      AccountLink: input.accountUrl ?? "",
+    },
+    {
+      NEEDED_BOX: quoteBox(input.needed),
+      BUTTON: input.accountUrl ? buttonBlock("Respond in your account", input.accountUrl) : undefined,
+    },
+  );
+  return sendEmail({ to: input.to, ...email });
 }
 
 export type DeclineEmail = {
@@ -347,36 +322,12 @@ export type DeclineEmail = {
 
 /** Email D in the client's Email Set: "Application not approved", sent when an officer declines. */
 export async function sendDecline(input: DeclineEmail): Promise<SendResult> {
-  const name = input.firstName.trim() || "there";
-
-  const text = [
-    MOTTO,
-    ``,
-    `Dear ${name},`,
-    ``,
-    `Thank you for your interest in HomeBridge Cooperative. After reviewing your application, we are unable to approve your membership at this time. ${input.reason}`,
-    ``,
-    `As stated when you applied, the joining (registration) fee is non-refundable.`,
-    ``,
-    `If you have questions about this decision, please reply quoting ${input.reference}.`,
-    ``,
-    `Kind regards,`,
-    `HomeBridge Membership Team`,
-  ].join("\n");
-
-  const html = vettingHtml([
-    `Dear ${esc(name)},`,
-    `Thank you for your interest in HomeBridge Cooperative. After reviewing your application, we are unable to approve your membership at this time. ${esc(input.reason)}`,
-    `As stated when you applied, the joining (registration) fee is non-refundable.`,
-    `If you have questions about this decision, please reply quoting <strong>${esc(input.reference)}</strong>.`,
-  ]);
-
-  return sendEmail({
-    to: input.to,
-    subject: `Your HomeBridge application (${input.reference})`,
-    text,
-    html,
+  const email = await renderTemplate("D", {
+    FirstName: input.firstName.trim() || "there",
+    ApplicationRef: input.reference,
+    Reason: input.reason,
   });
+  return sendEmail({ to: input.to, ...email });
 }
 
 export type ResetInput = { to: string; firstName: string; url: string };
