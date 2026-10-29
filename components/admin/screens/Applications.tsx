@@ -576,7 +576,10 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
                           </span>
                         ) : null}
                       </span>
-                      <Pill>{a.status}</Pill>
+                      <span className="flex flex-col items-end gap-1">
+                        <Pill>{a.status}</Pill>
+                        {a.duplicates?.length ? <Pill tone="red">Possible duplicate</Pill> : null}
+                      </span>
                     </button>
                   </li>
                 );
@@ -712,6 +715,19 @@ function Detail({
           </li>
         ))}
       </ul>
+
+      {a.duplicates?.length ? (
+        <Banner tone="warn" title="Possible duplicate:">
+          This looks like the same person as{" "}
+          {a.duplicates.map((d, i) => (
+            <span key={d.id}>
+              {i > 0 ? "; " : ""}
+              <strong>{d.name}</strong> ({d.id}, {d.status.toLowerCase()} — {d.why.join(", ")})
+            </span>
+          ))}
+          . Check before approving: one person may hold only one membership.
+        </Banner>
+      ) : null}
 
       <IdDocuments a={a} />
 

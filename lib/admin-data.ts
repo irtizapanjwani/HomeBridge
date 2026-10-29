@@ -525,6 +525,11 @@ export type Application = {
   documents?: import("@/lib/document-types").DocMeta[];
   /** The applicant's answer to "more information needed", sent from their account. */
   infoResponse?: { message: string; at: string };
+  /**
+   * Other registrations that look like the same person (brief p.4: "duplicate check (same email,
+   * phone, name and date of birth)"). A warning for the officer, never an automatic refusal.
+   */
+  duplicates?: { id: string; name: string; status: string; why: string[] }[];
 };
 
 export const APPLICATIONS: Application[] = [

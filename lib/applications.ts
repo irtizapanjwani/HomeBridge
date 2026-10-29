@@ -160,6 +160,71 @@ export function toApplication(m: MemberDoc): Application {
   };
 }
 
+/** Titles are recorded separately on one form and inside the name on the other, so drop them. */
+const TITLES = new Set(["mr", "mrs", "ms", "miss", "dr", "pastor", "rev", "chief", "engr", "prof", "sir", "alhaji", "alhaja", "hon"]);
+
+/** "Mr Bilal  HUSSAIN" and "Hussain Bilal" give the same key: lower case, no titles, words sorted. */
+function nameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w && !TITLES.has(w))
+    .sort()
+    .join(" ");
+}
+
+/**
+ * Finds registrations that look like the same person: the same email, the same phone, or the same
+ * name with the same date of birth (brief p.4). Each match says why, so the officer can judge it —
+ * a shared family email is not the same as a second application under one name and birthday.
+ */
+function findDuplicates(docs: MemberDoc[]): Map<string, NonNullable<Application["duplicates"]>> {
+  const groups = new Map<string, MemberDoc[]>();
+  const add = (key: string, d: MemberDoc) => {
+    const list = groups.get(key) ?? [];
+    list.push(d);
+    groups.set(key, list);
+  };
+  for (const d of docs) {
+    if (d.emailNorm) add(`email:${d.emailNorm}`, d);
+    if (d.phoneNorm && d.phoneNorm.length >= 7) add(`phone:${d.phoneNorm}`, d);
+    const n = nameKey(d.fullName);
+    if (n && d.dob) add(`namedob:${n}|${d.dob}`, d);
+  }
+
+  const WHY: Record<string, string> = { email: "same email", phone: "same phone", namedob: "same name and date of birth" };
+  const out = new Map<string, Map<string, { id: string; name: string; status: string; why: Set<string> }>>();
+  for (const [key, list] of groups) {
+    if (list.length < 2) continue;
+    const why = WHY[key.split(":")[0]];
+    for (const d of list) {
+      const mine = out.get(d.reference) ?? new Map();
+      for (const other of list) {
+        if (other.reference === d.reference) continue;
+        const entry = mine.get(other.reference) ?? {
+          id: other.reference,
+          name: other.fullName,
+          status: other.supporter ? "Supporter" : (STATUS[other.status] ?? other.status),
+          why: new Set<string>(),
+        };
+        entry.why.add(why);
+        mine.set(other.reference, entry);
+      }
+      out.set(d.reference, mine);
+    }
+  }
+
+  const result = new Map<string, NonNullable<Application["duplicates"]>>();
+  for (const [ref, mine] of out) {
+    result.set(
+      ref,
+      [...mine.values()].map((e) => ({ id: e.id, name: e.name, status: e.status, why: [...e.why] })),
+    );
+  }
+  return result;
+}
+
 /** Newest first. The screen filters and sorts further in the browser. */
 export async function listApplications(limit = 500): Promise<Application[]> {
   const { members } = await collections();
@@ -172,6 +237,7 @@ export async function listApplications(limit = 500): Promise<Application[]> {
     .limit(limit)
     .toArray();
   const apps = docs.map(toApplication);
+  const duplicates = findDuplicates(docs);
   // Document metadata in one query for the whole list. A failure here must not hide the queue.
   const files = await listDocumentsFor(docs.map((d) => d.reference)).catch((err) => {
     console.error("[admin] could not list documents:", err instanceof Error ? err.message : "unknown error");
@@ -182,6 +248,7 @@ export async function listApplications(limit = 500): Promise<Application[]> {
     return {
       ...a,
       ...(files.get(a.id)?.length ? { documents: files.get(a.id) } : {}),
+      ...(duplicates.get(a.id)?.length ? { duplicates: duplicates.get(a.id) } : {}),
       ...(r ? { infoResponse: { message: r.message, at: `${LAGOS_DATE.format(r.at)}, ${LAGOS_TIME.format(r.at)}` } } : {}),
     };
   });
