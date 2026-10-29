@@ -173,13 +173,12 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
   const name = input.firstName.trim() || "there";
   const ref = input.reference;
   const payRef = input.paymentReference?.trim() || "";
-  // Since the membership number is issued at registration, the number in this email is the
-  // member's permanent one rather than a temporary application reference, and is named as such.
-  const isMemberNo = ref.startsWith("HBC-");
-  const refLabel = isMemberNo ? "Your membership number" : "Your reference";
-  const keepIt = isMemberNo
-    ? "Please keep it safe. It is your permanent reference with HomeBridge: quote it on every payment, form and enquiry."
-    : "Please keep it. Quote it in any message to us about your membership.";
+  // Email A in the client's Email Set: the applicant gets an application reference here. Their
+  // permanent membership number comes later, in the welcome email, once VEKAT approves them.
+  const refLabel = input.supporter ? "Your reference" : "Your application reference";
+  const keepIt = input.supporter
+    ? "Please keep it. Quote it in any message to us."
+    : "Please keep it and quote it in any message to us about your application. Your permanent membership number is issued when your application is approved.";
 
   const feeLine = input.supporter
     ? {
@@ -242,9 +241,7 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
     to: input.to,
     subject: input.supporter
       ? `You're on the HomeBridge Supporter list — ${ref}`
-      : isMemberNo
-        ? `Your HomeBridge membership number — ${ref}`
-        : `Your HomeBridge application — ${ref}`,
+      : `HomeBridge application received (${ref})`,
     text,
     html,
   });

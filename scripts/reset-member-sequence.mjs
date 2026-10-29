@@ -5,9 +5,10 @@
  * had. Once real members exist, numbers are never reused (brief p.6) — so this refuses to move a
  * counter back past a number that is actually in use.
  *
- *   node scripts/reset-member-sequence.mjs              # show both counters and what is in use
- *   node scripts/reset-member-sequence.mjs 2            # next membership number becomes 00002
- *   node scripts/reset-member-sequence.mjs receipt 1    # next receipt number becomes 00001
+ *   node scripts/reset-member-sequence.mjs                  # show the counters and what is in use
+ *   node scripts/reset-member-sequence.mjs 2                # next membership number becomes 00002
+ *   node scripts/reset-member-sequence.mjs receipt 1        # next receipt number becomes 00001
+ *   node scripts/reset-member-sequence.mjs application 1    # next application ref becomes HBA-YYMM-0001
  *
  * Delete the test registration in the admin first: this only moves counters, it does not remove
  * anybody. Reads MONGODB_URI from the environment or a .env file.
@@ -57,7 +58,7 @@ if (!uri) {
 }
 
 const args = process.argv.slice(2);
-const which = args[0] === "receipt" || args[0] === "member" ? args.shift() : "member";
+const which = ["receipt", "member", "application"].includes(args[0]) ? args.shift() : "member";
 const arg = args[0];
 
 const client = new MongoClient(uri);
@@ -71,6 +72,7 @@ try {
   const at = async (id) => (await counters.findOne({ _id: id }))?.value ?? 0;
   const memberSeq = await at("member_seq");
   const receiptSeq = await at("receipt_seq");
+  const applicationSeq = await at("application_seq");
 
   const issued = await members
     .find(
@@ -83,6 +85,9 @@ try {
       { "payment.receiptNo": { $exists: true } },
       { projection: { "payment.receiptNo": 1, fullName: 1, _id: 0 } },
     )
+    .toArray();
+  const applications = await members
+    .find({ reference: /^HBA-/ }, { projection: { reference: 1, fullName: 1, _id: 0 } })
     .toArray();
 
   console.log(`Membership counter: ${memberSeq} — next ordinary number would be ${memberSeq + 1}.`);
@@ -97,10 +102,17 @@ try {
       ? `  in use:\n    ${receipts.map((m) => `${m.payment.receiptNo}  ${m.fullName}`).join("\n    ")}`
       : "  none issued.",
   );
+  console.log(`Application counter: ${applicationSeq} — next application ref would end ${String(applicationSeq + 1).padStart(4, "0")}.`);
+  console.log(
+    applications.length
+      ? `  in use:\n    ${applications.map((m) => `${m.reference}  ${m.fullName}`).join("\n    ")}`
+      : "  none issued.",
+  );
 
   if (arg === undefined) {
     console.log("\nPass the next number you want, e.g. `node scripts/reset-member-sequence.mjs 2`");
-    console.log("or, for receipts, `node scripts/reset-member-sequence.mjs receipt 1`.");
+    console.log("or, for receipts, `node scripts/reset-member-sequence.mjs receipt 1`,");
+    console.log("or, for application refs, `node scripts/reset-member-sequence.mjs application 1`.");
     process.exit(0);
   }
 
@@ -112,13 +124,17 @@ try {
 
   // Refuse to point a counter at a number something already holds: two records with the same
   // number is the one failure this whole scheme exists to prevent.
-  const digitsOf = (s) => Number(String(s).slice(-5));
+  // The running number is always the part after the last dash, whatever its width.
+  const digitsOf = (s) => Number(String(s).split("-").pop());
   const clash =
     which === "member"
       ? issued.find((m) => digitsOf(m.membership.memberNo) >= next)
-      : receipts.find((m) => digitsOf(m.payment.receiptNo) >= next);
+      : which === "receipt"
+        ? receipts.find((m) => digitsOf(m.payment.receiptNo) >= next)
+        : applications.find((m) => digitsOf(m.reference) >= next);
   if (clash) {
-    const held = which === "member" ? clash.membership.memberNo : clash.payment.receiptNo;
+    const held =
+      which === "member" ? clash.membership.memberNo : which === "receipt" ? clash.payment.receiptNo : clash.reference;
     console.error(
       `\nRefusing: ${held} (${clash.fullName}) is at or above ${next}, so the next one would ` +
         `reuse a number. Delete that registration in the admin first if it was a test.`,
@@ -126,9 +142,10 @@ try {
     process.exit(1);
   }
 
-  const id = which === "member" ? "member_seq" : "receipt_seq";
+  const id = { member: "member_seq", receipt: "receipt_seq", application: "application_seq" }[which];
   await counters.updateOne({ _id: id }, { $set: { value: next - 1 } }, { upsert: true });
-  console.log(`\nDone. The next ${which === "member" ? "membership" : "receipt"} number will be ${String(next).padStart(5, "0")}.`);
+  const shown = String(next).padStart(which === "application" ? 4 : 5, "0");
+  console.log(`\nDone. The next ${which === "member" ? "membership number" : which === "receipt" ? "receipt number" : "application reference"} will end ${shown}.`);
 } finally {
   await client.close();
 }

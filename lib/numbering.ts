@@ -24,10 +24,10 @@ import type { ClientSession } from "mongodb";
 import { getClient } from "@/lib/db";
 import { collections } from "@/lib/members";
 import { RESERVED_SEQS } from "@/lib/reserved-numbers";
-import { zoneFor } from "@/lib/zones";
 
 export const MEMBER_SEQUENCE = "member_seq";
 export const RECEIPT_SEQUENCE = "receipt_seq";
+export const APPLICATION_SEQUENCE = "application_seq";
 
 /** Formats the parts into the number the brief specifies. */
 export function formatMemberNo(zone: string, admittedAt: Date, seq: number): string {
@@ -60,27 +60,44 @@ export async function nextMemberSeq(session?: ClientSession): Promise<number> {
 }
 
 /**
- * Issues the membership number a new applicant is given at registration.
+ * HBA-YYMM-NNNN — the application reference (brief p.3 and p.5: "On submit: create applicant,
+ * issue application reference HBA-YYMM-NNNN").
  *
- * The client asked for one number for the whole journey: the same HBC-ZONE-YY-NNNNN is the
- * applicant's reference from the moment they register and stays their membership number after
- * approval. That departs from the brief, which issues it only on approval so that "declined
- * applicants never receive a membership number, so the member sequence has no gaps" (p.3). With
- * the number given out up front, anyone declined keeps theirs and the register will have gaps.
- * The client has accepted that.
- *
- * Reserved numbers are still stepped over, so a held number cannot be taken by a new registration.
+ * YYMM is the month the application arrived. NNNN is one running number that never resets, so two
+ * applications can never share a reference even across months. It is padded to four digits and
+ * simply grows a fifth if the cooperative ever passes 9,999 applications.
  */
-export async function issueRegistrationNumber(input: {
-  chapter?: string;
-  country: string;
-  state: string;
-  at?: Date;
-}): Promise<{ memberNo: string; zone: string; seq: number }> {
-  const at = input.at ?? new Date();
-  const zone = zoneFor({ chapter: input.chapter, country: input.country, state: input.state });
-  const seq = await nextMemberSeq();
-  return { memberNo: formatMemberNo(zone, at, seq), zone, seq };
+export function formatApplicationRef(at: Date, seq: number): string {
+  const yy = String(at.getUTCFullYear()).slice(-2);
+  const mm = String(at.getUTCMonth() + 1).padStart(2, "0");
+  return `HBA-${yy}${mm}-${String(seq).padStart(4, "0")}`;
+}
+
+/** Takes the next application number. Its own counter: it never touches the membership sequence. */
+export async function nextApplicationSeq(session?: ClientSession): Promise<number> {
+  const { counters } = await collections();
+  const doc = await counters.findOneAndUpdate(
+    { _id: APPLICATION_SEQUENCE },
+    { $inc: { value: 1 } },
+    { upsert: true, returnDocument: "after", session },
+  );
+  if (!doc) throw new Error("Could not take the next application reference");
+  return doc.value;
+}
+
+/**
+ * Issues the reference a new applicant is given at registration.
+ *
+ * This is an application reference, not a membership number. The membership number is issued only
+ * when VEKAT approves the application (see lib/decisions.ts), as the brief requires: "Declined
+ * applicants, and those asked for more information, never receive a membership number, so the
+ * member sequence has no gaps" (p.3).
+ *
+ * Applicants who registered between mid-October 2026 and this change were given an HBC number at
+ * registration instead; they keep it, and approval confirms it rather than issuing a second one.
+ */
+export async function issueApplicationRef(at: Date = new Date()): Promise<string> {
+  return formatApplicationRef(at, await nextApplicationSeq());
 }
 
 /** VKT-RCP-YY-NNNNN — the VEKAT joining fee receipt (brief p.5). */

@@ -9,6 +9,8 @@ import { Card, btnSecondary, textLink } from "./bits";
 
 export type AccountView = {
   reference: string;
+  /** Issued on approval; absent until then. */
+  memberNo?: string;
   firstName: string;
   fullName: string;
   status: string;
@@ -60,9 +62,15 @@ export function Account({ view }: { view: AccountView }) {
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="min-w-0">
           <p className="m-0 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[14px] text-muted">
-            <span>
-              Reference <span className="font-mono font-semibold text-forest-800">{view.reference}</span>
-            </span>
+            {view.memberNo ? (
+              <span>
+                Membership number <span className="font-mono font-semibold text-forest-800">{view.memberNo}</span>
+              </span>
+            ) : (
+              <span>
+                Application reference <span className="font-mono font-semibold text-forest-800">{view.reference}</span>
+              </span>
+            )}
             {view.memberType && <span>· {view.memberType}</span>}
             {view.chapter && <span>· {view.chapter}</span>}
           </p>

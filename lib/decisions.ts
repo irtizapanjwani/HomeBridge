@@ -121,9 +121,9 @@ async function approve(
   const zone = zoneFor({ chapter: member.chapter, country: member.country, state: member.state });
   const admittedAt = new Date();
 
-  // Since October 2026 a member's reference IS their membership number, issued when they
-  // registered, so approval confirms it rather than handing out a second one. Applicants who
-  // registered before that still carry an APP- reference and are numbered here as they always were.
+  // Applicants register with an HBA- (or older APP-) reference and get their membership number here,
+  // on approval. The few who registered while numbers were issued at registration already carry an
+  // HBC number as their reference, so approval confirms that one rather than handing out a second.
   const alreadyNumbered = member.reference.startsWith("HBC-");
 
   // A number held for this person is issued exactly as reserved, and does not touch the counter;

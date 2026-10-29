@@ -40,6 +40,7 @@ export default async function MemberAccountPage() {
 
   const view: AccountView = {
     reference: m.reference,
+    ...(m.membership ? { memberNo: m.membership.memberNo } : {}),
     firstName: m.firstName || m.fullName.trim().split(/\s+/)[0] || "",
     fullName: [m.title, m.fullName].filter(Boolean).join(" ").trim(),
     status: m.status,

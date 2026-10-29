@@ -97,7 +97,7 @@ export function SubmittedToast({ result, onClose }: { result: Submission; onClos
         </div>
 
         <div className="px-5 py-4">
-          <p className="m-0 text-[13px] text-muted">Your reference</p>
+          <p className="m-0 text-[13px] text-muted">{result.supporter ? "Your reference" : "Your application reference"}</p>
           <div className="mt-1 flex items-center gap-2.5">
             <p className="m-0 min-w-0 flex-1 truncate font-mono text-[20px] font-semibold tracking-wide text-ink">{result.reference}</p>
             <button
@@ -110,6 +110,7 @@ export function SubmittedToast({ result, onClose }: { result: Submission; onClos
           </div>
           <p className="m-0 mt-1.5 text-[13px] text-muted">
             Keep this reference and quote it if you contact us. It is also on your account page.
+            {!result.supporter && " Your permanent membership number is issued when your application is approved."}
           </p>
         </div>
 

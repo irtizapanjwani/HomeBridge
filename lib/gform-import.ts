@@ -18,11 +18,11 @@ import {
   type MemberDoc,
   collections,
   ensureIndexes,
-  makeReference,
   normEmail,
   normPhone,
   upsertPerson,
 } from "@/lib/members";
+import { issueApplicationRef } from "@/lib/numbering";
 
 /** Header spellings accepted for each field, compared with punctuation and case removed. */
 const COLUMNS: Record<string, string[]> = {
@@ -236,7 +236,9 @@ export async function runImport(csv: string, actor: string): Promise<ImportResul
   for (const row of preview.rows) {
     if (row.problem || row.duplicateOf) continue;
 
-    const reference = makeReference("APP");
+    // The same HBA-YYMM-NNNN reference a form applicant gets, from the same counter, so imported
+    // applicants are numbered in one sequence with everyone else (brief acceptance criterion 6).
+    const reference = await issueApplicationRef(now);
     const personRef = await upsertPerson({ name: row.fullName, email: row.email, phone: row.phone });
 
     const doc: MemberDoc = {
