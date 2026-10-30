@@ -82,7 +82,9 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
   const sel = s.apps.find((a) => a.id === selId) ?? list[0];
 
   const n = (f: Filter) => s.apps.filter((a) => inList(f, a.status) && fromOrigin(a)).length;
-  const nOrigin = (o: "homebridge" | "vekat" | "gform") => s.apps.filter((a) => inList(filter, a.status) && (a.origin ?? "homebridge") === o).length;
+  // Everyone who came through that form, whatever their status, so approving someone does not make
+  // the form's tab look empty. The status tabs below then split that number up.
+  const nOrigin = (o: "homebridge" | "vekat" | "gform") => s.apps.filter((a) => (a.origin ?? "homebridge") === o).length;
   const hasImports = s.apps.some((a) => a.origin === "gform");
 
   const update = (id: string, patch: Partial<Application>) => s.setApps((cur) => cur.map((a) => (a.id === id ? { ...a, ...patch } : a)));
@@ -489,7 +491,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
       <div role="tablist" aria-label="Where they registered" className="flex flex-wrap gap-1.5 rounded-[16px] border border-line bg-paper p-1.5">
         {(
           [
-            ["all", "All forms", s.apps.filter((a) => inList(filter, a.status)).length],
+            ["all", "All forms", s.apps.length],
             ["homebridge", "HomeBridge registration", nOrigin("homebridge")],
             ["vekat", "VEKAT form", nOrigin("vekat")],
             ...(hasImports ? [["gform", "Google Form import", nOrigin("gform")]] : []),
