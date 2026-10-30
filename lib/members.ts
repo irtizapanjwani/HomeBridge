@@ -211,6 +211,23 @@ export type MemberDoc = {
    * When the welcome pack went out, and what it contained (brief p.4: "Log send time; allow admin
    * resend"). Overwritten on a resend; the audit log keeps the full history of sends.
    */
+  /**
+   * The declaration and nominee forms, signed in the member portal (brief Phase 2: "Declaration and
+   * nominee forms completed and signed online in the portal; stored as signed PDFs"). The PDFs are
+   * in the documents collection; these record when, and what was declared.
+   */
+  forms?: {
+    declaration?: { signedAt: Date; signerName: string; photoConsent: boolean; documentId: string };
+    nominee?: {
+      signedAt: Date;
+      documentId: string;
+      nominees: { name: string; relationship: string; phone: string; email: string; address: string; share: number }[];
+      survivorInstruction: string;
+      witnessName: string;
+      witnessAddress: string;
+    };
+  };
+
   /** Set for the moment an automatic welcome-pack send is under way, so two triggers cannot both send. */
   welcomeAutoClaim?: Date;
 

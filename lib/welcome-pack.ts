@@ -77,6 +77,24 @@ function chapterName(member: MemberDoc) {
   return bare;
 }
 
+/** The details the pack documents print for one admitted member, or null if not yet admitted. */
+export function packMemberOf(member: MemberDoc): PackMember | null {
+  if (!member.membership) return null;
+  const home = member.country === "Nigeria";
+  return {
+    fullName: member.fullName,
+    memberNo: member.membership.memberNo,
+    category: CATEGORY[member.memberType] ?? (home ? "Home" : "Diaspora"),
+    home,
+    chapter: chapterName(member),
+    admittedAt: member.membership.admittedAt,
+    founding: member.memberType === "founding",
+    phone: member.whatsapp || member.contact,
+    email: member.email,
+    nominees: member.nominees.map((n) => ({ name: n.name, relationship: n.relationship, contact: n.contact, share: n.share })),
+  };
+}
+
 export type WelcomePackResult =
   | { ok: true; sentAt: Date; attachments: string[] }
   | { ok: false; error: string; code: "not_found" | "not_admitted" | "send_failed" };
@@ -109,18 +127,7 @@ export async function sendWelcomePack(
   const category = CATEGORY[member.memberType] ?? (home ? "Home" : "Diaspora");
   const firstName = member.firstName?.trim() || member.fullName.split(/\s+/)[0];
 
-  const packMember: PackMember = {
-    fullName: member.fullName,
-    memberNo,
-    category,
-    home,
-    chapter: chapterName(member),
-    admittedAt: member.membership.admittedAt,
-    founding: member.memberType === "founding",
-    phone: member.whatsapp || member.contact,
-    email: member.email,
-    nominees: member.nominees.map((n) => ({ name: n.name, relationship: n.relationship, contact: n.contact, share: n.share })),
-  };
+  const packMember = packMemberOf(member)!;
   const [handbook, risk, privacy, governance] = await standardDocuments();
   const [guide, declaration, nominee] = await Promise.all([
     buildPaymentGuide(packMember),

@@ -969,9 +969,16 @@ function IdDocuments({ a }: { a: Application }) {
   return (
     <div className="flex flex-col gap-2.5 rounded-[14px] border border-line p-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="m-0 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">ID and address documents</h3>
+        <h3 className="m-0 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Documents and signed forms</h3>
         <span className="text-[12.5px] text-muted">Every view is recorded in the audit log</span>
       </div>
+
+      {a.memberNo ? (
+        <p className="m-0 text-[13.5px]">
+          <strong>Membership forms:</strong> declaration {a.forms?.declarationAt ? `signed ${a.forms.declarationAt}` : "not signed yet"} · nominee
+          form {a.forms?.nomineeAt ? `signed ${a.forms.nomineeAt}` : "not signed yet"}
+        </p>
+      ) : null}
 
       {a.infoResponse ? (
         <div className="rounded-[10px] bg-mist px-3 py-2.5 text-[13.5px]">

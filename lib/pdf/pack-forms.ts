@@ -12,6 +12,7 @@
 import "server-only";
 
 import { CONTACT } from "@/lib/content";
+import { DECLARATION_STATEMENTS, PHOTO_CONSENT } from "@/lib/forms-text";
 import { FormWriter } from "@/lib/pdf/layout";
 import { FOUNDING_BLOCK, JOINING_FEE, MIN_MONTHLY, SOCIETY_ACCOUNTS } from "@/lib/settings";
 
@@ -28,6 +29,22 @@ export type PackMember = {
   phone: string;
   email: string;
   nominees: { name: string; relationship: string; contact: string; share: number | string }[];
+};
+
+/** A declaration signed in the member portal (Phase 2): drawn on the PDF instead of blank lines. */
+export type SignedDeclaration = { signature: Uint8Array; signerName: string; signedAt: Date; photoConsent: boolean };
+
+export type NomineeRow = { name: string; relationship: string; phone: string; email: string; address: string; share: number };
+
+/** A nominee form signed in the member portal, with the member's own nominee list and a witness. */
+export type SignedNominee = {
+  signature: Uint8Array;
+  signedAt: Date;
+  nominees: NomineeRow[];
+  survivorInstruction: string;
+  witnessName: string;
+  witnessAddress: string;
+  witnessSignature: Uint8Array;
 };
 
 /** How long a member has to sign and return the forms (Email C: "by [date, 14 days after admission]"). */
@@ -119,7 +136,7 @@ export async function buildPaymentGuide(m: PackMember): Promise<Uint8Array> {
 
 // ---------------- 08 Member Declaration Form ----------------
 
-export async function buildDeclarationForm(m: PackMember): Promise<Uint8Array> {
+export async function buildDeclarationForm(m: PackMember, signed?: SignedDeclaration): Promise<Uint8Array> {
   const w = await FormWriter.create({
     title: `Member Declaration Form — ${m.memberNo}`,
     subject: `Member declaration form for ${m.fullName}`,
@@ -128,7 +145,9 @@ export async function buildDeclarationForm(m: PackMember): Promise<Uint8Array> {
 
   w.header("Member Declaration Form");
   w.paragraph(
-    `Please sign and return by ${returnByDate(m.admittedAt)}, by email to ${CONTACT.email} or through the member portal.`,
+    signed
+      ? `Signed online in the HomeBridge member portal on ${DATE.format(signed.signedAt)}.`
+      : `Please sign and return by ${returnByDate(m.admittedAt)}, by email to ${CONTACT.email} or through the member portal.`,
   );
 
   w.heading("Member details");
@@ -142,37 +161,37 @@ export async function buildDeclarationForm(m: PackMember): Promise<Uint8Array> {
 
   w.heading("Declaration");
   w.paragraph("I declare that:");
-  w.list(
-    [
-      "The information I gave in my application is true and complete, and I will tell HomeBridge promptly if it changes.",
-      "I have received and read the Bye-laws, Member Handbook, Contribution and Payment Guide, Investment Risk Statement and Privacy Notice.",
-      "I agree to abide by the Bye-laws of HomeBridge Cooperative and the lawful decisions of its General Meetings and Governing Board.",
-      "I understand that my contributions buy shares, that their value can fall as well as rise, and that no return is guaranteed.",
-      "I understand that the joining (registration) fee is non-refundable.",
-      "I will make contributions only into HomeBridge Cooperative’s official accounts, quoting my membership number.",
-      `I understand that ${JOINING_FEE.payee} manages the cooperative’s administration as its appointed manager.`,
-      `I consent to HomeBridge Cooperative and ${JOINING_FEE.payee} processing my personal data as described in the Privacy Notice.`,
-      "I am contributing my own funds, lawfully obtained.",
-    ],
-    { numbered: true },
-  );
+  w.list(DECLARATION_STATEMENTS, { numbered: true });
 
   w.heading("Optional consent");
-  w.checkbox("I agree that photographs of me taken at HomeBridge events may be used in HomeBridge communications.");
+  w.checkbox(PHOTO_CONSENT, signed?.photoConsent ?? false);
 
-  w.ensure(2 * 30 + 40); // the heading travels with its signature block
+  w.ensure(2 * 30 + 64); // the heading travels with its signature block
   w.heading("Signature");
-  w.signLines(["Signature", "Date"]);
+  if (signed) {
+    await w.signedLines([
+      { label: "Signature", image: signed.signature },
+      { label: "Name", text: signed.signerName },
+      { label: "Date", text: DATE.format(signed.signedAt) },
+    ]);
+  } else {
+    w.signLines(["Signature", "Date"]);
+  }
 
   w.heading("For office use");
-  w.table(["Received on", "Checked by", "Register updated"], [["", "", "Yes  /  No"]], [0.34, 0.33, 0.33], { minRowHeight: 30 });
+  w.table(
+    ["Received on", "Checked by", "Register updated"],
+    [[signed ? `${DATE.format(signed.signedAt)} (online)` : "", "", "Yes  /  No"]],
+    [0.34, 0.33, 0.33],
+    { minRowHeight: 30 },
+  );
 
   return w.finish();
 }
 
 // ---------------- 09 Nominee (Next of Kin) Form ----------------
 
-export async function buildNomineeForm(m: PackMember): Promise<Uint8Array> {
+export async function buildNomineeForm(m: PackMember, signed?: SignedNominee): Promise<Uint8Array> {
   const w = await FormWriter.create({
     title: `Nominee (Next of Kin) Form — ${m.memberNo}`,
     subject: `Nominee form for ${m.fullName}`,
@@ -181,7 +200,9 @@ export async function buildNomineeForm(m: PackMember): Promise<Uint8Array> {
 
   w.header("Nominee (Next of Kin) Form");
   w.paragraph(
-    `Name the person or people who should receive your shares and any balance due if you die. Please sign and return by ${returnByDate(m.admittedAt)}. You can change your nominees at any time by submitting a new form; the latest signed form replaces earlier ones.`,
+    signed
+      ? `Signed online in the HomeBridge member portal on ${DATE.format(signed.signedAt)}. You can change your nominees at any time by submitting a new form; the latest signed form replaces earlier ones.`
+      : `Name the person or people who should receive your shares and any balance due if you die. Please sign and return by ${returnByDate(m.admittedAt)}. You can change your nominees at any time by submitting a new form; the latest signed form replaces earlier ones.`,
   );
 
   w.heading("Member details");
@@ -197,35 +218,52 @@ export async function buildNomineeForm(m: PackMember): Promise<Uint8Array> {
   );
   // Pre-filled with the nominees given at registration, so the member checks rather than rewrites.
   // A contact is filed under Email or Phone by its shape. Spare rows are left for additions.
-  const rows = m.nominees
-    .filter((n) => n.name.trim())
-    .map((n) => {
-      const isEmail = n.contact.includes("@");
-      return [n.name, n.relationship, isEmail ? "" : n.contact, isEmail ? n.contact : "", "", String(n.share ?? "")];
-    });
-  while (rows.length < 4) rows.push(["", "", "", "", "", ""]);
+  const rows = signed
+    ? signed.nominees.map((n) => [n.name, n.relationship, n.phone, n.email, n.address, String(n.share)])
+    : m.nominees
+        .filter((n) => n.name.trim())
+        .map((n) => {
+          const isEmail = n.contact.includes("@");
+          return [n.name, n.relationship, isEmail ? "" : n.contact, isEmail ? n.contact : "", "", String(n.share ?? "")];
+        });
+  while (!signed && rows.length < 4) rows.push(["", "", "", "", "", ""]);
   w.table(["Full name", "Relationship", "Phone", "Email", "Address", "Share (%)"], rows, [0.2, 0.14, 0.16, 0.2, 0.2, 0.1], {
     size: 8.5,
     minRowHeight: 30,
   });
-  if (m.nominees.some((n) => n.name.trim())) {
+  if (!signed && m.nominees.some((n) => n.name.trim())) {
     w.paragraph("We have filled in the nominees you gave when you applied. Please correct anything that has changed, and add addresses, before signing.", {
       size: 9.5,
     });
   }
   w.paragraph(
-    "Shares must total 100%. If a nominee dies before me, their share is divided equally among the remaining nominees unless I state otherwise here: ______________________________________________",
+    `Shares must total 100%. If a nominee dies before me, their share is divided equally among the remaining nominees unless I state otherwise here: ${
+      signed ? signed.survivorInstruction.trim() || "(no other instruction)" : "______________________________________________"
+    }`,
   );
 
-  w.ensure(5 * 30 + 40); // the heading travels with its signature block
+  w.ensure(5 * 30 + 90); // the heading travels with its signature block
   w.heading("Signatures");
-  w.signLines(["Member signature", "Date", "Witness name", "Witness signature", "Witness address"]);
+  if (signed) {
+    await w.signedLines([
+      { label: "Member signature", image: signed.signature },
+      { label: "Date", text: DATE.format(signed.signedAt) },
+      { label: "Witness name", text: signed.witnessName },
+      { label: "Witness signature", image: signed.witnessSignature },
+      { label: "Witness address", text: signed.witnessAddress },
+    ]);
+  } else {
+    w.signLines(["Member signature", "Date", "Witness name", "Witness signature", "Witness address"]);
+  }
   w.paragraph("The witness must be 18 or over and must not be a nominee.", { size: 9.5 });
 
   w.heading("For office use");
-  w.table(["Received on", "Shares total 100%", "Register updated"], [["", "Yes  /  No", "Yes  /  No"]], [0.34, 0.33, 0.33], {
-    minRowHeight: 30,
-  });
+  w.table(
+    ["Received on", "Shares total 100%", "Register updated"],
+    [[signed ? `${DATE.format(signed.signedAt)} (online)` : "", signed ? "Yes" : "Yes  /  No", "Yes  /  No"]],
+    [0.34, 0.33, 0.33],
+    { minRowHeight: 30 },
+  );
 
   return w.finish();
 }

@@ -51,6 +51,8 @@ const ACTION_LABEL: Record<string, string> = {
   "applications.imported": "Imported Google Form applicants",
   "settings.changed": "Changed a setting",
   "fees.statement_checked": "Checked a bank statement",
+  "forms.declaration_signed": "Member signed declaration",
+  "forms.nominee_signed": "Member signed nominee form",
   "document.uploaded": "Document uploaded",
   "document.viewed": "Viewed document",
   "application.info_received": "Applicant replied with information",

@@ -245,8 +245,18 @@ export async function listApplications(limit = 500): Promise<Application[]> {
   });
   return apps.map((a, i) => {
     const r = docs[i].infoResponse;
+    const f = docs[i].forms;
+    const when = (d: Date) => `${LAGOS_DATE.format(d)}, ${LAGOS_TIME.format(d)}`;
     return {
       ...a,
+      ...(f?.declaration || f?.nominee
+        ? {
+            forms: {
+              ...(f.declaration ? { declarationAt: when(f.declaration.signedAt) } : {}),
+              ...(f.nominee ? { nomineeAt: when(f.nominee.signedAt) } : {}),
+            },
+          }
+        : {}),
       ...(files.get(a.id)?.length ? { documents: files.get(a.id) } : {}),
       ...(duplicates.get(a.id)?.length ? { duplicates: duplicates.get(a.id) } : {}),
       ...(r ? { infoResponse: { message: r.message, at: `${LAGOS_DATE.format(r.at)}, ${LAGOS_TIME.format(r.at)}` } } : {}),

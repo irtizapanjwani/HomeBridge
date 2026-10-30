@@ -530,6 +530,8 @@ export type Application = {
    * phone, name and date of birth)"). A warning for the officer, never an automatic refusal.
    */
   duplicates?: { id: string; name: string; status: string; why: string[] }[];
+  /** When the member signed their declaration and nominee forms online (Phase 2). */
+  forms?: { declarationAt?: string; nomineeAt?: string };
 };
 
 export const APPLICATIONS: Application[] = [

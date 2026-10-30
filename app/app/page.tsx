@@ -4,6 +4,7 @@ import { currentMemberRef, findMemberByRef, isMemberAuthConfigured } from "@/lib
 import { isDbConfigured } from "@/lib/db";
 import { listDocumentsFor } from "@/lib/documents";
 import { INFO_REQUEST_DAYS } from "@/lib/email";
+import { returnByDate } from "@/lib/pdf/pack-forms";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
@@ -76,6 +77,33 @@ export default async function MemberAccountPage() {
         }
       : {}),
     ...(m.infoResponse ? { infoRepliedAt: LONG_DATE.format(m.infoResponse.at) } : {}),
+    ...(m.membership
+      ? {
+          forms: {
+            dueBy: returnByDate(m.membership.admittedAt),
+            memberName: m.fullName,
+            ...(m.forms?.declaration
+              ? { declaration: { signedAt: LONG_DATE.format(m.forms.declaration.signedAt), documentId: m.forms.declaration.documentId } }
+              : {}),
+            ...(m.forms?.nominee
+              ? { nominee: { signedAt: LONG_DATE.format(m.forms.nominee.signedAt), documentId: m.forms.nominee.documentId } }
+              : {}),
+            // The last signed list if there is one, otherwise the nominees given at registration.
+            nomineeDefaults: m.forms?.nominee
+              ? m.forms.nominee.nominees.map((n) => ({ ...n, share: String(n.share) }))
+              : m.nominees
+                  .filter((n) => n.name.trim())
+                  .map((n) => ({
+                    name: n.name,
+                    relationship: n.relationship,
+                    phone: n.contact.includes("@") ? "" : n.contact,
+                    email: n.contact.includes("@") ? n.contact : "",
+                    address: "",
+                    share: String(n.share),
+                  })),
+          },
+        }
+      : {}),
     payment: m.payment
       ? {
           claimed: m.payment.status === "Claimed",

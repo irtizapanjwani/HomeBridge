@@ -8,6 +8,7 @@ import { JOINING_FEE } from "@/lib/settings";
 import type { DocMeta } from "@/lib/document-types";
 import { Card, btnSecondary, textLink } from "./bits";
 import { DocumentsCard, InfoRequestCard } from "./Documents";
+import { FormsCard, type FormsView } from "./Forms";
 
 export type AccountView = {
   reference: string;
@@ -32,6 +33,8 @@ export type AccountView = {
   infoRequest?: { needed: string; by: string };
   /** When the applicant last answered an information request. */
   infoRepliedAt?: string;
+  /** The declaration and nominee forms, once the member is admitted. */
+  forms?: FormsView;
 };
 
 /** Statuses in which the application is still being decided, so documents can still be added. */
@@ -108,6 +111,7 @@ export function Account({ view }: { view: AccountView }) {
       <div className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="grid gap-5">
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
+          {view.forms && <FormsCard forms={view.forms} />}
 
           <Card>
             <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your application</h2>

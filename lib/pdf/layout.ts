@@ -241,12 +241,43 @@ export class FormWriter {
     this.y -= 4;
   }
 
+  /**
+   * Filled-in signature lines for a form signed online: each row shows a drawn signature (PNG) or
+   * typed text above the line, instead of a blank line for a pen.
+   */
+  async signedLines(rows: { label: string; text?: string; image?: Uint8Array }[]) {
+    const rowHeight = (r: { image?: Uint8Array }) => (r.image ? 54 : 30);
+    this.ensure(rows.reduce((h, r) => h + rowHeight(r), 0) + 4);
+    for (const r of rows) {
+      const h = rowHeight(r);
+      this.ensure(h);
+      this.y -= h - 20;
+      const start = this.left + 140;
+      this.drawText(`${r.label}:`, this.left, this.y, this.fonts.poppinsSemi, 10.5, INK);
+      if (r.image) {
+        const img = await this.doc.embedPng(r.image);
+        const scale = Math.min(40 / img.height, (this.right - start - 8) / img.width);
+        this.page.drawImage(img, { x: start + 4, y: this.y - 1, width: img.width * scale, height: img.height * scale });
+      } else if (r.text) {
+        this.drawText(r.text, start + 4, this.y + 1, this.fonts.poppins, 10.5, INK);
+      }
+      this.page.drawLine({ start: { x: start, y: this.y - 2 }, end: { x: this.right, y: this.y - 2 }, thickness: 0.8, color: MUTED });
+      this.y -= 20;
+    }
+    this.y -= 4;
+  }
+
   /** A tick box drawn as a square (the brand fonts have no ☐ glyph), followed by wrapped text. */
-  checkbox(text: string) {
+  checkbox(text: string, checked = false) {
     const size = 10.5;
     const lines = this.wrap(text, this.fonts.poppins, size, this.width - 22);
     this.ensure(lines.length * size * 1.45);
     this.page.drawRectangle({ x: this.left + 1, y: this.y - 2, width: 10, height: 10, borderColor: INK, borderWidth: 0.9 });
+    if (checked) {
+      // A drawn tick, for the same reason the box is drawn.
+      this.page.drawLine({ start: { x: this.left + 3, y: this.y + 3 }, end: { x: this.left + 5.5, y: this.y }, thickness: 1.4, color: GREEN });
+      this.page.drawLine({ start: { x: this.left + 5.5, y: this.y }, end: { x: this.left + 10, y: this.y + 7 }, thickness: 1.4, color: GREEN });
+    }
     for (const line of lines) {
       this.drawText(line, this.left + 20, this.y, this.fonts.poppins, size, INK);
       this.y -= size * 1.45;

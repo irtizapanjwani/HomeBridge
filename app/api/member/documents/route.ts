@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { recordAudit } from "@/lib/audit";
 import { isDbConfigured } from "@/lib/db";
-import { DOC_LABEL, DOC_MAX_BYTES, INFO_MESSAGE_MAX, isDocContentType, isDocType } from "@/lib/document-types";
+import { DOC_LABEL, DOC_MAX_BYTES, INFO_MESSAGE_MAX, UPLOADABLE_DOC_TYPES, isDocContentType, isDocType } from "@/lib/document-types";
 import { isDocumentStorageConfigured, saveDocument } from "@/lib/documents";
 import { currentMemberRef, findMemberByRef } from "@/lib/member-auth";
 import { type MemberStatus, collections } from "@/lib/members";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   const type = form.get("type");
-  if (!isDocType(type)) {
+  if (!isDocType(type) || !UPLOADABLE_DOC_TYPES.includes(type)) {
     return NextResponse.json({ ok: false, error: "Unknown document type" }, { status: 400 });
   }
   const file = form.get("file");
