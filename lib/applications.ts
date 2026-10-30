@@ -122,6 +122,7 @@ export function toApplication(m: MemberDoc): Application {
     submittedTime: LAGOS_TIME.format(m.submittedAt),
     status: m.supporter ? "Supporter" : (STATUS[m.status] ?? "Submitted"),
     source: m.source === "gform" ? "gform" : "web",
+    origin: m.source === "vekat" ? "vekat" : m.source === "gform" ? "gform" : "homebridge",
     // `source` on the admin type only knows "web" and "gform"; which site it came from is in the note.
     phone: m.whatsapp || m.contact,
     email: m.email,

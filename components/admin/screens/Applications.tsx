@@ -56,6 +56,8 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
   const [filter, setFilter] = s.ui<Filter>("app.filter", "pending");
   const [selId, setSelId] = s.ui<string>("app.sel", "APP-0141");
   const [query, setQuery] = s.ui<string>("app.query", "");
+  // Which form people came through, so the office can work one source at a time.
+  const [origin, setOrigin] = s.ui<"all" | "homebridge" | "vekat" | "gform">("app.origin", "all");
   const [mode, setMode] = useState<null | "info" | "refuse" | "delete">(null);
   const [deleting, setDeleting] = useState(false);
   const [deciding, setDeciding] = useState(false);
@@ -72,13 +74,16 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
   const matches = (a: Application) =>
     !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || (a.memberNo ?? "").toLowerCase().includes(q);
 
+  const fromOrigin = (a: Application) => origin === "all" || (a.origin ?? "homebridge") === origin;
   const list = s.apps
-    .filter((a) => inList(filter, a.status) && matches(a))
+    .filter((a) => inList(filter, a.status) && matches(a) && fromOrigin(a))
     .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
   // The selected application stays open after a decision moves it to another list.
   const sel = s.apps.find((a) => a.id === selId) ?? list[0];
 
-  const n = (f: Filter) => s.apps.filter((a) => inList(f, a.status)).length;
+  const n = (f: Filter) => s.apps.filter((a) => inList(f, a.status) && fromOrigin(a)).length;
+  const nOrigin = (o: "homebridge" | "vekat" | "gform") => s.apps.filter((a) => inList(filter, a.status) && (a.origin ?? "homebridge") === o).length;
+  const hasImports = s.apps.some((a) => a.origin === "gform");
 
   const update = (id: string, patch: Partial<Application>) => s.setApps((cur) => cur.map((a) => (a.id === id ? { ...a, ...patch } : a)));
 
@@ -481,6 +486,31 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
         </Card>
       ) : null}
 
+      <div role="tablist" aria-label="Where they registered" className="flex flex-wrap gap-1.5 rounded-[16px] border border-line bg-paper p-1.5">
+        {(
+          [
+            ["all", "All forms", s.apps.filter((a) => inList(filter, a.status)).length],
+            ["homebridge", "HomeBridge registration", nOrigin("homebridge")],
+            ["vekat", "VEKAT form", nOrigin("vekat")],
+            ...(hasImports ? [["gform", "Google Form import", nOrigin("gform")]] : []),
+          ] as ["all" | "homebridge" | "vekat" | "gform", string, number][]
+        ).map(([id, label, count]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={origin === id}
+            onClick={() => setOrigin(id)}
+            className={cx(
+              "min-h-10 flex-1 rounded-[12px] px-3.5 text-[14px] font-semibold transition sm:flex-none",
+              origin === id ? "bg-gold text-forest-900" : "text-forest-800 hover:bg-mist",
+            )}
+          >
+            {label} <span className={origin === id ? "text-forest-900/70" : "text-muted"}>{count}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Filter applications" className="flex flex-wrap gap-1.5">
         {(
@@ -498,7 +528,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
             aria-selected={filter === id}
             onClick={() => {
               setFilter(id);
-              const first = s.apps.filter((x) => inList(id, x.status)).sort((x, y) => x.submittedAt.localeCompare(y.submittedAt))[0];
+              const first = s.apps.filter((x) => inList(id, x.status) && fromOrigin(x)).sort((x, y) => x.submittedAt.localeCompare(y.submittedAt))[0];
               if (first) select(first.id);
             }}
             className={cx(
@@ -520,7 +550,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name or APP-XXXXXX"
+            placeholder="Search name, HBA- or HBC- number"
             className={cx(inputCls, "pr-16")}
           />
           {q ? (
@@ -574,7 +604,7 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
                         <span className="block font-semibold text-ink">{a.name}</span>
                         <span className="block text-[13px] text-muted">
                           {a.type} · {CHAPTERS[a.chapter]} · {a.id}
-                          {a.source === "gform" ? " · Google Form" : ""}
+                          {a.origin === "vekat" ? " · VEKAT form" : a.origin === "gform" ? " · Google Form" : ""}
                         </span>
                         <span className="block text-[12.5px] text-muted">
                           Submitted {fmtDate(a.submittedAt, true)}
