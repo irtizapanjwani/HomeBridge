@@ -8,6 +8,7 @@ import { confirmLine } from "../actions";
 import { useAdmin } from "../store";
 import { download, fmtDate, money, naira, nairaAuto, normRef, num, parseCsv } from "../lib";
 import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, ReadOnly, StatTile, Table, Td, Th, cx, inputCls } from "../ui";
+import { LiveContributionsCard } from "./LiveContributions";
 
 type Filter = "action" | "Suspense" | "Matched — to confirm" | "Credited" | "Returned" | "all";
 
@@ -150,8 +151,13 @@ export function ContributionsScreen() {
 
   return (
     <>
+      <h1 className="m-0 font-display text-[clamp(26px,3vw,34px)] font-bold text-forest-800">Contributions</h1>
+      <LiveContributionsCard />
+      <Banner tone="lock" title="Below: the earlier prototype ledger.">
+        It runs on sample data only and is kept for reference while the live screens replace it. Record real contributions in the card above.
+      </Banner>
       <PageHeader
-        title="Contributions"
+        title="Prototype ledger"
         subtitle="Payments and reconciliation · UBA, USD and GBP domiciliary accounts"
         actions={
           <>

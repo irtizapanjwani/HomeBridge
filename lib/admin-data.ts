@@ -73,7 +73,9 @@ export const ROLES: RoleDef[] = [
     heldBy: "VEKAT",
     person: "[KYC officer]",
     summary: "Reviews applications and ID checks; approves, asks for information or refuses with a reason.",
-    screens: { ...all("read"), contributions: "none", withdrawals: "none", applications: "act" },
+    // Contributions opens so the live "Record contributions" card is reachable until real officer
+    // roles replace this demo switcher; the prototype ledger on that screen stays read-only.
+    screens: { ...all("read"), withdrawals: "none", applications: "act" },
     perms: ["kyc.decide"],
   },
   {

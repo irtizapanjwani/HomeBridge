@@ -159,3 +159,61 @@ export function matchLines(csv: string, waiting: Waiting[]): StatementResult {
 
   return { lines, missing: [], skippedDebits };
 }
+
+// ---------- Shared reader ----------
+
+/** One payment in from a statement, before any matching. */
+export type CreditLine = { line: number; date: string; narration: string; transactionRef: string; amount: number };
+
+/**
+ * Reads the payments in (credits) from a bank statement export, with no matching. Used by the
+ * contributions import, which matches on membership numbers rather than application references.
+ */
+export function readCredits(csv: string): { lines: CreditLine[]; missing: string[]; skippedDebits: number } {
+  const rows = parseCsv(csv).filter((r) => r.some((c) => c.trim()));
+  const header = findHeader(rows);
+  if (!header) return { lines: [], missing: ["a Date column", "a Credit or Amount column"], skippedDebits: 0 };
+  const { at, col } = header;
+  const lines: CreditLine[] = [];
+  let skippedDebits = 0;
+  rows.slice(at + 1).forEach((r, i) => {
+    const cell = (c: number) => (c === -1 ? "" : (r[c] ?? "").trim());
+    const amount = col.credit !== -1 ? money(cell(col.credit)) : money(cell(col.amount));
+    if (!(amount > 0)) {
+      skippedDebits++;
+      return;
+    }
+    const narration = [cell(col.narration), cell(col.reference)].filter(Boolean).join(" · ");
+    lines.push({
+      line: at + 2 + i,
+      date: cell(col.date),
+      narration: narration || "(no narration)",
+      transactionRef: (cell(col.reference) || narration).slice(0, 80),
+      amount,
+    });
+  });
+  return { lines, missing: [], skippedDebits };
+}
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/**
+ * Reads a statement date: 29/10/2026 and 29-10-2026 (day first, as Nigerian and UK banks print
+ * them), 2026-10-29, or 29 Oct 2026. Midday UTC, so the date never shifts across a time zone.
+ */
+export function parseStatementDate(raw: string): Date | null {
+  const s = raw.trim();
+  let y: number, m: number, d: number;
+  let r: RegExpExecArray | null;
+  if ((r = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) [y, m, d] = [Number(r[1]), Number(r[2]), Number(r[3])];
+  else if ((r = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(s))) [d, m, y] = [Number(r[1]), Number(r[2]), Number(r[3])];
+  else if ((r = /^(\d{1,2})[\s-]+([A-Za-z]{3})[A-Za-z]*[\s,-]+(\d{2,4})/.exec(s))) {
+    d = Number(r[1]);
+    m = MONTHS.indexOf(r[2].toLowerCase()) + 1;
+    y = Number(r[3]);
+  } else return null;
+  if (y < 100) y += 2000;
+  if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+  const date = new Date(Date.UTC(y, m - 1, d, 12));
+  return date.getUTCMonth() === m - 1 ? date : null;
+}

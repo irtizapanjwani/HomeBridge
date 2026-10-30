@@ -406,3 +406,49 @@ export async function sendLoginCode(input: LoginCodeInput): Promise<SendResult> 
 </body></html>`;
   return sendEmail({ to: input.to, subject: `Your HomeBridge sign-in code: ${input.code}`, text, html });
 }
+
+export type ContributionReceiptEmail = {
+  to: string;
+  firstName: string;
+  receiptNo: string;
+  amount: string;
+  period: string;
+  memberNo: string;
+  receipt: Attachment;
+};
+
+/** Sent when a contribution is recorded, with the HBC-CR receipt attached. */
+export async function sendContributionReceipt(input: ContributionReceiptEmail): Promise<SendResult> {
+  const name = input.firstName.trim() || "there";
+  const text = [
+    `Hello ${name},`,
+    ``,
+    `Thank you. We have received your contribution of ${input.amount} for ${input.period}. Your receipt is attached.`,
+    ``,
+    `Receipt number: ${input.receiptNo}`,
+    `Membership number: ${input.memberNo}`,
+    ``,
+    `It is held as shares in your name. You can see all your contributions in your HomeBridge account.`,
+    ``,
+    `HomeBridge Cooperative`,
+  ].join("\n");
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px">Hello ${esc(name)},</p>
+      <p style="margin:0 0 16px">Thank you. We have received your contribution of <strong>${esc(input.amount)}</strong> for <strong>${esc(input.period)}</strong>. Your receipt is attached.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#F3F1EA;border-radius:8px">
+        <tr><td style="padding:16px;text-align:center">
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B6A61">Receipt number</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:.04em;margin-top:4px">${esc(input.receiptNo)}</div>
+          <div style="font-size:13px;color:#6B6A61;margin-top:8px">Member ${esc(input.memberNo)}</div>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 20px">It is held as shares in your name. You can see all your contributions in your HomeBridge account.</p>
+      <p style="margin:0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">HomeBridge Cooperative</p>
+    </td></tr>
+  </table>
+</body></html>`;
+  return sendEmail({ to: input.to, subject: `Your HomeBridge contribution receipt — ${input.receiptNo}`, text, html, attachments: [input.receipt] });
+}

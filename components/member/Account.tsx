@@ -10,6 +10,7 @@ import { Card, btnSecondary, textLink } from "./bits";
 import { DocumentsCard, InfoRequestCard } from "./Documents";
 import { FormsCard, type FormsView } from "./Forms";
 import { ContactEditor, MembershipCard, type MembershipView } from "./Membership";
+import { ContributionsCard, type ContributionsView } from "./Contributions";
 
 export type AccountView = {
   reference: string;
@@ -38,6 +39,8 @@ export type AccountView = {
   forms?: FormsView;
   /** Membership details and downloads, once admitted. */
   membership?: MembershipView;
+  /** Contribution history and share balance, once admitted. */
+  contributions?: ContributionsView;
   /** What the member can change themselves. */
   contact: { whatsapp: string; address: string; city: string };
 };
@@ -119,6 +122,7 @@ export function Account({ view }: { view: AccountView }) {
           {view.membership && <MembershipCard m={view.membership} />}
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
           {view.forms && <FormsCard forms={view.forms} />}
+          {view.contributions && <ContributionsCard c={view.contributions} />}
 
           <Card>
             <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your application</h2>
@@ -214,13 +218,13 @@ export function Account({ view }: { view: AccountView }) {
         </div>
 
         <aside className="grid content-start gap-5">
-          <Card className="bg-forest-800 text-cream">
+          {!view.membership && <Card className="bg-forest-800 text-cream">
             <h2 className="m-0 font-sans text-[16px] font-semibold text-cream">Shares and statements</h2>
             <p className="mt-2 mb-0 text-[14.5px] leading-relaxed text-[#D6DED8]">
               Your share account opens once you are approved and have bought your first share. Contributions, statements and voting all
               appear here then.
             </p>
-          </Card>
+          </Card>}
 
           <Card>
             <p className="m-0 flex gap-2.5 text-[14px] leading-snug text-muted">

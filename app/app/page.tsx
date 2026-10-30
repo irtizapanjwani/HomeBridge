@@ -7,6 +7,7 @@ import { INFO_REQUEST_DAYS } from "@/lib/email";
 import { returnByDate } from "@/lib/pdf/pack-forms";
 import { certificateNoFor } from "@/lib/pdf/certificate";
 import { packMemberOf } from "@/lib/welcome-pack";
+import { CURRENCIES, contributionsFor, money, periodLabel, SHARES_NOTE, sharesFor } from "@/lib/contributions";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
@@ -53,6 +54,10 @@ export default async function MemberAccountPage() {
   // A failure to read documents must not take the whole account page down with it.
   const documents = (await listDocumentsFor([m.reference]).catch(() => new Map())).get(m.reference) ?? [];
 
+  // Contribution history and share balance (brief Phase 2 member portal). Never takes the page down.
+  const contribs = m.membership ? await contributionsFor(m.reference).catch(() => []) : [];
+  const SHORT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric" });
+
   const view: AccountView = {
     reference: m.reference,
     ...(m.membership ? { memberNo: m.membership.memberNo } : {}),
@@ -79,6 +84,23 @@ export default async function MemberAccountPage() {
         }
       : {}),
     ...(m.infoResponse ? { infoRepliedAt: LONG_DATE.format(m.infoResponse.at) } : {}),
+    ...(m.membership
+      ? {
+          contributions: {
+            items: contribs.map((c) => ({
+              receiptNo: c.receiptNo,
+              period: periodLabel(c.period),
+              amount: money(c.amount, c.currency),
+              paidAt: SHORT.format(c.paidAt),
+            })),
+            totals: CURRENCIES.map((cur) => [cur, contribs.filter((c) => c.currency === cur).reduce((t, c) => t + c.amount, 0)] as const)
+              .filter(([, t]) => t > 0)
+              .map(([cur, t]) => money(t, cur)),
+            shares: Math.round(contribs.reduce((t, c) => t + (sharesFor(c.amount, c.currency) ?? 0), 0) * 100) / 100,
+            note: SHARES_NOTE,
+          },
+        }
+      : {}),
     contact: { whatsapp: m.whatsapp || m.contact, address: m.address ?? "", city: m.city ?? "" },
     ...(packMemberOf(m)
       ? {
