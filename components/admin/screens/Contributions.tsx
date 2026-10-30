@@ -9,6 +9,7 @@ import { useAdmin } from "../store";
 import { download, fmtDate, money, naira, nairaAuto, normRef, num, parseCsv } from "../lib";
 import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, ReadOnly, StatTile, Table, Td, Th, cx, inputCls } from "../ui";
 import { LiveContributionsCard } from "./LiveContributions";
+import { MissedPaymentsCard } from "./MissedPayments";
 
 type Filter = "action" | "Suspense" | "Matched — to confirm" | "Credited" | "Returned" | "all";
 
@@ -153,6 +154,7 @@ export function ContributionsScreen() {
     <>
       <h1 className="m-0 font-display text-[clamp(26px,3vw,34px)] font-bold text-forest-800">Contributions</h1>
       <LiveContributionsCard />
+      <MissedPaymentsCard />
       <Banner tone="lock" title="Below: the earlier prototype ledger.">
         It runs on sample data only and is kept for reference while the live screens replace it. Record real contributions in the card above.
       </Banner>

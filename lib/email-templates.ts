@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -125,6 +125,25 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     blocks: [{ name: "BUTTON", description: "A “Sign your forms” button", sample: "" }],
     mustInclude: ["{{MissingForms}}"],
   },
+  F: {
+    key: "F",
+    name: "F. Missed contribution",
+    when: "Sent by an officer from Contributions → Missed payments to a member who has not paid the minimum monthly contribution for a month.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month that is short", sample: "October 2026" },
+      { name: "Minimum", description: "The minimum monthly contribution for this member", sample: "₦5,000" },
+      {
+        name: "PaidNote",
+        description: "Sentence about what was received that month (empty if nothing)",
+        sample: "So far we have received ₦2,000 for that month.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -218,6 +237,21 @@ HomeBridge Membership Team`,
 We have not yet received your signed **{{MissingForms}}**. Please complete and return it by **{{ReturnBy}}** so your membership record is complete.
 
 You can sign online in your HomeBridge account in a few minutes — no printing needed. Copies were also attached to your welcome email.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  F: {
+    subject: "Your HomeBridge contribution for {{Month}} ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Our records show we have not yet received your minimum monthly contribution of **{{Minimum}}** for **{{Month}}**. {{PaidNote}}
+
+If you have already paid, thank you, and please reply with the date and bank reference so we can match it. Otherwise, please pay into the cooperative's account, quoting your membership number **{{MemberNo}}** as the reference. The account details are in the Contribution and Payment Guide in your welcome pack.
+
+You can see every contribution we have recorded for you in your account.
 
 {{BUTTON}}
 
@@ -395,7 +429,7 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
     REFERENCE_BOX: highlightBox("Your application reference", vars.ApplicationRef ?? ""),
     NEEDED_BOX: quoteBox(vars.Needed ?? ""),
     BUTTON: buttonBlock(
-      key === "B" ? "Respond in your account" : key === "E" ? "Sign your forms" : "Open the member portal",
+      key === "B" ? "Respond in your account" : key === "E" ? "Sign your forms" : key === "F" ? "See your contributions" : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),
     DETAILS: detailsTable([
