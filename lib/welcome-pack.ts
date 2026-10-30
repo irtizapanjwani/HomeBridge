@@ -28,7 +28,9 @@ const PACK_DIR = path.join(process.cwd(), "assets", "pack");
 /**
  * The documents that are the same for every member, sent as they are. The three per-member forms
  * (payment guide, declaration, nominee form) are generated for each member in lib/pdf/pack-forms.ts.
- * The bye-laws are not here: the client's own pack notes they stay a draft until the AGM adopts them.
+ * The bye-laws are optional: the client has not supplied them yet (the pack overview says to send
+ * the current draft until the AGM adopts them). Drop the PDF in as assets/pack/BYE_LAWS_FILE and it
+ * is attached to every welcome pack from then on, with no other change.
  */
 const STANDARD_DOCUMENTS: { file: string; filename: string }[] = [
   { file: "03_Member_Handbook.pdf", filename: "HomeBridge Member Handbook.pdf" },
@@ -37,17 +39,24 @@ const STANDARD_DOCUMENTS: { file: string; filename: string }[] = [
   { file: "07_Governance_and_Contacts.pdf", filename: "HomeBridge Governance and Contacts.pdf" },
 ];
 
-/** Pack items not sent yet: the bye-laws go out once the AGM adopts them. */
+/** The bye-laws, attached only when the file exists. */
+const BYE_LAWS_FILE = "02_Bye_laws.pdf";
+const BYE_LAWS_NAME = "HomeBridge Bye-laws.pdf";
+
+/** Pack items not sent yet: the bye-laws, until the client's PDF is added. */
 export const PACK_ITEMS_PENDING = ["Bye-laws"];
 
 let standardCache: Promise<Attachment[]> | null = null;
 function standardDocuments(): Promise<Attachment[]> {
-  standardCache ??= Promise.all(
-    STANDARD_DOCUMENTS.map(async ({ file, filename }) => ({
-      filename,
-      content: await readFile(path.join(PACK_DIR, file)),
-    })),
-  ).catch((err) => {
+  standardCache ??= Promise.all([
+    readFile(path.join(PACK_DIR, BYE_LAWS_FILE)).then(
+      (content) => [{ filename: BYE_LAWS_NAME, content }],
+      () => [] as Attachment[], // not supplied yet
+    ),
+    ...STANDARD_DOCUMENTS.map(async ({ file, filename }) => [{ filename, content: await readFile(path.join(PACK_DIR, file)) }]),
+  ])
+    .then((groups) => groups.flat())
+    .catch((err) => {
     standardCache = null;
     throw err;
   });

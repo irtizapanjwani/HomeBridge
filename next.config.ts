@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // PDFs and fonts are read from disk at run time (welcome pack, certificates, receipts), so make
+  // sure the deployed functions carry them, including pack files added later such as the bye-laws.
+  outputFileTracingIncludes: {
+    "/api/**": ["./assets/**/*"],
+  },
   async headers() {
     return [
       {
