@@ -62,6 +62,9 @@ const CATEGORY: Record<string, string> = {
   group: "Group",
 };
 
+/** The membership category shown on the certificate and in reports. */
+export const categoryOf = (m: { memberType: string; country: string }) => CATEGORY[m.memberType] ?? (m.country === "Nigeria" ? "Home" : "Diaspora");
+
 const DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
   day: "numeric",

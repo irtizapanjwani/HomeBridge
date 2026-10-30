@@ -19,6 +19,7 @@ import {
 } from "../exports";
 import { printTable } from "../lib";
 import { Banner, Btn, Card, CardTitle, Field, PageHeader, inputCls } from "../ui";
+import { LiveReports } from "./LiveReports";
 
 type Def = { id: string; build: (s: Store) => Report; needs: ScreenId; text: string; pdf?: boolean };
 
@@ -81,6 +82,13 @@ export function ReportsScreen() {
   return (
     <>
       <PageHeader title="Reports and exports" subtitle="CSV for spreadsheets, Excel, and print-ready PDF · every figure ties to the bank statements" />
+
+      <LiveReports />
+
+      <div className="mt-4">
+        <h2 className="m-0 font-display text-[18px] font-bold text-muted">Prototype reports (sample data)</h2>
+        <p className="m-0 text-[13.5px] text-muted">From the demo ledger below the live tools — not real members or money.</p>
+      </div>
 
       {hidden ? (
         <Banner tone="lock" title={`${hidden} report${hidden === 1 ? "" : "s"} hidden.`}>
