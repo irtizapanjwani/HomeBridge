@@ -228,6 +228,9 @@ export type MemberDoc = {
     };
   };
 
+  /** When each forms reminder (Email E) went out: 7 and 14 days after the welcome pack, or by hand. */
+  formsReminders?: { day7?: Date; day14?: Date; lastManual?: Date };
+
   /** Set for the moment an automatic welcome-pack send is under way, so two triggers cannot both send. */
   welcomeAutoClaim?: Date;
 

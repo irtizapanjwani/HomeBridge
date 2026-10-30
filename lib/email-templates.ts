@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -111,6 +111,20 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     blocks: [],
     mustInclude: [],
   },
+  E: {
+    key: "E",
+    name: "E. Forms reminder",
+    when: "Sent 7 and 14 days after the welcome pack if the declaration or nominee form is still not signed (when reminders are switched on), or by an officer by hand.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "MissingForms", description: "The form(s) not yet signed", sample: "Member Declaration Form and Nominee Form" },
+      { name: "ReturnBy", description: "Date the forms are due (14 days after admission)", sample: "16 November 2026" },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “Sign your forms” button", sample: "" }],
+    mustInclude: ["{{MissingForms}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -195,6 +209,19 @@ As stated when you applied, the joining (registration) fee is non-refundable.
 If you have questions about this decision, please reply quoting **{{ApplicationRef}}**.
 
 Kind regards,
+HomeBridge Membership Team`,
+  },
+  E: {
+    subject: "Reminder: please return your HomeBridge forms ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+We have not yet received your signed **{{MissingForms}}**. Please complete and return it by **{{ReturnBy}}** so your membership record is complete.
+
+You can sign online in your HomeBridge account in a few minutes — no printing needed. Copies were also attached to your welcome email.
+
+{{BUTTON}}
+
+Thank you,
 HomeBridge Membership Team`,
   },
 };
@@ -367,7 +394,10 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
   const blocks: Record<string, Block> = {
     REFERENCE_BOX: highlightBox("Your application reference", vars.ApplicationRef ?? ""),
     NEEDED_BOX: quoteBox(vars.Needed ?? ""),
-    BUTTON: buttonBlock(key === "B" ? "Respond in your account" : "Open the member portal", vars.AccountLink ?? vars.PortalLink ?? "#"),
+    BUTTON: buttonBlock(
+      key === "B" ? "Respond in your account" : key === "E" ? "Sign your forms" : "Open the member portal",
+      vars.AccountLink ?? vars.PortalLink ?? "#",
+    ),
     DETAILS: detailsTable([
       ["Member name", vars.FullName ?? ""],
       ["Membership number", vars.MemberNo ?? ""],

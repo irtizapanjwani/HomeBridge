@@ -247,9 +247,19 @@ export async function listApplications(limit = 500): Promise<Application[]> {
   return apps.map((a, i) => {
     const r = docs[i].infoResponse;
     const f = docs[i].forms;
+    const fr = docs[i].formsReminders;
     const when = (d: Date) => `${LAGOS_DATE.format(d)}, ${LAGOS_TIME.format(d)}`;
     return {
       ...a,
+      ...(fr && (fr.day7 || fr.day14 || fr.lastManual)
+        ? {
+            reminders: {
+              ...(fr.day7 ? { day7: when(fr.day7) } : {}),
+              ...(fr.day14 ? { day14: when(fr.day14) } : {}),
+              ...(fr.lastManual ? { lastManual: when(fr.lastManual) } : {}),
+            },
+          }
+        : {}),
       ...(f?.declaration || f?.nominee
         ? {
             forms: {

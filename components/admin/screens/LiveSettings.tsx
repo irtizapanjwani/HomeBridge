@@ -256,3 +256,80 @@ export function EmailTemplatesCard() {
     </Card>
   );
 }
+
+/**
+ * Brief Phase 2: "Automatic reminders at 7 and 14 days if not returned". When on, a daily job sends
+ * Email E to members whose declaration or nominee form is still unsigned 7 and 14 days after their
+ * welcome pack. "Send due reminders now" runs the same check straight away.
+ */
+export function FormsRemindersCard() {
+  const toast = useToast();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings/forms-reminders")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; on?: boolean; error?: string }) => (d.ok ? setOn(Boolean(d.on)) : setErr(d.error || "Could not read the setting.")))
+      .catch(() => setErr("Could not reach the server."));
+  }, []);
+
+  async function post(body: { on?: boolean; run?: boolean }) {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/settings/forms-reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; on?: boolean; checked?: number; sent?: number; failed?: number };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      if (body.run) {
+        toast(
+          d.sent || d.failed
+            ? `${d.sent} reminder${d.sent === 1 ? "" : "s"} sent${d.failed ? `, ${d.failed} failed — see the audit log` : ""}.`
+            : "No reminders are due right now.",
+          d.failed ? "warn" : undefined,
+        );
+      } else {
+        setOn(Boolean(d.on));
+        toast(d.on ? "Forms reminders now send automatically each morning." : "Forms reminders switched off.");
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "That did not work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-3 p-5">
+      <CardTitle id="forms-reminders" aside={on === null ? null : <Pill tone={on ? "green" : "grey"}>{on ? "Automatic" : "Off"}</Pill>}>
+        Forms reminders
+      </CardTitle>
+      <p className="m-0 text-[14px] text-body">
+        When this is on, members who have not signed their declaration or nominee form get Email E <strong>7 days</strong> and again{" "}
+        <strong>14 days</strong> after their welcome pack, checked every morning at 08:00 Lagos time. Each reminder goes once. The wording is
+        email E under Email templates. Keep it off while testing with real records.
+      </p>
+      {err ? <Banner tone="danger">{err}</Banner> : null}
+      <div className="flex flex-wrap gap-2">
+        <Btn
+          variant={on ? "outline" : "primary"}
+          disabled={busy || on === null}
+          onClick={() => {
+            if (!on && !window.confirm("Send forms reminders automatically from now on?")) return;
+            void post({ on: !on });
+          }}
+        >
+          {on === null ? "Loading…" : on ? "Switch off" : "Send automatically"}
+        </Btn>
+        <Btn disabled={busy} onClick={() => void post({ run: true })}>
+          Send due reminders now
+        </Btn>
+      </div>
+    </Card>
+  );
+}

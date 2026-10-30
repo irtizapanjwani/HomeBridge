@@ -974,6 +974,24 @@ function Detail({
  */
 function IdDocuments({ a }: { a: Application }) {
   const toast = useToast();
+  const s = useAdmin();
+  const [reminding, setReminding] = useState(false);
+
+  /** Email E to this member now, for a nudge outside the 7- and 14-day schedule. */
+  async function remind() {
+    setReminding(true);
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(a.id)}/forms-reminder`, { method: "POST" });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || `Could not send the reminder (error ${res.status}).`);
+      s.setApps((cur) => cur.map((x) => (x.id === a.id ? { ...x, reminders: { ...x.reminders, lastManual: "just now" } } : x)));
+      toast(`Forms reminder emailed to ${a.email}.`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not send the reminder.", "warn");
+    } finally {
+      setReminding(false);
+    }
+  }
   const [opening, setOpening] = useState<string | null>(null);
   const docs = a.documents ?? [];
   const hasId = docs.some((d) => d.type === "id");
@@ -1006,10 +1024,31 @@ function IdDocuments({ a }: { a: Application }) {
       </div>
 
       {a.memberNo ? (
-        <p className="m-0 text-[13.5px]">
-          <strong>Membership forms:</strong> declaration {a.forms?.declarationAt ? `signed ${a.forms.declarationAt}` : "not signed yet"} · nominee
-          form {a.forms?.nomineeAt ? `signed ${a.forms.nomineeAt}` : "not signed yet"}
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <p className="m-0 text-[13.5px]">
+            <strong>Membership forms:</strong> declaration {a.forms?.declarationAt ? `signed ${a.forms.declarationAt}` : "not signed yet"} · nominee
+            form {a.forms?.nomineeAt ? `signed ${a.forms.nomineeAt}` : "not signed yet"}
+          </p>
+          {a.reminders ? (
+            <p className="m-0 text-[12.5px] text-muted">
+              Reminders sent:{" "}
+              {[
+                a.reminders.day7 && `7-day ${a.reminders.day7}`,
+                a.reminders.day14 && `14-day ${a.reminders.day14}`,
+                a.reminders.lastManual && `by hand ${a.reminders.lastManual}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+          {!a.forms?.declarationAt || !a.forms?.nomineeAt ? (
+            <div>
+              <Btn size="sm" disabled={reminding} onClick={() => void remind()}>
+                {reminding ? "Sending…" : "Send forms reminder now"}
+              </Btn>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {a.infoResponse ? (

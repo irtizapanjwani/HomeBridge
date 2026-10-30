@@ -534,6 +534,8 @@ export type Application = {
   origin?: "homebridge" | "vekat" | "gform";
   /** When the member signed their declaration and nominee forms online (Phase 2). */
   forms?: { declarationAt?: string; nomineeAt?: string };
+  /** When forms reminders (Email E) went out, formatted in Lagos. */
+  reminders?: { day7?: string; day14?: string; lastManual?: string };
 };
 
 export const APPLICATIONS: Application[] = [
