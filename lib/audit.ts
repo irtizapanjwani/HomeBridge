@@ -50,6 +50,7 @@ const ACTION_LABEL: Record<string, string> = {
   "welcome_pack.failed": "Welcome pack failed to send",
   "applications.imported": "Imported Google Form applicants",
   "settings.changed": "Changed a setting",
+  "member.contact_updated": "Member updated contact details",
   "email.forms_reminder_sent": "Emailed forms reminder",
   "email.forms_reminder_failed": "Forms reminder email failed",
   "fees.statement_checked": "Checked a bank statement",

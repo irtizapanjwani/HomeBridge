@@ -228,6 +228,12 @@ export type MemberDoc = {
     };
   };
 
+  /**
+   * An outstanding one-time sign-in code (brief Phase 2: "Login by email with one-time code"). Only
+   * a hash is kept, it expires after 10 minutes, and it is wiped after five wrong tries.
+   */
+  loginCode?: { hash: string; expiresAt: Date; attempts: number };
+
   /** When each forms reminder (Email E) went out: 7 and 14 days after the welcome pack, or by hand. */
   formsReminders?: { day7?: Date; day14?: Date; lastManual?: Date };
 

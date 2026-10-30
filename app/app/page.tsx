@@ -5,6 +5,8 @@ import { isDbConfigured } from "@/lib/db";
 import { listDocumentsFor } from "@/lib/documents";
 import { INFO_REQUEST_DAYS } from "@/lib/email";
 import { returnByDate } from "@/lib/pdf/pack-forms";
+import { certificateNoFor } from "@/lib/pdf/certificate";
+import { packMemberOf } from "@/lib/welcome-pack";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
@@ -77,6 +79,19 @@ export default async function MemberAccountPage() {
         }
       : {}),
     ...(m.infoResponse ? { infoRepliedAt: LONG_DATE.format(m.infoResponse.at) } : {}),
+    contact: { whatsapp: m.whatsapp || m.contact, address: m.address ?? "", city: m.city ?? "" },
+    ...(packMemberOf(m)
+      ? {
+          membership: {
+            memberNo: packMemberOf(m)!.memberNo,
+            certificateNo: certificateNoFor(packMemberOf(m)!.memberNo),
+            category: packMemberOf(m)!.category,
+            chapter: packMemberOf(m)!.chapter,
+            admittedAt: LONG_DATE.format(packMemberOf(m)!.admittedAt),
+            ...(m.payment?.receiptNo ? { receiptNo: m.payment.receiptNo } : {}),
+          },
+        }
+      : {}),
     ...(m.membership
       ? {
           forms: {

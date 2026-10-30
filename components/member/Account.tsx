@@ -9,6 +9,7 @@ import type { DocMeta } from "@/lib/document-types";
 import { Card, btnSecondary, textLink } from "./bits";
 import { DocumentsCard, InfoRequestCard } from "./Documents";
 import { FormsCard, type FormsView } from "./Forms";
+import { ContactEditor, MembershipCard, type MembershipView } from "./Membership";
 
 export type AccountView = {
   reference: string;
@@ -35,6 +36,10 @@ export type AccountView = {
   infoRepliedAt?: string;
   /** The declaration and nominee forms, once the member is admitted. */
   forms?: FormsView;
+  /** Membership details and downloads, once admitted. */
+  membership?: MembershipView;
+  /** What the member can change themselves. */
+  contact: { whatsapp: string; address: string; city: string };
 };
 
 /** Statuses in which the application is still being decided, so documents can still be added. */
@@ -58,6 +63,7 @@ export function Account({ view }: { view: AccountView }) {
   const [greeting, setGreeting] = useState("Welcome");
   useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
   const [signingOut, setSigningOut] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const steps = view.supporter
     ? [
@@ -110,6 +116,7 @@ export function Account({ view }: { view: AccountView }) {
 
       <div className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="grid gap-5">
+          {view.membership && <MembershipCard m={view.membership} />}
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
           {view.forms && <FormsCard forms={view.forms} />}
 
@@ -174,16 +181,24 @@ export function Account({ view }: { view: AccountView }) {
               <Row label="Name" value={view.fullName} />
               <Row label="Email" value={view.email} />
               <Row label="WhatsApp" value={view.whatsapp} />
+              <Row label="Address" value={[view.contact.address, view.contact.city].filter(Boolean).join(", ")} />
               <Row label="Lives in" value={view.livesIn} />
               {view.idLabel && <Row label="ID for verification" value={view.idLabel} />}
             </dl>
-            <p className="mt-4 mb-0 text-[14.5px] text-muted">
-              Something wrong?{" "}
-              <a href={CONTACT.whatsapp} target="_blank" rel="noopener" className={textLink}>
-                Message the office
-              </a>{" "}
-              and we will correct it.
-            </p>
+            {editing ? (
+              <ContactEditor initial={view.contact} onDone={() => setEditing(false)} />
+            ) : (
+              <p className="mt-4 mb-0 text-[14.5px] text-muted">
+                <button type="button" onClick={() => setEditing(true)} className={textLink}>
+                  Update your phone or address
+                </button>
+                . To change your name, date of birth or email,{" "}
+                <a href={CONTACT.whatsapp} target="_blank" rel="noopener" className={textLink}>
+                  message the office
+                </a>
+                .
+              </p>
+            )}
           </Card>
 
           {view.nominees.length > 0 && (

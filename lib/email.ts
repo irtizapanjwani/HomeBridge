@@ -374,3 +374,35 @@ export async function sendPasswordReset(input: ResetInput): Promise<SendResult> 
 
   return sendEmail({ to: input.to, subject: "Reset your HomeBridge password", text, html });
 }
+
+export type LoginCodeInput = { to: string; firstName: string; code: string; minutes: number };
+
+/** A one-time sign-in code for the member portal. */
+export async function sendLoginCode(input: LoginCodeInput): Promise<SendResult> {
+  const name = input.firstName.trim() || "there";
+  const text = [
+    `Hello ${name},`,
+    ``,
+    `Your HomeBridge sign-in code is: ${input.code}`,
+    ``,
+    `Enter it on the sign-in page within ${input.minutes} minutes. It works once.`,
+    ``,
+    `If you did not ask to sign in, you can ignore this email. Nobody can use the code unless they can read this inbox.`,
+    ``,
+    `HomeBridge Cooperative`,
+  ].join("\n");
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px">Hello ${esc(name)},</p>
+      <p style="margin:0 0 12px">Your <strong>HomeBridge</strong> sign-in code is:</p>
+      <p style="margin:0 0 16px;padding:14px;background:#F3F1EA;border-radius:8px;text-align:center;font-size:30px;font-weight:700;letter-spacing:.3em">${esc(input.code)}</p>
+      <p style="margin:0 0 16px">Enter it on the sign-in page within ${input.minutes} minutes. It works once.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#6B6A61">If you did not ask to sign in, you can ignore this email. Nobody can use the code unless they can read this inbox.</p>
+      <p style="margin:0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">HomeBridge Cooperative</p>
+    </td></tr>
+  </table>
+</body></html>`;
+  return sendEmail({ to: input.to, subject: `Your HomeBridge sign-in code: ${input.code}`, text, html });
+}
