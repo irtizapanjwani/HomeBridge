@@ -124,8 +124,9 @@ export function toApplication(m: MemberDoc): Application {
     source: m.source === "gform" ? "gform" : "web",
     origin: m.source === "vekat" ? "vekat" : m.source === "gform" ? "gform" : "homebridge",
     // `source` on the admin type only knows "web" and "gform"; which site it came from is in the note.
-    phone: m.whatsapp || m.contact,
-    email: m.email,
+    // The phone number given on either form; `contact` holds an email when that was the chosen method.
+    phone: m.whatsapp || (m.contactMethod === "email" ? "" : m.contact) || "",
+    email: m.email || (m.contactMethod === "email" ? m.contact : "") || "",
     // The ID number itself never leaves the server: the screen shows the type and the check result.
     kyc: {
       idType: idTypeOf(m.idChoice),

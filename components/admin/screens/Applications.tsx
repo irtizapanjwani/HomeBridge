@@ -72,7 +72,12 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
   // line can find the person without reading down the list.
   const q = query.trim().toLowerCase();
   const matches = (a: Application) =>
-    !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || (a.memberNo ?? "").toLowerCase().includes(q);
+    !q ||
+    a.name.toLowerCase().includes(q) ||
+    a.id.toLowerCase().includes(q) ||
+    (a.memberNo ?? "").toLowerCase().includes(q) ||
+    (a.email ?? "").toLowerCase().includes(q) ||
+    (q.replace(/\D/g, "").length >= 4 && (a.phone ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")));
 
   const fromOrigin = (a: Application) => origin === "all" || (a.origin ?? "homebridge") === origin;
   const list = s.apps
@@ -545,14 +550,14 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
 
         <div className="relative min-w-[230px] flex-1 sm:max-w-xs">
           <label htmlFor="app-search" className="sr-only">
-            Search applications by name or reference
+            Search applications by name, reference, email or phone
           </label>
           <input
             id="app-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, HBA- or HBC- number"
+            placeholder="Search name, email, phone or HBA-/HBC- number"
             className={cx(inputCls, "pr-16")}
           />
           {q ? (
@@ -608,6 +613,9 @@ export function ApplicationsScreen({ dbConnected = false }: { dbConnected?: bool
                           {a.type} · {CHAPTERS[a.chapter]} · {a.id}
                           {a.origin === "vekat" ? " · VEKAT form" : a.origin === "gform" ? " · Google Form" : ""}
                         </span>
+                        {a.email || a.phone ? (
+                          <span className="block text-[12.5px] break-all text-body">{[a.email, a.phone].filter(Boolean).join(" · ")}</span>
+                        ) : null}
                         <span className="block text-[12.5px] text-muted">
                           Submitted {fmtDate(a.submittedAt, true)}
                           {a.submittedTime ? ` at ${a.submittedTime}` : ""}
@@ -724,6 +732,8 @@ function Detail({
           <h3 className="m-0 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Applicant</h3>
           <KeyVals
             items={[
+              ["Email", <ContactLink key="e" kind="email" value={a.email} />],
+              ["Phone", <ContactLink key="p" kind="phone" value={a.phone} />],
               ["Lives in", a.livesIn],
               ["Residence route", a.route],
               ["Land / home", a.landLocation ?? "—"],
@@ -1140,5 +1150,34 @@ function Receipt({ a }: { a: Application }) {
         </a>
       </div>
     </div>
+  );
+}
+
+/** An email or phone number the officer can act on: mail it, call it, or open a WhatsApp chat. */
+function ContactLink({ kind, value }: { kind: "email" | "phone"; value?: string }) {
+  const v = value?.trim();
+  if (!v) return <span className="text-muted">Not given</span>;
+  const link = "font-semibold text-forest-800 underline underline-offset-[3px] break-all";
+  if (kind === "email") {
+    return (
+      <a href={`mailto:${v}`} className={link}>
+        {v}
+      </a>
+    );
+  }
+  const digits = v.replace(/[^\d+]/g, "");
+  // wa.me needs the international form; a local number such as 0803… has no country code to use.
+  const intl = digits.startsWith("+") ? digits.slice(1) : digits.startsWith("00") ? digits.slice(2) : /^(234|44)\d{9,}$/.test(digits) ? digits : "";
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2">
+      <a href={`tel:${digits}`} className={link}>
+        {v}
+      </a>
+      {intl ? (
+        <a href={`https://wa.me/${intl}`} target="_blank" rel="noopener noreferrer" className="text-[12.5px] text-muted underline underline-offset-[3px]">
+          WhatsApp
+        </a>
+      ) : null}
+    </span>
   );
 }
