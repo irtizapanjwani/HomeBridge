@@ -7,6 +7,7 @@ import {
   MEMBERSHIP_TYPES,
   NIGERIAN_STATES,
   ageOn,
+  countryName,
   emptyDraft,
   feeFor,
   firstInvalidStep,
@@ -18,7 +19,8 @@ import {
   type Route,
 } from "@/lib/register-data";
 import { HEARD_OPTIONS } from "@/lib/content";
-import { isEmailConfigured, sendApplicationConfirmation } from "@/lib/email";
+import { isEmailConfigured, sendApplicationConfirmation, sendOfficeAlert } from "@/lib/email";
+import { siteUrl } from "@/lib/site-url";
 import { BANK_METHOD, CARD_METHOD } from "@/lib/payment-methods";
 import { RECEIPT_MAX_BASE64, RECEIPT_MAX_BYTES, isReceiptType } from "@/lib/receipt";
 import { isDbConfigured } from "@/lib/db";
@@ -208,6 +210,24 @@ export async function POST(req: Request) {
       if (!sent.ok) console.error("[apply] confirmation email not sent:", sent.error);
     } else if (!isEmailConfigured()) {
       console.warn("[apply] RESEND_API_KEY is not set — no confirmation email was sent.");
+    }
+
+    // Tells the HomeBridge office someone has applied, so they need not keep checking the admin
+    // panel. Contact details only, no ID; a failure is logged and never fails the application.
+    if (isEmailConfigured()) {
+      const alert = await sendOfficeAlert({
+        reference,
+        fullName,
+        kind: supporter ? "Supporter" : "Application",
+        email: to,
+        phone: draft.whatsapp || (draft.contactMethod === "phone" ? draft.contact : ""),
+        memberType: MEMBERSHIP_TYPES.find((t) => t.value === draft.memberType)?.label ?? draft.memberType,
+        country: countryName(draft),
+        chapter: draft.chapter,
+        paymentMethod: draft.paymentMethod,
+        adminUrl: `${siteUrl(req)}/admin`,
+      });
+      if (!alert.ok) console.error("[apply] office alert not sent:", alert.error);
     }
 
     return NextResponse.json({ ok: true, reference, status: supporter ? "Supporter" : "Submitted" });

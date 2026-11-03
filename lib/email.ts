@@ -452,3 +452,87 @@ export async function sendContributionReceipt(input: ContributionReceiptEmail): 
 </body></html>`;
   return sendEmail({ to: input.to, subject: `Your HomeBridge contribution receipt — ${input.receiptNo}`, text, html, attachments: [input.receipt] });
 }
+
+/** Where new-application alerts go. OFFICE_ALERT_EMAIL can list several, comma-separated. */
+const DEFAULT_OFFICE_ALERT = "info@homebridgecooperative.org";
+
+export type OfficeAlertInput = {
+  reference: string;
+  fullName: string;
+  /** "Applicant" or "Supporter". */
+  kind: string;
+  email?: string;
+  phone?: string;
+  memberType?: string;
+  country?: string;
+  chapter?: string;
+  paymentMethod?: string;
+  /** The admin panel, so the officer can open the application straight away. */
+  adminUrl?: string;
+};
+
+/**
+ * Tells the HomeBridge office that someone has just applied or created an account, so they do not
+ * have to keep checking the admin panel. It carries contact details only: no ID number, no date of
+ * birth and no documents, which stay in the admin panel behind the officer login.
+ */
+export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResult> {
+  const raw = process.env.OFFICE_ALERT_EMAIL?.trim();
+  if (raw === "off") return { ok: true, id: "" };
+  const recipients = (raw || DEFAULT_OFFICE_ALERT).split(",").map((s) => s.trim()).filter(Boolean);
+
+  const rows: [string, string][] = (
+    [
+      ["Reference", input.reference],
+      ["Name", input.fullName],
+      ["Type", input.kind],
+      ["Email", input.email || ""],
+      ["Phone", input.phone || ""],
+      ["Membership", input.memberType || ""],
+      ["Country", input.country || ""],
+      ["Chapter", input.chapter || ""],
+      ["Payment", input.paymentMethod || ""],
+    ] as [string, string][]
+  ).filter(([, v]) => v.trim());
+
+  const subject = `New HomeBridge ${input.kind.toLowerCase()}: ${input.fullName} (${input.reference})`;
+  const text = [
+    `A new ${input.kind.toLowerCase()} has just come in on the HomeBridge site.`,
+    ``,
+    ...rows.map(([k, v]) => `${k}: ${v}`),
+    ``,
+    input.adminUrl ? `Open it in the admin panel: ${input.adminUrl}` : `Open the admin panel to review it.`,
+    ``,
+    `ID documents are not included in this email. View them in the admin panel.`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px">A new <strong>${esc(input.kind.toLowerCase())}</strong> has just come in on the HomeBridge site.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;background:#F3F1EA;border-radius:8px">
+        ${rows
+          .map(
+            ([k, v]) =>
+              `<tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px;width:120px">${esc(k)}</td><td style="padding:8px 16px;font-weight:600">${esc(v)}</td></tr>`,
+          )
+          .join("")}
+      </table>
+      ${
+        input.adminUrl
+          ? `<p style="margin:0 0 20px"><a href="${esc(input.adminUrl)}" style="display:inline-block;background:#1F4D3A;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Open the admin panel</a></p>`
+          : ""
+      }
+      <p style="margin:0;padding-top:16px;border-top:1px solid #E2DED2;font-size:13px;color:#6B6A61">ID documents are not included in this email. View them in the admin panel.</p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  let last: SendResult = { ok: true, id: "" };
+  for (const to of recipients) {
+    const sent = await sendEmail({ to, subject, text, html });
+    if (!sent.ok) last = sent;
+  }
+  return last;
+}
