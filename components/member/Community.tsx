@@ -54,28 +54,36 @@ export type MotionView = {
   details: string;
   status: "open" | "closed";
   myVote: string | null;
+  myVoteByProxy: string | null;
   result: null | { For: number; Against: number; Abstain: number; outcome: string };
   closedAt: string;
+  proxyGivenTo: string | null;
+  proxiesHeld: { memberNo: string; name: string; voted: string | null }[];
 };
 
-/** One member, one vote, on motions the office has opened. Results appear once a vote closes. */
+const CHOICE_LIST = ["For", "Against", "Abstain"];
+
+/**
+ * One member, one vote, on motions the office has opened, with proxies (bye-law 16.4): a member can
+ * name another member to vote for them, and a holder votes for up to five others. Results appear
+ * once a vote closes.
+ */
 export function VotesCard({ motions }: { motions: MotionView[] }) {
-  const [voted, setVoted] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<Record<string, string>>({});
+  const [holder, setHolder] = useState<Record<string, string>>({});
 
-  async function vote(m: MotionView, choice: string) {
-    if (!window.confirm(`Vote “${choice}” on “${m.title}”? You cannot change your vote afterwards.`)) return;
-    setBusy(m.id);
-    setErr((e) => ({ ...e, [m.id]: "" }));
+  async function post(url: string, body: Record<string, unknown>, key: string, confirmText?: string) {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setBusy(key);
+    setErr((e) => ({ ...e, [key]: "" }));
     try {
-      const res = await fetch("/api/member/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ motionId: m.id, choice }) });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || !d.ok) throw new Error(d.error || "Your vote could not be saved.");
-      setVoted((v) => ({ ...v, [m.id]: choice }));
+      if (!res.ok || !d.ok) throw new Error(d.error || "That did not work.");
+      window.location.reload();
     } catch (e) {
-      setErr((x) => ({ ...x, [m.id]: e instanceof Error ? e.message : "Your vote could not be saved." }));
-    } finally {
+      setErr((x) => ({ ...x, [key]: e instanceof Error ? e.message : "That did not work." }));
       setBusy(null);
     }
   }
@@ -87,35 +95,124 @@ export function VotesCard({ motions }: { motions: MotionView[] }) {
         <p className="mt-3 mb-0 text-[15px] text-body">There is nothing to vote on just now. When the board opens a vote, it appears here.</p>
       ) : (
         <ul className="mt-3 mb-0 flex list-none flex-col gap-4 p-0">
-          {motions.map((m) => {
-            const mine = voted[m.id] ?? m.myVote;
-            return (
-              <li key={m.id} className="rounded-xl border border-line p-4">
-                <p className="m-0 text-[15.5px] font-semibold text-ink">{m.title}</p>
-                {m.details ? <p className="mt-1 mb-0 text-[14.5px] whitespace-pre-line text-body">{m.details}</p> : null}
-                {m.status === "open" ? (
-                  mine ? (
-                    <p className="mt-3 mb-0 text-[14.5px] font-semibold text-forest-800">You voted: {mine}. Thank you.</p>
-                  ) : (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {["For", "Against", "Abstain"].map((c) => (
-                        <button key={c} type="button" disabled={busy !== null} onClick={() => void vote(m, c)} className={c === "For" ? btnPrimary : btnSecondary}>
-                          {busy === m.id ? "Saving…" : c}
-                        </button>
-                      ))}
+          {motions.map((m) => (
+            <li key={m.id} className="rounded-xl border border-line p-4">
+              <p className="m-0 text-[15.5px] font-semibold text-ink">{m.title}</p>
+              {m.details ? <p className="mt-1 mb-0 text-[14.5px] whitespace-pre-line text-body">{m.details}</p> : null}
+
+              {m.status === "open" ? (
+                <>
+                  {m.myVote ? (
+                    <p className="mt-3 mb-0 text-[14.5px] font-semibold text-forest-800">
+                      {m.myVoteByProxy ? `Your proxy (${m.myVoteByProxy}) voted for you: ${m.myVote}.` : `You voted: ${m.myVote}. Thank you.`}
+                    </p>
+                  ) : m.proxyGivenTo ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[14.5px] text-body">
+                      <span>
+                        Your proxy is with <strong>{m.proxyGivenTo}</strong>, who will vote for you.
+                      </span>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        className="text-[14px] font-semibold text-forest-800 underline underline-offset-[3px]"
+                        onClick={() => void post("/api/member/proxy", { motionId: m.id, cancel: true }, m.id, "Cancel your proxy and vote yourself instead?")}
+                      >
+                        Cancel my proxy
+                      </button>
                     </div>
-                  )
-                ) : m.result ? (
-                  <p className="mt-3 mb-0 text-[14.5px] text-body">
-                    <strong>{m.result.outcome}</strong> · For {m.result.For} · Against {m.result.Against} · Abstain {m.result.Abstain}
-                    {m.closedAt ? ` · closed ${m.closedAt}` : ""}
-                    {mine ? ` · you voted ${mine}` : ""}
-                  </p>
-                ) : null}
-                {err[m.id] ? <p className="mt-2 mb-0 text-[14px] text-danger">{err[m.id]}</p> : null}
-              </li>
-            );
-          })}
+                  ) : (
+                    <>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {CHOICE_LIST.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => void post("/api/member/vote", { motionId: m.id, choice: c }, m.id, `Vote “${c}” on “${m.title}”? You cannot change it afterwards.`)}
+                            className={c === "For" ? btnPrimary : btnSecondary}
+                          >
+                            {busy === m.id ? "Saving…" : c}
+                          </button>
+                        ))}
+                      </div>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-[14px] font-semibold text-forest-800">Can&rsquo;t vote? Give your proxy to another member</summary>
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          <label className="flex flex-col gap-1 text-[13.5px] font-medium text-muted">
+                            Their membership number
+                            <input
+                              value={holder[m.id] ?? ""}
+                              onChange={(e) => setHolder({ ...holder, [m.id]: e.target.value })}
+                              placeholder="HBC-EDO-26-00002"
+                              className="min-h-11 rounded-xl border border-line bg-white px-3 text-[15px] text-ink"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            disabled={busy !== null || !(holder[m.id] ?? "").trim()}
+                            className={btnSecondary}
+                            onClick={() =>
+                              void post("/api/member/proxy", { motionId: m.id, holderNo: holder[m.id] }, m.id, `Let ${holder[m.id]} vote for you on “${m.title}”?`)
+                            }
+                          >
+                            Give proxy
+                          </button>
+                        </div>
+                      </details>
+                    </>
+                  )}
+
+                  {m.proxiesHeld.length ? (
+                    <div className="mt-4 rounded-xl bg-mist/50 p-3">
+                      <p className="m-0 text-[14px] font-semibold text-forest-800">You hold {m.proxiesHeld.length} proxy vote{m.proxiesHeld.length === 1 ? "" : "s"}</p>
+                      <ul className="mt-2 mb-0 flex list-none flex-col gap-2 p-0">
+                        {m.proxiesHeld.map((p) => {
+                          const key = `${m.id}:${p.memberNo}`;
+                          return (
+                            <li key={p.memberNo} className="text-[14.5px]">
+                              <span className="block text-ink">
+                                For {p.name} ({p.memberNo}){p.voted ? `: voted ${p.voted}` : ""}
+                              </span>
+                              {!p.voted ? (
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                  {CHOICE_LIST.map((c) => (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      disabled={busy !== null}
+                                      className={btnSecondary}
+                                      onClick={() =>
+                                        void post(
+                                          "/api/member/vote",
+                                          { motionId: m.id, choice: c, forMemberNo: p.memberNo },
+                                          key,
+                                          `Vote “${c}” for ${p.name} (${p.memberNo})? It cannot be changed.`,
+                                        )
+                                      }
+                                    >
+                                      {busy === key ? "Saving…" : c}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {err[key] ? <p className="mt-1 mb-0 text-[14px] text-danger">{err[key]}</p> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              ) : m.result ? (
+                <p className="mt-3 mb-0 text-[14.5px] text-body">
+                  <strong>{m.result.outcome}</strong> · For {m.result.For} · Against {m.result.Against} · Abstain {m.result.Abstain}
+                  {m.closedAt ? ` · closed ${m.closedAt}` : ""}
+                  {m.myVote ? ` · your vote: ${m.myVote}${m.myVoteByProxy ? " (by proxy)" : ""}` : ""}
+                </p>
+              ) : null}
+              {err[m.id] ? <p className="mt-2 mb-0 text-[14px] text-danger">{err[m.id]}</p> : null}
+            </li>
+          ))}
         </ul>
       )}
     </Card>

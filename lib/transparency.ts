@@ -7,6 +7,7 @@ import "server-only";
 import { type ContributionCurrency, CURRENCIES, allContributions, money, periodOf } from "@/lib/contributions";
 import { collections } from "@/lib/members";
 import { meetsMinimum } from "@/lib/missed-payments";
+import { holidayMonths } from "@/lib/payment-holidays";
 import { pendingProofMembers } from "@/lib/payment-proofs";
 import { lagosToday } from "@/lib/payment-reminders";
 
@@ -29,6 +30,7 @@ export async function transparency(): Promise<Transparency> {
   const admitted = await members.find({ "membership.memberNo": { $exists: true } }, { projection: { chapter: 1, membership: 1 } }).toArray();
   const contribs = await allContributions();
   const waiting = await pendingProofMembers(period).catch(() => new Set<string>());
+  const onHoliday = await holidayMonths().catch(() => new Map<string, Set<string>>());
 
   const funds = CURRENCIES.map((c) => [c, contribs.filter((x) => x.currency === c).reduce((t, x) => t + x.amount, 0)] as const)
     .filter(([, t]) => t > 0)
@@ -48,8 +50,8 @@ export async function transparency(): Promise<Transparency> {
     const no = m.membership!.memberNo;
     const z = zones.get(m.chapter || "Other") ?? { members: 0, due: 0, paid: 0 };
     z.members++;
-    // Members start paying the month after they are admitted.
-    if (periodOf(m.membership!.admittedAt) < period) {
+    // Members start paying the month after they are admitted; a month on holiday is not due.
+    if (periodOf(m.membership!.admittedAt) < period && !onHoliday.get(no)?.has(period)) {
       z.due++;
       due++;
       if (meetsMinimum(thisMonth.get(no) ?? {}) || waiting.has(no)) {

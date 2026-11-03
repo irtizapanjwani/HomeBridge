@@ -11,6 +11,7 @@ import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, ReadOnly, StatTile, 
 import { LiveContributionsCard } from "./LiveContributions";
 import { MissedPaymentsCard } from "./MissedPayments";
 import { ProofsCard } from "./LiveProofs";
+import { HolidaysCard } from "./LiveHolidays";
 import { ReconciliationCard } from "./LiveReconciliation";
 
 type Filter = "action" | "Suspense" | "Matched — to confirm" | "Credited" | "Returned" | "all";
@@ -158,6 +159,7 @@ export function ContributionsScreen() {
       <LiveContributionsCard />
       <ProofsCard />
       <MissedPaymentsCard />
+      <HolidaysCard />
       <ReconciliationCard />
       <Banner tone="lock" title="Below: the earlier prototype ledger.">
         It runs on sample data only and is kept for reference while the live screens replace it. Record real contributions in the card above.

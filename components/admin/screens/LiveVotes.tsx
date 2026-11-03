@@ -15,6 +15,7 @@ type Motion = {
   closedAt: string;
   counts: { For: number; Against: number; Abstain: number };
   total: number;
+  byProxy: number;
   result: string;
 };
 
@@ -64,7 +65,8 @@ export function OnlineVotesCard() {
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
         Write a motion, then <strong>Open</strong> it: every member sees it in their account and can vote For, Against or Abstain, once.{" "}
-        <strong>Close</strong> it to fix the result, which members then see. Only totals are shown, never who voted which way.
+        <strong>Close</strong> it to fix the result, which members then see. Members can give their proxy to another member, who can hold up to
+        five (bye-law 16.4). Only totals are shown, never who voted which way.
       </p>
       {err ? <Banner tone="danger">{err}</Banner> : null}
       <div className="grid gap-2">
@@ -122,6 +124,7 @@ export function OnlineVotesCard() {
                   {m.total} vote{m.total === 1 ? "" : "s"}
                   <span className="block text-[12.5px] text-muted">
                     For {m.counts.For} · Against {m.counts.Against} · Abstain {m.counts.Abstain}
+                    {m.byProxy ? ` · ${m.byProxy} by proxy` : ""}
                   </span>
                 </Td>
                 <Td>

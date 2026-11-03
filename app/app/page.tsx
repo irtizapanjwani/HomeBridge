@@ -8,6 +8,7 @@ import { returnByDate } from "@/lib/pdf/pack-forms";
 import { certificateNoFor } from "@/lib/pdf/certificate";
 import { packMemberOf } from "@/lib/welcome-pack";
 import { CURRENCIES, contributionsFor, money, periodLabel, periodOf, SHARES_NOTE, sharesFor } from "@/lib/contributions";
+import { holidaysFor } from "@/lib/payment-holidays";
 import { proofsFor } from "@/lib/payment-proofs";
 import { lagosToday } from "@/lib/payment-reminders";
 import { transparency } from "@/lib/transparency";
@@ -61,6 +62,7 @@ export default async function MemberAccountPage() {
   // Contribution history and share balance (brief Phase 2 member portal). Never takes the page down.
   const contribs = m.membership ? await contributionsFor(m.reference).catch(() => []) : [];
   const proofs = m.membership ? await proofsFor(m.reference).catch(() => []) : [];
+  const holidays = m.membership ? await holidaysFor(m.reference).catch(() => []) : [];
   // Each of these is optional: a failure leaves its card out rather than taking the page down.
   const [glance, motions, ideas] = m.membership
     ? await Promise.all([
@@ -123,6 +125,7 @@ export default async function MemberAccountPage() {
             })),
             thisMonth: lagosToday().period,
             firstMonth: periodOf(m.membership.admittedAt),
+            holidays: holidays.map((h) => ({ id: h.id, months: h.months, status: h.status, note: h.note })),
           },
         }
       : {}),

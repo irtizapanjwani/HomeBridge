@@ -16,6 +16,8 @@ export type ContributionsView = {
   /** This month (YYYY-MM) and the month the member joined (YYYY-MM), for the statement picker. */
   thisMonth: string;
   firstMonth: string;
+  /** Payment holiday requests, newest first. */
+  holidays: { id: string; months: string; status: "pending" | "approved" | "declined"; note: string }[];
 };
 
 const PROOF_LABEL = { pending: "Waiting for the Treasurer", approved: "Accepted", rejected: "Not accepted" } as const;
@@ -97,6 +99,7 @@ export function ContributionsCard({ c }: { c: ContributionsView }) {
       ) : null}
 
       <ProofForm currency={c.currency} thisMonth={c.thisMonth} />
+      <HolidayForm thisMonth={c.thisMonth} holidays={c.holidays} />
       <StatementDownload firstMonth={c.firstMonth} thisMonth={c.thisMonth} />
     </Card>
   );
@@ -201,5 +204,76 @@ function StatementDownload({ firstMonth, thisMonth }: { firstMonth: string; this
         </a>
       </div>
     </div>
+  );
+}
+
+const HOLIDAY_LABEL = { pending: "Waiting for the Treasurer", approved: "Approved", declined: "Not approved" } as const;
+
+function HolidayForm({ thisMonth, holidays }: { thisMonth: string; holidays: ContributionsView["holidays"] }) {
+  const [from, setFrom] = useState(thisMonth);
+  const [to, setTo] = useState(thisMonth);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const waiting = holidays.some((h) => h.status === "pending");
+
+  async function send() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/member/holiday", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from, to, reason }) });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || "We could not send that.");
+      setMsg({ ok: true, text: "Sent. The Treasurer will reply by email." });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "We could not send that." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details className="mt-3 rounded-xl border border-line p-4">
+      <summary className="cursor-pointer text-[15px] font-semibold text-forest-800">Ask for a payment holiday</summary>
+      <p className="mt-2 mb-3 text-[14px] text-body">
+        Going through a hard time? You can ask to pause your contributions for up to 3 months in any 12. If the Treasurer approves, you will
+        not be chased for those months.
+      </p>
+      {holidays.length ? (
+        <ul className="mt-0 mb-3 flex list-none flex-col gap-1.5 p-0 text-[14.5px]">
+          {holidays.map((h) => (
+            <li key={h.id}>
+              <strong>{HOLIDAY_LABEL[h.status]}</strong> · {h.months}
+              {h.note ? <span className="block text-[13.5px] text-muted">{h.note}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {waiting ? (
+        <p className="m-0 text-[14px] text-muted">You have a request waiting. You will hear back by email.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className={label}>
+              From
+              <input type="month" value={from} min={thisMonth} onChange={(e) => setFrom(e.target.value)} className={field} />
+            </label>
+            <label className={label}>
+              To
+              <input type="month" value={to} min={from} onChange={(e) => setTo(e.target.value)} className={field} />
+            </label>
+          </div>
+          <label className={`${label} mt-3`}>
+            Why do you need it?
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={1000} className="w-full rounded-xl border border-line bg-white p-3 text-[15px] text-ink" />
+          </label>
+          {msg ? <p className={`mt-3 mb-0 text-[14px] ${msg.ok ? "text-forest-800" : "text-danger"}`}>{msg.text}</p> : null}
+          <button type="button" disabled={busy || reason.trim().length < 5} onClick={() => void send()} className={`${btnPrimary} mt-3`}>
+            {busy ? "Sending…" : "Send request"}
+          </button>
+        </>
+      )}
+    </details>
   );
 }

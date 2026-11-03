@@ -15,7 +15,7 @@ import { ObjectId } from "mongodb";
 
 import { recordAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
-import type { MemberDoc } from "@/lib/members";
+import { type MemberDoc, collections as memberCollections } from "@/lib/members";
 
 export const CHOICES = ["For", "Against", "Abstain"] as const;
 export type Choice = (typeof CHOICES)[number];
@@ -34,7 +34,21 @@ type MotionDoc = {
   closedAt?: Date;
 };
 
-type VoteDoc = { _id?: ObjectId; motionId: ObjectId; memberNo: string; choice: Choice; at: Date };
+type VoteDoc = {
+  _id?: ObjectId;
+  motionId: ObjectId;
+  memberNo: string;
+  choice: Choice;
+  at: Date;
+  /** Set when a proxy holder cast this vote for the member (bye-law 16.4). */
+  byProxy?: string;
+};
+
+/** A member's proxy for one motion: who may vote for them. Cancelled proxies are kept for the record. */
+type ProxyDoc = { _id?: ObjectId; motionId: ObjectId; giverNo: string; giverName: string; holderNo: string; at: Date; cancelledAt?: Date };
+
+/** Bye-law 16.4: nobody may hold more than five proxies. */
+export const MAX_PROXIES_HELD = 5;
 
 export type IdeaStatus = "new" | "seen" | "planned" | "not_now";
 export const IDEA_STATUSES: IdeaStatus[] = ["new", "seen", "planned", "not_now"];
@@ -56,7 +70,12 @@ type IdeaDoc = {
 
 async function cols() {
   const db = await getDb();
-  return { motions: db.collection<MotionDoc>("motions"), votes: db.collection<VoteDoc>("votes"), ideas: db.collection<IdeaDoc>("ideas") };
+  return {
+    motions: db.collection<MotionDoc>("motions"),
+    votes: db.collection<VoteDoc>("votes"),
+    ideas: db.collection<IdeaDoc>("ideas"),
+    proxies: db.collection<ProxyDoc>("proxies"),
+  };
 }
 
 let indexed: Promise<unknown> | null = null;
@@ -68,6 +87,9 @@ async function ensureIndexes() {
       c.motions.createIndex({ createdAt: -1 }),
       c.ideas.createIndex({ at: -1 }),
       c.ideas.createIndex({ memberRef: 1, at: -1 }),
+      // One live proxy per member per motion.
+      c.proxies.createIndex({ motionId: 1, giverNo: 1 }, { unique: true, partialFilterExpression: { cancelledAt: { $exists: false } } }),
+      c.proxies.createIndex({ motionId: 1, holderNo: 1 }),
     ]);
   })().catch((err) => {
     indexed = null;
@@ -97,8 +119,11 @@ export async function listMotionsForAdmin() {
   return Promise.all(
     list.map(async (m) => {
       const c = await counts(m._id!);
+      const { votes } = await cols();
+      const byProxy = await votes.countDocuments({ motionId: m._id!, byProxy: { $exists: true } });
       return {
         id: String(m._id),
+        byProxy,
         title: m.title,
         details: m.details,
         status: m.status,
@@ -145,41 +170,127 @@ export async function moveMotion(id: string, to: "open" | "closed", actor: strin
 
 export async function motionsForMember(memberNo: string) {
   await ensureIndexes().catch(() => {});
-  const { motions, votes } = await cols();
+  const { motions, votes, proxies } = await cols();
   const list = await motions.find({ status: { $in: ["open", "closed"] } }).sort({ openedAt: -1 }).limit(10).toArray();
-  const mine = await votes.find({ memberNo, motionId: { $in: list.map((m) => m._id!) } }).toArray();
-  const myChoice = new Map(mine.map((v) => [String(v.motionId), v.choice]));
+  const ids = list.map((m) => m._id!);
+  const mine = await votes.find({ memberNo, motionId: { $in: ids } }).toArray();
+  const myChoice = new Map(mine.map((v) => [String(v.motionId), v]));
+  const given = await proxies.find({ giverNo: memberNo, motionId: { $in: ids }, cancelledAt: { $exists: false } }).toArray();
+  const held = await proxies.find({ holderNo: memberNo, motionId: { $in: ids }, cancelledAt: { $exists: false } }).toArray();
+  const heldVotes = held.length
+    ? await votes.find({ motionId: { $in: ids }, memberNo: { $in: held.map((p) => p.giverNo) } }).toArray()
+    : [];
   return Promise.all(
     list.map(async (m) => {
+      const id = String(m._id);
       const c = m.status === "closed" ? await counts(m._id!) : null;
+      const myVote = myChoice.get(id);
+      const proxyGiven = given.find((p) => String(p.motionId) === id);
       return {
-        id: String(m._id),
+        id,
         title: m.title,
         details: m.details,
         status: m.status as "open" | "closed",
-        myVote: myChoice.get(String(m._id)) ?? null,
+        myVote: myVote?.choice ?? null,
+        /** Set when the member's own vote was cast by their proxy holder. */
+        myVoteByProxy: myVote?.byProxy ?? null,
         result: c ? { ...c, outcome: resultOf(c) } : null,
         closedAt: m.closedAt ? DAY.format(m.closedAt) : "",
+        proxyGivenTo: proxyGiven?.holderNo ?? null,
+        proxiesHeld: held
+          .filter((p) => String(p.motionId) === id)
+          .map((p) => ({
+            memberNo: p.giverNo,
+            name: p.giverName.split(/\s+/)[0] ?? "",
+            voted: heldVotes.find((v) => String(v.motionId) === id && v.memberNo === p.giverNo)?.choice ?? null,
+          })),
       };
     }),
   );
 }
 
-export async function castVote(member: MemberDoc, motionId: string, choice: Choice) {
+// ---------- Proxies (bye-law 16.4) ----------
+
+/**
+ * A member names another member to vote for them on one open motion. Rules: not yourself, the holder
+ * must be a member, you have not voted yet, the holder holds fewer than five, and the holder has not
+ * given their own proxy away (no chains).
+ */
+export async function giveProxy(member: MemberDoc, motionId: string, holderNoRaw: string) {
+  await ensureIndexes();
+  if (!member.membership) return { ok: false as const, error: "Only members can give a proxy." };
+  if (!ObjectId.isValid(motionId)) return { ok: false as const, error: "That vote no longer exists." };
+  const holderNo = holderNoRaw.trim().toUpperCase().replace(/\s+/g, "");
+  const me = member.membership.memberNo;
+  if (holderNo === me) return { ok: false as const, error: "You cannot give your proxy to yourself." };
+  const { motions, votes, proxies } = await cols();
+  const motion = await motions.findOne({ _id: new ObjectId(motionId) });
+  if (!motion || motion.status !== "open") return { ok: false as const, error: "This vote is not open." };
+  if (await votes.findOne({ motionId: motion._id!, memberNo: me })) return { ok: false as const, error: "You have already voted on this." };
+  const { members } = await memberCollections();
+  const holder = await members.findOne({ "membership.memberNo": holderNo }, { projection: { fullName: 1 } });
+  if (!holder) return { ok: false as const, error: "No member holds that number. Check it with them." };
+  const live = { motionId: motion._id!, cancelledAt: { $exists: false } };
+  if (await proxies.findOne({ ...live, giverNo: holderNo })) return { ok: false as const, error: "That member has given their own proxy away, so they cannot hold yours." };
+  if ((await proxies.countDocuments({ ...live, holderNo })) >= MAX_PROXIES_HELD) {
+    return { ok: false as const, error: `That member already holds ${MAX_PROXIES_HELD} proxies, the most allowed.` };
+  }
+  try {
+    await proxies.insertOne({ motionId: motion._id!, giverNo: me, giverName: member.fullName, holderNo, at: new Date() });
+  } catch (err) {
+    if ((err as { code?: number }).code === 11000) return { ok: false as const, error: "You have already given your proxy on this vote. Cancel it first." };
+    throw err;
+  }
+  await recordAudit({ action: "vote.proxy_given", actor: `Member (${me})`, subject: motion.title, detail: `Proxy given to ${holderNo}` });
+  return { ok: true as const };
+}
+
+/** Cancels a member's own proxy, as long as it has not been used. */
+export async function cancelProxy(member: MemberDoc, motionId: string) {
+  if (!member.membership || !ObjectId.isValid(motionId)) return { ok: false as const, error: "Not found." };
+  const me = member.membership.memberNo;
+  const { votes, proxies, motions } = await cols();
+  const motion = await motions.findOne({ _id: new ObjectId(motionId) });
+  if (!motion || motion.status !== "open") return { ok: false as const, error: "This vote is not open." };
+  if (await votes.findOne({ motionId: motion._id!, memberNo: me })) return { ok: false as const, error: "Your vote has already been cast, so the proxy cannot be cancelled." };
+  const res = await proxies.findOneAndUpdate({ motionId: motion._id!, giverNo: me, cancelledAt: { $exists: false } }, { $set: { cancelledAt: new Date() } });
+  if (!res) return { ok: false as const, error: "You have not given a proxy on this vote." };
+  await recordAudit({ action: "vote.proxy_cancelled", actor: `Member (${me})`, subject: motion.title, detail: `Proxy to ${res.holderNo} cancelled` });
+  return { ok: true as const };
+}
+
+/**
+ * Records one vote. With `forMemberNo`, the signed-in member votes as proxy for that member, which
+ * needs a live proxy from them. Either way the database allows one vote per member per motion.
+ */
+export async function castVote(member: MemberDoc, motionId: string, choice: Choice, forMemberNo?: string) {
   await ensureIndexes();
   if (!member.membership) return { ok: false as const, error: "Only members can vote.", status: 403 };
   if (!ObjectId.isValid(motionId)) return { ok: false as const, error: "That vote no longer exists.", status: 404 };
-  const { motions, votes } = await cols();
+  const { motions, votes, proxies } = await cols();
   const motion = await motions.findOne({ _id: new ObjectId(motionId) });
   if (!motion) return { ok: false as const, error: "That vote no longer exists.", status: 404 };
   if (motion.status !== "open") return { ok: false as const, error: "This vote is not open.", status: 409 };
+  const me = member.membership.memberNo;
+  const voter = forMemberNo ? forMemberNo.trim().toUpperCase() : me;
+  if (forMemberNo) {
+    const proxy = await proxies.findOne({ motionId: motion._id!, giverNo: voter, holderNo: me, cancelledAt: { $exists: false } });
+    if (!proxy) return { ok: false as const, error: "You do not hold that member's proxy for this vote.", status: 403 };
+  } else if (await proxies.findOne({ motionId: motion._id!, giverNo: me, cancelledAt: { $exists: false } })) {
+    return { ok: false as const, error: "You have given your proxy on this vote. Cancel it first if you want to vote yourself.", status: 409 };
+  }
   try {
-    await votes.insertOne({ motionId: motion._id!, memberNo: member.membership.memberNo, choice, at: new Date() });
+    await votes.insertOne({ motionId: motion._id!, memberNo: voter, choice, at: new Date(), ...(forMemberNo ? { byProxy: me } : {}) });
   } catch (err) {
-    if ((err as { code?: number }).code === 11000) return { ok: false as const, error: "You have already voted on this.", status: 409 };
+    if ((err as { code?: number }).code === 11000) return { ok: false as const, error: forMemberNo ? "That member's vote has already been cast." : "You have already voted on this.", status: 409 };
     throw err;
   }
-  await recordAudit({ action: "vote.cast", actor: `Member (${member.membership.memberNo})`, subject: motion.title, detail: "Vote recorded" });
+  await recordAudit({
+    action: "vote.cast",
+    actor: `Member (${me})`,
+    subject: motion.title,
+    detail: forMemberNo ? `Vote recorded for ${voter} as their proxy` : "Vote recorded",
+  });
   return { ok: true as const };
 }
 

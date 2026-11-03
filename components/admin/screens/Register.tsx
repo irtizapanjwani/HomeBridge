@@ -5,6 +5,7 @@ import { REGIONS, TODAY, type MemberStatus, type MemberType } from "@/lib/admin-
 import { useToast } from "@/components/ui/Toast";
 import { SearchIcon } from "@/components/ui/Icons";
 import { dormancyStatus, useAdmin } from "../store";
+import { NoticesCard } from "./LiveNotices";
 import { exportReport, registerReport } from "../exports";
 import { fmtDate, naira, num } from "../lib";
 import { Btn, Card, Empty, Field, PageHeader, Pill, StatTile, Table, Td, Th, inputCls } from "../ui";
@@ -59,6 +60,7 @@ export function RegisterScreen({ dbConnected = false }: { dbConnected?: boolean 
 
   return (
     <>
+      {dbConnected ? <NoticesCard /> : null}
       <PageHeader
         live={dbConnected}
         title="Member register"

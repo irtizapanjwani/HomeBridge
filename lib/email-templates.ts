@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -288,6 +288,47 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
     mustInclude: ["{{Year}}"],
   },
+  O: {
+    key: "O",
+    name: "O. Payment holiday approved",
+    when: "Sent when the Treasurer approves a member's payment holiday.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Months", description: "The months of the holiday", sample: "December 2026 to January 2027" },
+      { name: "Note", description: "The Treasurer's note (may be empty)", sample: "" },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "An “Open your account” button", sample: "" }],
+    mustInclude: ["{{Months}}"],
+  },
+  P: {
+    key: "P",
+    name: "P. Payment holiday declined",
+    when: "Sent when the Treasurer declines a member's payment holiday.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Months", description: "The months asked for", sample: "December 2026 to January 2027" },
+      { name: "Note", description: "The Treasurer's reason", sample: "Please speak to your zonal coordinator first." },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "An “Open your account” button", sample: "" }],
+    mustInclude: ["{{Note}}"],
+  },
+  Q: {
+    key: "Q",
+    name: "Q. Notice to members (wrapper)",
+    when: "Wraps every notice sent from Member register → Send a notice. {{Message}} is what the officer writes.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Subject", description: "The subject the officer wrote", sample: "AGM date confirmed" },
+      { name: "Message", description: "The message the officer wrote", sample: "Our first AGM will be held on 5 December 2026." },
+    ],
+    blocks: [],
+    mustInclude: ["{{Message}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -518,6 +559,43 @@ Please check it, and reply if anything looks wrong.
 Thank you for being part of HomeBridge,
 HomeBridge Membership Team`,
   },
+  O: {
+    subject: "Your HomeBridge payment holiday is approved ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Your payment holiday for **{{Months}}** has been approved. You do not need to pay your monthly contribution for those months, and you will not receive reminders for them. {{Note}}
+
+Your contributions start again the month after the holiday ends.
+
+{{BUTTON}}
+
+Kind regards,
+HomeBridge Membership Team`,
+  },
+  P: {
+    subject: "Your HomeBridge payment holiday request ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+We are not able to approve your payment holiday for **{{Months}}** at this time.
+
+{{Note}}
+
+If your situation changes, or you would like to talk about it, please reply to this email.
+
+{{BUTTON}}
+
+Kind regards,
+HomeBridge Membership Team`,
+  },
+  Q: {
+    subject: "{{Subject}}",
+    body: `Dear {{FirstName}},
+
+{{Message}}
+
+HomeBridge Cooperative
+Membership number: {{MemberNo}}`,
+  },
 };
 
 // ---------- Stored templates ----------
@@ -695,7 +773,9 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
           ? "Sign your forms"
           : ["F", "G", "H", "I", "J", "K", "L", "M", "N"].includes(key)
             ? "See your contributions"
-            : "Open the member portal",
+            : key === "O" || key === "P"
+              ? "Open your account"
+              : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),
     DETAILS: detailsTable([

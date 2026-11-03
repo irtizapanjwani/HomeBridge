@@ -13,6 +13,7 @@ import { type ContributionCurrency, allContributions, money, periodLabel, period
 import { sendEmail } from "@/lib/email";
 import { buttonBlock, renderTemplate } from "@/lib/email-templates";
 import { type MemberDoc, collections } from "@/lib/members";
+import { holidayMonths } from "@/lib/payment-holidays";
 import { MIN_MONTHLY } from "@/lib/settings";
 
 export const isPeriod = (v: unknown): v is string => typeof v === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
@@ -111,17 +112,21 @@ export async function missedPayments(period: string): Promise<MissedResult> {
     if (!prev || c.paidAt > prev) lastPaid.set(c.memberNo, c.paidAt);
   }
 
+  // Months on an approved payment holiday are not missed (addendum A9).
+  const onHoliday = await holidayMonths().catch(() => new Map<string, Set<string>>());
+
   const rows: MissedRow[] = [];
   let paidCount = 0;
   for (const m of admitted) {
     const no = m.membership!.memberNo;
     const byPeriod = ledger.get(no) ?? new Map<string, Totals>();
     const thisMonth = byPeriod.get(period) ?? {};
-    if (meetsMinimum(thisMonth)) {
+    const holiday = onHoliday.get(no) ?? new Set<string>();
+    if (meetsMinimum(thisMonth) || holiday.has(period)) {
       paidCount++;
       continue;
     }
-    const short = monthsBetween(periodOf(m.membership!.admittedAt), period).filter((p) => !meetsMinimum(byPeriod.get(p) ?? {}));
+    const short = monthsBetween(periodOf(m.membership!.admittedAt), period).filter((p) => !meetsMinimum(byPeriod.get(p) ?? {}) && !holiday.has(p));
     const paid = describe(thisMonth);
     const reminded = m.contributionReminders?.[period];
     rows.push({

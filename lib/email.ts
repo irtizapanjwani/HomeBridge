@@ -453,6 +453,43 @@ export async function sendContributionReceipt(input: ContributionReceiptEmail): 
   return sendEmail({ to: input.to, subject: `Your HomeBridge contribution receipt — ${input.receiptNo}`, text, html, attachments: [input.receipt] });
 }
 
+/**
+ * Sends many emails at once through Resend's batch endpoint (up to 100 per call, no attachments).
+ * Used for notices to members. Returns how many were accepted and how many were not.
+ */
+export async function sendEmailBatch(items: { to: string; subject: string; text: string; html: string }[]): Promise<{ sent: number; failed: number; errors: string[] }> {
+  if (!apiKey) return { sent: 0, failed: items.length, errors: ["RESEND_API_KEY is not set"] };
+  const from = process.env.EMAIL_FROM?.trim() || TEST_FROM;
+  const replyTo = process.env.EMAIL_REPLY_TO?.trim() || "";
+  const out = { sent: 0, failed: 0, errors: [] as string[] };
+  for (let i = 0; i < items.length; i += 100) {
+    const chunk = items.slice(i, i + 100);
+    if (i > 0) await new Promise((r) => setTimeout(r, 600)); // stay under Resend's requests-per-second limit
+    try {
+      const res = await fetch(`${RESEND_ENDPOINT}/batch`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(
+          chunk.map((e) => ({ from, to: [e.to], subject: e.subject, text: e.text, html: e.html, ...(replyTo ? { reply_to: [replyTo] } : {}) })),
+        ),
+      });
+      const data = (await res.json().catch(() => null)) as { data?: unknown[]; message?: string } | null;
+      if (!res.ok) {
+        out.failed += chunk.length;
+        out.errors.push(data?.message || `Resend returned ${res.status}`);
+      } else {
+        const accepted = Array.isArray(data?.data) ? data!.data!.length : chunk.length;
+        out.sent += accepted;
+        out.failed += chunk.length - accepted;
+      }
+    } catch (err) {
+      out.failed += chunk.length;
+      out.errors.push(err instanceof Error ? err.message : "unknown error");
+    }
+  }
+  return out;
+}
+
 /** Where new-application alerts go. OFFICE_ALERT_EMAIL can list several, comma-separated. */
 const DEFAULT_OFFICE_ALERT = "info@homebridgecooperative.org";
 

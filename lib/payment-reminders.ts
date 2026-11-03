@@ -27,6 +27,7 @@ import { officeRecipients, sendEmail } from "@/lib/email";
 import { type TemplateKey, buttonBlock, renderTemplate } from "@/lib/email-templates";
 import { type MemberDoc, collections } from "@/lib/members";
 import { meetsMinimum, minimumFor, monthsBetween } from "@/lib/missed-payments";
+import { holidayMonths } from "@/lib/payment-holidays";
 import { pendingProofMembers } from "@/lib/payment-proofs";
 
 export type Stage = "due" | "day5" | "day7" | "overdue" | "day15";
@@ -230,6 +231,8 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
 
   // A proof of payment waiting for the Treasurer counts as paid for the month (brief §3).
   const waitingProof = await pendingProofMembers(period).catch(() => new Set<string>());
+  // Approved payment holidays: no reminders, no flag, and they do not count as months unpaid (A9).
+  const onHoliday = await holidayMonths().catch(() => new Map<string, Set<string>>());
 
   const overdueRows: OverdueRow[] = [];
   for (const m of admitted) {
@@ -241,7 +244,8 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
 
     const byPeriod = ledger.get(no) ?? new Map<string, Totals>();
     const thisMonth = byPeriod.get(period) ?? {};
-    if (meetsMinimum(thisMonth) || waitingProof.has(no)) {
+    const holiday = onHoliday.get(no) ?? new Set<string>();
+    if (meetsMinimum(thisMonth) || waitingProof.has(no) || holiday.has(period)) {
       base.upToDate++;
       continue;
     }
@@ -250,7 +254,7 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
     // Months in a row without the minimum, ending with this one.
     const months = monthsBetween(firstCycle, period);
     let inRow = 0;
-    for (let i = months.length - 1; i >= 0 && !meetsMinimum(byPeriod.get(months[i]) ?? {}); i--) inRow++;
+    for (let i = months.length - 1; i >= 0 && !meetsMinimum(byPeriod.get(months[i]) ?? {}) && !holiday.has(months[i]); i--) inRow++;
     const shortRun = months.slice(months.length - inRow);
 
     if (day >= 8) {
