@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -127,8 +127,8 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
   },
   F: {
     key: "F",
-    name: "F. Missed contribution",
-    when: "Sent by an officer from Contributions → Missed payments to a member who has not paid the minimum monthly contribution for a month.",
+    name: "F. Missed contribution (overdue, day 8)",
+    when: "Sent automatically on day 8 of the month to a member who has not paid the minimum monthly contribution (when payment reminders are switched on), or by an officer from Contributions → Missed payments.",
     placeholders: [
       { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
       { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
@@ -143,6 +143,105 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     ],
     blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
     mustInclude: ["{{Month}}"],
+  },
+  G: {
+    key: "G",
+    name: "G. Contribution due (day 1)",
+    when: "Sent automatically on the 1st of each month to every member who has not yet paid that month's minimum (when payment reminders are switched on).",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month the contribution is for", sample: "November 2026" },
+      { name: "Minimum", description: "The minimum monthly contribution for this member", sample: "₦5,000" },
+      { name: "DueBy", description: "The last day to pay on time (the 7th)", sample: "7 November 2026" },
+      {
+        name: "PaidNote",
+        description: "Sentence about what was received that month (empty if nothing)",
+        sample: "So far we have received ₦2,000 for that month.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
+  H: {
+    key: "H",
+    name: "H. Contribution reminder (day 5)",
+    when: "Sent automatically on the 5th of the month if the minimum for the month has still not been received.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month the contribution is for", sample: "November 2026" },
+      { name: "Minimum", description: "The minimum monthly contribution for this member", sample: "₦5,000" },
+      { name: "DueBy", description: "The last day to pay on time (the 7th)", sample: "7 November 2026" },
+      {
+        name: "PaidNote",
+        description: "Sentence about what was received that month (empty if nothing)",
+        sample: "So far we have received ₦2,000 for that month.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
+  I: {
+    key: "I",
+    name: "I. Last day to pay (day 7)",
+    when: "Sent automatically on the 7th of the month if the minimum for the month has still not been received.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month the contribution is for", sample: "November 2026" },
+      { name: "Minimum", description: "The minimum monthly contribution for this member", sample: "₦5,000" },
+      { name: "DueBy", description: "The last day to pay on time (the 7th)", sample: "7 November 2026" },
+      {
+        name: "PaidNote",
+        description: "Sentence about what was received that month (empty if nothing)",
+        sample: "So far we have received ₦2,000 for that month.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
+  J: {
+    key: "J",
+    name: "J. Second overdue notice (day 15)",
+    when: "Sent automatically on the 15th of the month if the contribution is still not paid. The office's daily list also asks for a call to the member.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month the contribution is for", sample: "November 2026" },
+      { name: "Minimum", description: "The minimum monthly contribution for this member", sample: "₦5,000" },
+      { name: "DueBy", description: "The last day to pay on time (the 7th)", sample: "7 November 2026" },
+      {
+        name: "PaidNote",
+        description: "Sentence about what was received that month (empty if nothing)",
+        sample: "So far we have received ₦2,000 for that month.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
+  K: {
+    key: "K",
+    name: "K. Months in a row unpaid",
+    when: "Sent automatically on day 8 when a member reaches 2, 3 or 6 months in a row without the minimum contribution.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "MonthsBehind", description: "How many months in a row are unpaid", sample: "3" },
+      { name: "ShortMonths", description: "The unpaid months", sample: "September 2026, October 2026 and November 2026" },
+      {
+        name: "Consequence",
+        description: "What happens next at this stage (2, 3 or 6 months)",
+        sample: "Under the proposed contribution rules, voting rights and eligibility for loans or new projects may be suspended until the arrears are cleared.",
+      },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{MonthsBehind}}"],
   },
 };
 
@@ -252,6 +351,75 @@ Our records show we have not yet received your minimum monthly contribution of *
 If you have already paid, thank you, and please reply with the date and bank reference so we can match it. Otherwise, please pay into the cooperative's account, quoting your membership number **{{MemberNo}}** as the reference. The account details are in the Contribution and Payment Guide in your welcome pack.
 
 You can see every contribution we have recorded for you in your account.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  G: {
+    subject: "Your HomeBridge contribution for {{Month}} is due ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Your monthly contribution of at least **{{Minimum}}** for **{{Month}}** is now due. Please pay by **{{DueBy}}**.
+
+Pay into the cooperative's account, quoting your membership number **{{MemberNo}}** as the reference. The account details are in the Contribution and Payment Guide in your welcome pack. {{PaidNote}}
+
+{{BUTTON}}
+
+HomeBridge will never ask you to pay into a personal account.
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  H: {
+    subject: "Reminder: your HomeBridge contribution for {{Month}} ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+A friendly reminder that we have not yet received your contribution of at least **{{Minimum}}** for **{{Month}}**. {{PaidNote}}
+
+Please pay by **{{DueBy}}**, quoting your membership number **{{MemberNo}}** as the reference. If you have already paid, thank you: it may not have reached our account yet.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  I: {
+    subject: "Today is the last day to pay your {{Month}} contribution ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Today, **{{DueBy}}**, is the last day to pay your contribution of at least **{{Minimum}}** for **{{Month}}** on time. {{PaidNote}}
+
+Please pay today, quoting your membership number **{{MemberNo}}** as the reference.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  J: {
+    subject: "Second notice: your {{Month}} contribution is overdue ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+This is a second notice. Your contribution of at least **{{Minimum}}** for **{{Month}}** is still overdue. {{PaidNote}}
+
+Please pay as soon as you can, quoting your membership number **{{MemberNo}}** as the reference. If something is making it hard to pay, please reply and tell us. Your zonal coordinator may also call you to help.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  K: {
+    subject: "Important: {{MonthsBehind}} months of HomeBridge contributions unpaid ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Our records show that your minimum monthly contribution has not been received for **{{MonthsBehind}} months in a row**: {{ShortMonths}}.
+
+{{Consequence}}
+
+Please pay what is due, quoting your membership number **{{MemberNo}}** as the reference, or reply to explain your situation. You can see every contribution we have recorded for you in your account.
 
 {{BUTTON}}
 
@@ -429,7 +597,13 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
     REFERENCE_BOX: highlightBox("Your application reference", vars.ApplicationRef ?? ""),
     NEEDED_BOX: quoteBox(vars.Needed ?? ""),
     BUTTON: buttonBlock(
-      key === "B" ? "Respond in your account" : key === "E" ? "Sign your forms" : key === "F" ? "See your contributions" : "Open the member portal",
+      key === "B"
+        ? "Respond in your account"
+        : key === "E"
+          ? "Sign your forms"
+          : ["F", "G", "H", "I", "J", "K"].includes(key)
+            ? "See your contributions"
+            : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),
     DETAILS: detailsTable([

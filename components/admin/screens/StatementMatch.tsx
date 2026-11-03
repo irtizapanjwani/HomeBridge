@@ -13,6 +13,8 @@ type Line = {
   transactionRef: string;
   amount: number;
   suggestion: null | { reference: string; name: string; why: string[]; expectedAmount: number; amountMatches: boolean };
+  autoConfirmed?: string;
+  autoError?: string;
 };
 
 /** The layout the matcher reads. Real exports with extra columns or a few header lines work too. */
@@ -36,6 +38,8 @@ export function StatementMatchCard() {
   const [err, setErr] = useState("");
   const [done, setDone] = useState<Record<number, string>>({});
   const [confirming, setConfirming] = useState<number | null>(null);
+  const [auto, setAuto] = useState(true);
+  const [autoCount, setAutoCount] = useState<number | null>(null);
 
   async function read(file: File | undefined) {
     if (!file) return;
@@ -43,16 +47,20 @@ export function StatementMatchCard() {
     setErr("");
     setLines(null);
     setDone({});
+    setAutoCount(null);
     try {
       const res = await fetch("/api/admin/fees/statement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: await file.text() }),
+        body: JSON.stringify({ csv: await file.text(), auto }),
       });
-      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; lines?: Line[]; skippedDebits?: number };
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; lines?: Line[]; skippedDebits?: number; autoConfirmed?: number };
       if (!res.ok || !d.ok) throw new Error(d.error || `Could not read the statement (error ${res.status}).`);
-      setLines(d.lines ?? []);
+      const read = d.lines ?? [];
+      setLines(read);
       setSkipped(d.skippedDebits ?? 0);
+      setDone(Object.fromEntries(read.filter((l) => l.autoConfirmed).map((l) => [l.line, l.autoConfirmed!])));
+      if (auto) setAutoCount(d.autoConfirmed ?? 0);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not read the statement.");
     } finally {
@@ -90,8 +98,14 @@ export function StatementMatchCard() {
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
         Export the VEKAT First Bank statement as CSV and upload it. Each payment in is matched to an applicant by their application reference,
-        the payment reference they gave, or their name and the fee amount. Nothing is confirmed until you click <em>Confirm</em>.
+        the payment reference they gave, or their name and the fee amount. With the box below ticked, a payment that quotes the applicant&rsquo;s
+        own <strong>application reference</strong> for <strong>exactly the right fee</strong> is confirmed straight away (receipt issued and
+        emailed). Every other match waits for you to click <em>Confirm</em>.
       </p>
+      <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
+        <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} className="h-5 w-5 accent-forest-700" />
+        Confirm exact matches automatically
+      </label>
       <div className="flex flex-wrap gap-2">
         <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void read(e.target.files?.[0])} />
         <Btn variant="primary" disabled={busy} onClick={() => fileRef.current?.click()}>
@@ -102,6 +116,14 @@ export function StatementMatchCard() {
         </Btn>
       </div>
       {err ? <Banner tone="danger">{err}</Banner> : null}
+      {autoCount !== null && lines ? (
+        <Banner tone="info">
+          {autoCount
+            ? `${autoCount} fee${autoCount === 1 ? "" : "s"} confirmed automatically, receipts emailed.`
+            : "No line quoted an application reference with the exact fee, so nothing was confirmed automatically."}{" "}
+          {matched - autoCount > 0 ? `${matched - autoCount} other match${matched - autoCount === 1 ? "" : "es"} need${matched - autoCount === 1 ? "s" : ""} checking.` : ""}
+        </Banner>
+      ) : null}
 
       {lines ? (
         lines.length === 0 ? (
@@ -142,11 +164,17 @@ export function StatementMatchCard() {
                   </Td>
                   <Td>
                     {done[l.line] ? (
-                      <Pill tone="green">{`Receipt ${done[l.line]}`}</Pill>
+                      <span className="flex flex-col items-start gap-1">
+                        <Pill tone="green">{`Receipt ${done[l.line]}`}</Pill>
+                        {l.autoConfirmed ? <span className="text-[12px] text-muted">Confirmed automatically</span> : null}
+                      </span>
                     ) : l.suggestion ? (
-                      <Btn size="sm" variant="primary" disabled={confirming !== null} onClick={() => void confirm(l)}>
-                        {confirming === l.line ? "Confirming…" : "Confirm"}
-                      </Btn>
+                      <span className="flex flex-col items-start gap-1">
+                        <Btn size="sm" variant="primary" disabled={confirming !== null} onClick={() => void confirm(l)}>
+                          {confirming === l.line ? "Confirming…" : "Confirm"}
+                        </Btn>
+                        {l.autoError ? <span className="max-w-[200px] text-[12px] text-danger">{l.autoError}</span> : null}
+                      </span>
                     ) : null}
                   </Td>
                 </tr>

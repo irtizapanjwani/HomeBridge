@@ -16,6 +16,8 @@ type Line = {
   lineKey: string;
   recordedAs?: string;
   suggestion: null | { memberNo: string; name: string; why: string };
+  autoRecorded?: boolean;
+  autoError?: string;
 };
 type Recent = { receiptNo: string; memberNo: string; amount: string; period: string; paidAt: string; bankRef: string; source: string; emailed: boolean };
 
@@ -47,6 +49,8 @@ export function LiveContributionsCard() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [confirming, setConfirming] = useState<number | null>(null);
+  const [auto, setAuto] = useState(true);
+  const [autoCount, setAutoCount] = useState<number | null>(null);
   const [members, setMembers] = useState<{ memberNo: string; name: string }[]>([]);
   const [recent, setRecent] = useState<Recent[]>([]);
   const today = new Date().toISOString().slice(0, 10);
@@ -69,16 +73,21 @@ export function LiveContributionsCard() {
     setBusy(true);
     setErr("");
     setLines(null);
+    setAutoCount(null);
     try {
       const res = await fetch("/api/admin/contributions/statement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: await file.text(), currency }),
+        body: JSON.stringify({ csv: await file.text(), currency, auto }),
       });
-      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; lines?: Line[] };
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; lines?: Line[]; autoRecorded?: number };
       if (!res.ok || !d.ok) throw new Error(d.error || `Could not read the statement (error ${res.status}).`);
       setLines(d.lines ?? []);
       setLineCurrency(currency);
+      if (auto) {
+        setAutoCount(d.autoRecorded ?? 0);
+        if (d.autoRecorded) load();
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not read the statement.");
     } finally {
@@ -139,9 +148,14 @@ export function LiveContributionsCard() {
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
         Upload a statement from one of the cooperative&rsquo;s accounts. Payments are matched to members by the membership number quoted in the
-        narration. <strong>Confirm</strong> records the contribution, issues receipt <code>HBC-CR-…</code> and emails it to the member. The same
-        bank line can never be recorded twice.
+        narration. <strong>Confirm</strong> records the contribution, issues receipt <code>HBC-CR-…</code> and emails it to the member. With the
+        box below ticked, every payment that quotes <strong>exactly one membership number</strong> is recorded that way straight away; name-only
+        matches still wait for you. The same bank line can never be recorded twice.
       </p>
+      <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
+        <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} className="h-5 w-5 accent-forest-700" />
+        Record exact membership-number matches automatically
+      </label>
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-[13px] font-semibold text-muted">
@@ -163,6 +177,14 @@ export function LiveContributionsCard() {
         </Btn>
       </div>
       {err ? <Banner tone="danger">{err}</Banner> : null}
+      {autoCount !== null && lines ? (
+        <Banner tone="info">
+          {autoCount
+            ? `${autoCount} contribution${autoCount === 1 ? "" : "s"} recorded automatically, receipts emailed.`
+            : "No new payment quoted a single membership number, so nothing was recorded automatically."}{" "}
+          {matched ? `${matched} other match${matched === 1 ? "" : "es"} need${matched === 1 ? "s" : ""} checking.` : ""}
+        </Banner>
+      ) : null}
 
       {lines ? (
         lines.length === 0 ? (
@@ -205,11 +227,17 @@ export function LiveContributionsCard() {
                     </Td>
                     <Td>
                       {l.recordedAs ? (
-                        <Pill tone="green">{l.recordedAs}</Pill>
+                        <span className="flex flex-col items-start gap-1">
+                          <Pill tone="green">{l.recordedAs}</Pill>
+                          {l.autoRecorded ? <span className="text-[12px] text-muted">Recorded automatically</span> : null}
+                        </span>
                       ) : l.suggestion ? (
-                        <Btn size="sm" variant="primary" disabled={confirming !== null} onClick={() => void confirm(l)}>
-                          {confirming === l.line ? "Recording…" : "Confirm"}
-                        </Btn>
+                        <span className="flex flex-col items-start gap-1">
+                          <Btn size="sm" variant="primary" disabled={confirming !== null} onClick={() => void confirm(l)}>
+                            {confirming === l.line ? "Recording…" : "Confirm"}
+                          </Btn>
+                          {l.autoError ? <span className="max-w-[200px] text-[12px] text-danger">{l.autoError}</span> : null}
+                        </span>
                       ) : null}
                     </Td>
                   </tr>

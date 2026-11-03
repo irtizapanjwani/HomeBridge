@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAdmin, type Store } from "../store";
 import { naira, nowStamp } from "../lib";
 import { Banner, Btn, Card, CardTitle, Empty, Pill, PageHeader, ReadOnly, Table, Td, Th, cx, inputCls } from "../ui";
-import { EmailTemplatesCard, FormsRemindersCard, WelcomeAutoSendCard } from "./LiveSettings";
+import { EmailTemplatesCard, FormsRemindersCard, PaymentRemindersCard, WelcomeAutoSendCard } from "./LiveSettings";
 
 type Kind = "bank" | "fee" | "rule";
 type FieldDef = { key: string; label: string; kind: Kind; get: (s: SettingsState) => string | number; show?: (v: string) => string; numeric?: { min: number; max: number; int?: boolean } };
@@ -96,6 +96,7 @@ export function SettingsScreen() {
 
       <WelcomeAutoSendCard />
       <FormsRemindersCard />
+      <PaymentRemindersCard />
       <EmailTemplatesCard />
 
       <Card className="flex flex-col gap-3 p-5">

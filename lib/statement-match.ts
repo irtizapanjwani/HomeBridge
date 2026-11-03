@@ -45,6 +45,10 @@ export type StatementLine = {
     expectedAmount: number;
     amountMatches: boolean;
   };
+  /** Receipt number, when this upload confirmed the fee automatically. */
+  autoConfirmed?: string;
+  /** Why an automatic confirmation did not go through, if it was tried. */
+  autoError?: string;
 };
 
 export type StatementResult = { lines: StatementLine[]; missing: string[]; skippedDebits: number };

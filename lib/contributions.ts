@@ -111,6 +111,10 @@ export type ContributionLine = {
   /** Set when this exact line has already been recorded. */
   recordedAs?: string;
   suggestion: null | { memberNo: string; name: string; why: string };
+  /** Recorded automatically by this upload (exact membership number). */
+  autoRecorded?: boolean;
+  /** Why an automatic record did not go through, if it was tried. */
+  autoError?: string;
 };
 
 /**
@@ -141,8 +145,10 @@ export async function matchContributionStatement(csv: string, currency: Contribu
   const lines: ContributionLine[] = read.lines.map((l) => {
     const text = flat(l.narration);
     const words = new Set(l.narration.toUpperCase().replace(/[^A-Z\s]/g, " ").split(/\s+/));
-    const byNumber = candidates.find((c) => text.includes(c.key));
-    const byName = byNumber ? undefined : candidates.find((c) => c.words.length >= 2 && c.words.every((w) => words.has(w)));
+    const numberHits = candidates.filter((c) => text.includes(c.key));
+    // Two membership numbers in one narration: never guess which, leave it for an officer.
+    const byNumber = numberHits.length === 1 ? numberHits[0] : undefined;
+    const byName = byNumber || numberHits.length > 1 ? undefined : candidates.find((c) => c.words.length >= 2 && c.words.every((w) => words.has(w)));
     const hit = byNumber ?? byName;
     return {
       ...l,
@@ -158,6 +164,28 @@ export async function matchContributionStatement(csv: string, currency: Contribu
   for (const l of lines) if (done.has(l.lineKey)) l.recordedAs = done.get(l.lineKey);
 
   return { lines, missing: [] as string[], skippedDebits: read.skippedDebits };
+}
+
+/**
+ * Records every line that quotes exactly one membership number and is not already recorded, the
+ * way an officer's Confirm would: receipt HBC-CR-…, email to the member, audit entry. Lines matched
+ * on name only, with no match, or with two numbers are left for an officer.
+ */
+export async function autoRecordExact(lines: ContributionLine[], currency: ContributionCurrency, actor: string) {
+  let recorded = 0;
+  for (const l of lines) {
+    if (l.recordedAs || l.suggestion?.why !== "membership number") continue;
+    const res = await recordContribution(
+      { memberNo: l.suggestion.memberNo, amount: l.amount, currency, date: l.date, bankRef: l.transactionRef, source: "statement", lineKey: l.lineKey },
+      actor,
+    ).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : "unknown error", status: 502 }));
+    if (res.ok) {
+      l.recordedAs = res.receiptNo;
+      l.autoRecorded = true;
+      recorded++;
+    } else l.autoError = res.error;
+  }
+  return recorded;
 }
 
 // ---------- Recording one ----------

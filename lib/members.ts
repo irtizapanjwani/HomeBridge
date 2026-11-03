@@ -238,6 +238,11 @@ export type MemberDoc = {
   formsReminders?: { day7?: Date; day14?: Date; lastManual?: Date };
   /** Missed-contribution reminders sent, by the month (YYYY-MM) they were about. */
   contributionReminders?: Record<string, Date>;
+  /**
+   * The automatic monthly payment emails already sent, by the month (YYYY-MM) they were about:
+   * due (day 1), day5, day7, overdue (day 8), day15, and arrears (the 2/3/6-months-in-a-row notice).
+   */
+  paymentCycle?: Record<string, Partial<Record<"due" | "day5" | "day7" | "overdue" | "day15" | "arrears", Date>>>;
 
   /** Set for the moment an automatic welcome-pack send is under way, so two triggers cannot both send. */
   welcomeAutoClaim?: Date;

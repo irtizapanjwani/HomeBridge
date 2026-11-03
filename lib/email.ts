@@ -476,10 +476,16 @@ export type OfficeAlertInput = {
  * have to keep checking the admin panel. It carries contact details only: no ID number, no date of
  * birth and no documents, which stay in the admin panel behind the officer login.
  */
-export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResult> {
+/** The office addresses for alerts and daily lists, or [] when OFFICE_ALERT_EMAIL is "off". */
+export function officeRecipients(): string[] {
   const raw = process.env.OFFICE_ALERT_EMAIL?.trim();
-  if (raw === "off") return { ok: true, id: "" };
-  const recipients = (raw || DEFAULT_OFFICE_ALERT).split(",").map((s) => s.trim()).filter(Boolean);
+  if (raw === "off") return [];
+  return (raw || DEFAULT_OFFICE_ALERT).split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResult> {
+  const recipients = officeRecipients();
+  if (!recipients.length) return { ok: true, id: "" };
 
   const rows: [string, string][] = (
     [

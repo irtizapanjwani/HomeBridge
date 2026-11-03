@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { Banner, Btn, Card, CardTitle, Pill } from "../ui";
+import { Banner, Btn, Card, CardTitle, Pill, inputCls } from "../ui";
 
 /**
  * Settings that are saved to the database and take effect straight away, unlike the demonstration
@@ -330,6 +330,169 @@ export function FormsRemindersCard() {
           Send due reminders now
         </Btn>
       </div>
+    </Card>
+  );
+}
+
+type PaymentRun = {
+  skipped?: "off" | null;
+  day?: number;
+  stage?: string | null;
+  checked?: number;
+  upToDate?: number;
+  sent?: number;
+  failed?: number;
+  arrearsNotices?: number;
+  overdue?: number;
+  digest?: string;
+};
+
+const DIGEST_TEXT: Record<string, string> = {
+  sent: "The office's overdue list was emailed.",
+  none_overdue: "Nobody is overdue, so no office list was needed.",
+  already_today: "The office's overdue list already went today.",
+  no_address: "No office address is set for the overdue list (OFFICE_ALERT_EMAIL).",
+  failed: "The office's overdue list could not be emailed. See the audit log.",
+};
+
+/**
+ * Member Platform brief §4: due on day 1, reminders on days 5 and 7, overdue on day 8 with a daily
+ * list for the office, a second notice on day 15, and a formal notice at 2, 3 and 6 months in a
+ * row. When on, a daily job does all of it. The test buttons run the same check as if today were a
+ * chosen day, so the whole month can be tried in a few minutes with test members.
+ */
+export function PaymentRemindersCard() {
+  const toast = useToast();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [today, setToday] = useState<{ day: number; period: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [testDay, setTestDay] = useState(1);
+  const [last, setLast] = useState<PaymentRun | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/settings/payment-reminders")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; on?: boolean; today?: { day: number; period: string }; error?: string }) => {
+        if (!d.ok) return setErr(d.error || "Could not read the setting.");
+        setOn(Boolean(d.on));
+        setToday(d.today ?? null);
+      })
+      .catch(() => setErr("Could not reach the server."));
+  }, []);
+
+  async function post(body: { on?: boolean; run?: boolean; testDay?: number; clear?: boolean }) {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/settings/payment-reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = (await res.json().catch(() => ({}))) as PaymentRun & { ok?: boolean; error?: string; on?: boolean; cleared?: number };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      if (body.clear) {
+        setLast(null);
+        toast(`This month's payment-email history cleared for ${d.cleared ?? 0} member${d.cleared === 1 ? "" : "s"}. You can test again from day 1.`);
+      } else if (body.run) {
+        setLast(d);
+        toast(
+          d.sent || d.failed || d.arrearsNotices
+            ? `${d.sent} email${d.sent === 1 ? "" : "s"} sent${d.arrearsNotices ? `, ${d.arrearsNotices} months-in-a-row notice${d.arrearsNotices === 1 ? "" : "s"}` : ""}${d.failed ? `, ${d.failed} failed — see the audit log` : ""}.`
+            : "No payment emails were due.",
+          d.failed ? "warn" : undefined,
+        );
+      } else {
+        setOn(Boolean(d.on));
+        toast(d.on ? "Payment reminders now send automatically each morning." : "Payment reminders switched off.");
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "That did not work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-3 p-5">
+      <CardTitle id="payment-reminders" aside={on === null ? null : <Pill tone={on ? "green" : "grey"}>{on ? "Automatic" : "Off"}</Pill>}>
+        Payment reminders
+      </CardTitle>
+      <p className="m-0 text-[14px] text-body">
+        When this is on, every morning at 08:00 Lagos time each member who has not paid this month&rsquo;s minimum gets the right email:{" "}
+        <strong>day 1</strong> due (G), <strong>day 5</strong> reminder (H), <strong>day 7</strong> last day (I), <strong>day 8</strong> overdue
+        (F), <strong>day 15</strong> second notice (J). At 2, 3 and 6 months in a row they also get notice K. From day 8 the office gets one list a
+        day of everyone overdue. Each email goes once, and a member who pays stops getting them. New members start the month after they are
+        admitted. Keep it off while testing with real records.
+      </p>
+      {today ? <p className="m-0 text-[13px] text-muted">Today is day {today.day} of the month in Lagos.</p> : null}
+      {err ? <Banner tone="danger">{err}</Banner> : null}
+      <div className="flex flex-wrap gap-2">
+        <Btn
+          variant={on ? "outline" : "primary"}
+          disabled={busy || on === null}
+          onClick={() => {
+            if (!on && !window.confirm("Send payment reminders to members automatically from now on?")) return;
+            void post({ on: !on });
+          }}
+        >
+          {on === null ? "Loading…" : on ? "Switch off" : "Send automatically"}
+        </Btn>
+        <Btn disabled={busy} onClick={() => void post({ run: true })}>
+          Send today&rsquo;s due emails now
+        </Btn>
+      </div>
+
+      <details className="rounded-[14px] border border-line p-4">
+        <summary className="cursor-pointer text-[14.5px] font-semibold text-forest-800">Test the month (test members only)</summary>
+        <p className="mt-3 mb-0 text-[13.5px] text-body">
+          Runs the check as if today were the day you pick, so you can try day 1, 5, 7, 8 and 15 one after another. In a test, members
+          admitted this month are included and the office list always goes. These are real emails to real addresses.
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-[13px] font-semibold text-muted">
+            Pretend today is day
+            <select value={testDay} onChange={(e) => setTestDay(Number(e.target.value))} className={inputCls}>
+              {[1, 5, 7, 8, 15].map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Btn
+            variant="primary"
+            disabled={busy}
+            onClick={() => {
+              if (!window.confirm(`Email every unpaid member as if today were day ${testDay}? Use test members only.`)) return;
+              void post({ run: true, testDay });
+            }}
+          >
+            Run test
+          </Btn>
+          <Btn
+            disabled={busy}
+            onClick={() => {
+              if (!window.confirm("Forget which payment emails went out this month, so you can test again from day 1?")) return;
+              void post({ clear: true });
+            }}
+          >
+            Start test over
+          </Btn>
+        </div>
+      </details>
+
+      {last ? (
+        <Banner tone={last.failed ? "warn" : "info"}>
+          Day {last.day}
+          {last.stage ? ` · ${last.stage}` : ""}: {last.checked} member{last.checked === 1 ? "" : "s"} checked, {last.upToDate} paid, {last.sent} email
+          {last.sent === 1 ? "" : "s"} sent
+          {last.arrearsNotices ? `, ${last.arrearsNotices} months-in-a-row notice${last.arrearsNotices === 1 ? "" : "s"}` : ""}
+          {last.failed ? `, ${last.failed} failed` : ""}.{" "}
+          {last.day && last.day >= 8 ? `${last.overdue} overdue. ${DIGEST_TEXT[last.digest ?? ""] ?? ""}` : ""}
+        </Banner>
+      ) : null}
     </Card>
   );
 }

@@ -16,6 +16,7 @@ import { collections } from "@/lib/members";
 import { formatReceiptNo, nextReceiptSeq } from "@/lib/numbering";
 import { buildReceipt } from "@/lib/pdf/receipt";
 import { JOINING_FEE } from "@/lib/settings";
+import type { StatementLine } from "@/lib/statement-match";
 
 export type ConfirmFeeInput = {
   reference: string;
@@ -127,4 +128,37 @@ export async function confirmFeePayment(input: ConfirmFeeInput): Promise<Confirm
   }
 
   return { ok: true, receiptNo, emailed };
+}
+
+// ---------- Automatic confirmation from a statement ----------
+
+/**
+ * Confirms every fee whose bank line quotes the applicant's own application reference (HBA-…) and
+ * is exactly the right amount, the way an officer's Confirm would: VKT receipt, email, audit entry,
+ * and the welcome pack if that is automatic. Each applicant once per upload. Matches on a payment
+ * reference or a name, or with a different amount, are left for an officer.
+ */
+export async function autoConfirmExact(
+  lines: StatementLine[],
+  actor: string,
+  afterConfirm?: (reference: string) => Promise<unknown>,
+) {
+  const used = new Set<string>();
+  let confirmed = 0;
+  for (const l of lines) {
+    const s = l.suggestion;
+    if (!s || !s.amountMatches || !s.why.includes("application reference") || used.has(s.reference)) continue;
+    used.add(s.reference);
+    const res = await confirmFeePayment({ reference: s.reference, actor, transactionRef: l.transactionRef }).catch((err) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : "unknown error",
+      code: "already" as const,
+    }));
+    if (res.ok) {
+      l.autoConfirmed = res.receiptNo;
+      confirmed++;
+      await afterConfirm?.(s.reference).catch(() => {});
+    } else l.autoError = res.error;
+  }
+  return confirmed;
 }
