@@ -496,3 +496,112 @@ export function PaymentRemindersCard() {
     </Card>
   );
 }
+
+/**
+ * Member Platform brief §3: "Monthly e-statement emailed on day 10" and "Annual statement (PDF) for
+ * the AGM". When on, the daily job sends each member last month's statement once, from the 10th.
+ */
+export function StatementsCard() {
+  const toast = useToast();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const thisYear = new Date().getFullYear();
+  const [year, setYear] = useState(thisYear);
+
+  useEffect(() => {
+    fetch("/api/admin/settings/statements")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; on?: boolean; error?: string }) => (d.ok ? setOn(Boolean(d.on)) : setErr(d.error || "Could not read the setting.")))
+      .catch(() => setErr("Could not reach the server."));
+  }, []);
+
+  async function post(body: { on?: boolean; monthly?: boolean; annual?: number; clear?: boolean }) {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/settings/statements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; on?: boolean; sent?: number; failed?: number; alreadySent?: number; cleared?: number };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      if (body.clear) toast(`Statement history cleared for ${d.cleared ?? 0} members. You can send again.`);
+      else if (body.monthly || body.annual) {
+        toast(
+          `${d.sent ?? 0} statement${d.sent === 1 ? "" : "s"} sent${d.alreadySent ? `, ${d.alreadySent} already had it` : ""}${d.failed ? `, ${d.failed} failed — see the audit log` : ""}.`,
+          d.failed ? "warn" : undefined,
+        );
+      } else {
+        setOn(Boolean(d.on));
+        toast(d.on ? "Monthly statements now send automatically on the 10th." : "Monthly statements switched off.");
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "That did not work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-3 p-5">
+      <CardTitle id="statements" aside={on === null ? null : <Pill tone={on ? "green" : "grey"}>{on ? "Automatic" : "Off"}</Pill>}>
+        Member statements
+      </CardTitle>
+      <p className="m-0 text-[14px] text-body">
+        When this is on, every member gets last month&rsquo;s statement (PDF) by email on the <strong>10th</strong> (Email M). Each statement
+        goes once. Annual statements for the AGM (Email N) go when you click below. Members can also download a statement for any months from
+        their account. Keep it off while testing with real records.
+      </p>
+      {err ? <Banner tone="danger">{err}</Banner> : null}
+      <div className="flex flex-wrap items-end gap-2">
+        <Btn
+          variant={on ? "outline" : "primary"}
+          disabled={busy || on === null}
+          onClick={() => {
+            if (!on && !window.confirm("Email monthly statements to members automatically from now on?")) return;
+            void post({ on: !on });
+          }}
+        >
+          {on === null ? "Loading…" : on ? "Switch off" : "Send automatically"}
+        </Btn>
+        <Btn
+          disabled={busy}
+          onClick={() => {
+            if (!window.confirm("Email every member their statement for last month now?")) return;
+            void post({ monthly: true });
+          }}
+        >
+          Send last month&rsquo;s statements now
+        </Btn>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-[13px] font-semibold text-muted">
+          Annual statements for
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={inputCls}>
+            {[thisYear - 1, thisYear].filter((y) => y >= 2026).map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Btn
+          disabled={busy}
+          onClick={() => {
+            if (!window.confirm(`Email every member their annual statement for ${year}?`)) return;
+            void post({ annual: year });
+          }}
+        >
+          Send annual statements
+        </Btn>
+        <Btn
+          disabled={busy}
+          onClick={() => {
+            if (!window.confirm("Forget that last month's and this year's statements were sent, so you can test again?")) return;
+            void post({ clear: true });
+          }}
+        >
+          Start test over
+        </Btn>
+      </div>
+    </Card>
+  );
+}

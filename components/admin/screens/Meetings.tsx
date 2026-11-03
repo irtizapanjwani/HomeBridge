@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MOTIONS, TODAY, type Motion, type Proxy, type Vote } from "@/lib/admin-data";
 import { useToast } from "@/components/ui/Toast";
 import { useAdmin } from "../store";
+import { MemberIdeasCard, OnlineVotesCard } from "./LiveVotes";
 import { addDays, fmtDate } from "../lib";
 import { Banner, Btn, Card, CardTitle, Empty, Field, PageHeader, Pill, ReadOnly, Table, Td, Th, cx, inputCls } from "../ui";
 
@@ -74,6 +75,11 @@ export function MeetingsScreen() {
 
   return (
     <>
+      <OnlineVotesCard />
+      <MemberIdeasCard />
+      <Banner tone="lock" title="Below: the earlier prototype meeting tools.">
+        They run on sample data only and are kept for reference. Real votes are run in Online votes above.
+      </Banner>
       <PageHeader title="Meetings and votes" subtitle="One member, one vote (7a) · up to five proxies per holder (16.4)" />
       {!manage ? <ReadOnly why={`${s.role.title} can see meetings, quorum, proxies and votes. The Board records them.`} /> : null}
 

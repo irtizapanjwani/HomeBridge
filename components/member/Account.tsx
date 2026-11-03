@@ -11,6 +11,7 @@ import { DocumentsCard, InfoRequestCard } from "./Documents";
 import { FormsCard, type FormsView } from "./Forms";
 import { ContactEditor, MembershipCard, type MembershipView } from "./Membership";
 import { ContributionsCard, type ContributionsView } from "./Contributions";
+import { GlanceCard, type GlanceView, IdeasCard, type IdeaView, type MotionView, VotesCard } from "./Community";
 
 export type AccountView = {
   reference: string;
@@ -41,6 +42,10 @@ export type AccountView = {
   membership?: MembershipView;
   /** Contribution history and share balance, once admitted. */
   contributions?: ContributionsView;
+  /** Cooperative-wide totals, votes and ideas, once admitted. */
+  glance?: GlanceView;
+  motions?: MotionView[];
+  ideas?: IdeaView[];
   /** What the member can change themselves. */
   contact: { whatsapp: string; address: string; city: string };
 };
@@ -123,6 +128,8 @@ export function Account({ view }: { view: AccountView }) {
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
           {view.forms && <FormsCard forms={view.forms} />}
           {view.contributions && <ContributionsCard c={view.contributions} />}
+          {view.motions && <VotesCard motions={view.motions} />}
+          {view.ideas && <IdeasCard ideas={view.ideas} />}
 
           <Card>
             <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your application</h2>
@@ -218,6 +225,7 @@ export function Account({ view }: { view: AccountView }) {
         </div>
 
         <aside className="grid content-start gap-5">
+          {view.glance && <GlanceCard g={view.glance} />}
           {!view.membership && <Card className="bg-forest-800 text-cream">
             <h2 className="m-0 font-sans text-[16px] font-semibold text-cream">Shares and statements</h2>
             <p className="mt-2 mb-0 text-[14.5px] leading-relaxed text-[#D6DED8]">

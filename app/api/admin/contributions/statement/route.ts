@@ -4,6 +4,7 @@ import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { recordAudit } from "@/lib/audit";
 import { autoRecordExact, isCurrency, matchContributionStatement } from "@/lib/contributions";
 import { isDbConfigured } from "@/lib/db";
+import { saveBankLines } from "@/lib/reconciliation";
 
 /**
  * Reads a cooperative bank statement and matches each payment in to a member. With auto: true (the
@@ -33,6 +34,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: `The statement needs ${result.missing.join(" and ")}. Export it as CSV with headers.` }, { status: 422 });
     }
     const officer = await currentOfficer();
+    // Remembered for the reconciliation screen, so an unmatched line is not lost.
+    await saveBankLines(result.lines, currency).catch((err) =>
+      console.error("[admin] could not keep the bank lines:", err instanceof Error ? err.message : "unknown error"),
+    );
     const already = result.lines.filter((l) => l.recordedAs).length;
     const autoRecorded = auto ? await autoRecordExact(result.lines, currency, `${officer} (automatic match)`) : 0;
     await recordAudit({

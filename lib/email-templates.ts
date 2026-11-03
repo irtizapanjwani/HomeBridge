@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -243,6 +243,51 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
     mustInclude: ["{{MonthsBehind}}"],
   },
+  L: {
+    key: "L",
+    name: "L. Proof of payment not accepted",
+    when: "Sent when the Treasurer rejects a proof of payment a member uploaded.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Amount", description: "The amount on the proof", sample: "₦5,000" },
+      { name: "Month", description: "The month it was for", sample: "November 2026" },
+      { name: "Reason", description: "The Treasurer's reason, as they typed it", sample: "We could not find this payment on our bank statement." },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Reason}}"],
+  },
+  M: {
+    key: "M",
+    name: "M. Monthly statement",
+    when: "Sent automatically on the 10th of each month with the statement PDF for the month before (when monthly statements are switched on).",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Month", description: "The month the statement covers", sample: "October 2026" },
+      { name: "MonthTotal", description: "What was received that month", sample: "₦5,000" },
+      { name: "TotalToDate", description: "Everything contributed so far", sample: "₦25,000" },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Month}}"],
+  },
+  N: {
+    key: "N",
+    name: "N. Annual statement",
+    when: "Sent when the office clicks Send annual statements, with the statement PDF for the year (before the AGM).",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Year", description: "The year the statement covers", sample: "2026" },
+      { name: "YearTotal", description: "What was received in the year", sample: "₦60,000" },
+      { name: "TotalToDate", description: "Everything contributed so far", sample: "₦60,000" },
+      { name: "PortalLink", description: "Web address of the member portal", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [{ name: "BUTTON", description: "A “See your contributions” button", sample: "" }],
+    mustInclude: ["{{Year}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -426,6 +471,53 @@ Please pay what is due, quoting your membership number **{{MemberNo}}** as the r
 Thank you,
 HomeBridge Membership Team`,
   },
+  L: {
+    subject: "Your proof of payment for {{Month}} ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Thank you for sending proof of your payment of **{{Amount}}** for **{{Month}}**. We were not able to accept it:
+
+{{Reason}}
+
+Please check the details and send it again from your account, or reply to this email if you think we have made a mistake.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
+  M: {
+    subject: "Your HomeBridge statement for {{Month}} ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Your statement for **{{Month}}** is attached.
+
+- Received in {{Month}}: **{{MonthTotal}}**
+- Total contributed to date: **{{TotalToDate}}**
+
+You can download a statement for any period from your account at any time.
+
+{{BUTTON}}
+
+Thank you for being part of HomeBridge,
+HomeBridge Membership Team`,
+  },
+  N: {
+    subject: "Your HomeBridge annual statement for {{Year}} ({{MemberNo}})",
+    body: `Dear {{FirstName}},
+
+Your annual statement for **{{Year}}** is attached, ahead of the Annual General Meeting.
+
+- Received in {{Year}}: **{{YearTotal}}**
+- Total contributed to date: **{{TotalToDate}}**
+
+Please check it, and reply if anything looks wrong.
+
+{{BUTTON}}
+
+Thank you for being part of HomeBridge,
+HomeBridge Membership Team`,
+  },
 };
 
 // ---------- Stored templates ----------
@@ -601,7 +693,7 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
         ? "Respond in your account"
         : key === "E"
           ? "Sign your forms"
-          : ["F", "G", "H", "I", "J", "K"].includes(key)
+          : ["F", "G", "H", "I", "J", "K", "L", "M", "N"].includes(key)
             ? "See your contributions"
             : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",

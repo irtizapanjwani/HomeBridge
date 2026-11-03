@@ -36,7 +36,7 @@ export type ContributionDoc = {
   period: string;
   paidAt: Date;
   bankRef: string;
-  source: "statement" | "manual";
+  source: "statement" | "manual" | "proof";
   /** Identifies the bank line, so the same line can never be recorded twice. Absent for manual entries. */
   lineKey?: string;
   confirmedBy: string;
@@ -199,7 +199,7 @@ export type RecordInput = {
   bankRef: string;
   /** Optional: the month it counts for, if not the month received (e.g. paying ahead). */
   period?: string;
-  source: "statement" | "manual";
+  source: "statement" | "manual" | "proof";
   lineKey?: string;
 };
 

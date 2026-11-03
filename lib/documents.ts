@@ -121,13 +121,16 @@ export async function saveDocument(input: {
   return String(res.insertedId);
 }
 
-/** Metadata for every document belonging to these applications, newest first. No bytes. */
+/**
+ * Metadata for every document belonging to these applications, newest first. No bytes. Proofs of
+ * payment are left out: they belong to the contributions screens, not the application.
+ */
 export async function listDocumentsFor(refs: string[]): Promise<Map<string, DocMeta[]>> {
   const out = new Map<string, DocMeta[]>();
   if (!refs.length) return out;
   const { documents } = await collections();
   const docs = await documents
-    .find({ ownerRef: { $in: refs } }, { projection: { data: 0, iv: 0, tag: 0 } })
+    .find({ ownerRef: { $in: refs }, type: { $ne: "payment_proof" } }, { projection: { data: 0, iv: 0, tag: 0 } })
     .sort({ uploadedAt: -1 })
     .toArray();
   for (const d of docs) {

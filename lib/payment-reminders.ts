@@ -27,6 +27,7 @@ import { officeRecipients, sendEmail } from "@/lib/email";
 import { type TemplateKey, buttonBlock, renderTemplate } from "@/lib/email-templates";
 import { type MemberDoc, collections } from "@/lib/members";
 import { meetsMinimum, minimumFor, monthsBetween } from "@/lib/missed-payments";
+import { pendingProofMembers } from "@/lib/payment-proofs";
 
 export type Stage = "due" | "day5" | "day7" | "overdue" | "day15";
 
@@ -227,6 +228,9 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
     byPeriod.set(c.period, t);
   }
 
+  // A proof of payment waiting for the Treasurer counts as paid for the month (brief §3).
+  const waitingProof = await pendingProofMembers(period).catch(() => new Set<string>());
+
   const overdueRows: OverdueRow[] = [];
   for (const m of admitted) {
     const no = m.membership!.memberNo;
@@ -237,7 +241,7 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
 
     const byPeriod = ledger.get(no) ?? new Map<string, Totals>();
     const thisMonth = byPeriod.get(period) ?? {};
-    if (meetsMinimum(thisMonth)) {
+    if (meetsMinimum(thisMonth) || waitingProof.has(no)) {
       base.upToDate++;
       continue;
     }

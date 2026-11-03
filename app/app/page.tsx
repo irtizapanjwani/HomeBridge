@@ -7,7 +7,11 @@ import { INFO_REQUEST_DAYS } from "@/lib/email";
 import { returnByDate } from "@/lib/pdf/pack-forms";
 import { certificateNoFor } from "@/lib/pdf/certificate";
 import { packMemberOf } from "@/lib/welcome-pack";
-import { CURRENCIES, contributionsFor, money, periodLabel, SHARES_NOTE, sharesFor } from "@/lib/contributions";
+import { CURRENCIES, contributionsFor, money, periodLabel, periodOf, SHARES_NOTE, sharesFor } from "@/lib/contributions";
+import { proofsFor } from "@/lib/payment-proofs";
+import { lagosToday } from "@/lib/payment-reminders";
+import { transparency } from "@/lib/transparency";
+import { ideasFor, motionsForMember } from "@/lib/votes";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
@@ -56,6 +60,15 @@ export default async function MemberAccountPage() {
 
   // Contribution history and share balance (brief Phase 2 member portal). Never takes the page down.
   const contribs = m.membership ? await contributionsFor(m.reference).catch(() => []) : [];
+  const proofs = m.membership ? await proofsFor(m.reference).catch(() => []) : [];
+  // Each of these is optional: a failure leaves its card out rather than taking the page down.
+  const [glance, motions, ideas] = m.membership
+    ? await Promise.all([
+        transparency().catch(() => undefined),
+        motionsForMember(m.membership.memberNo).catch(() => undefined),
+        ideasFor(m.reference).catch(() => undefined),
+      ])
+    : [undefined, undefined, undefined];
   const SHORT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric" });
 
   const view: AccountView = {
@@ -98,10 +111,25 @@ export default async function MemberAccountPage() {
               .map(([cur, t]) => money(t, cur)),
             shares: Math.round(contribs.reduce((t, c) => t + (sharesFor(c.amount, c.currency) ?? 0), 0) * 100) / 100,
             note: SHARES_NOTE,
+            currency: m.country === "Nigeria" ? ("NGN" as const) : ("GBP" as const),
+            proofs: proofs.map((p) => ({
+              id: String(p._id),
+              amount: money(p.amount, p.currency),
+              period: periodLabel(p.period),
+              status: p.status,
+              sentAt: SHORT.format(p.submittedAt),
+              reason: p.reason ?? "",
+              receiptNo: p.receiptNo ?? "",
+            })),
+            thisMonth: lagosToday().period,
+            firstMonth: periodOf(m.membership.admittedAt),
           },
         }
       : {}),
     contact: { whatsapp: m.whatsapp || m.contact, address: m.address ?? "", city: m.city ?? "" },
+    ...(glance ? { glance } : {}),
+    ...(motions ? { motions } : {}),
+    ...(ideas ? { ideas } : {}),
     ...(packMemberOf(m)
       ? {
           membership: {
