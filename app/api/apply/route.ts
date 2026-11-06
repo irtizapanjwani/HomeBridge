@@ -206,6 +206,7 @@ export async function POST(req: Request) {
         fee: supporter ? undefined : feeFor(draft).fee,
         paymentMethod: draft.paymentMethod,
         paymentReference: draft.paymentReference,
+        paidReported: Boolean(draft.datePaid || draft.paymentReference || receipt),
       });
       if (!sent.ok) console.error("[apply] confirmation email not sent:", sent.error);
     } else if (!isEmailConfigured()) {

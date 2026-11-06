@@ -123,6 +123,8 @@ export type ConfirmationInput = {
   /** What the applicant told us about their payment, if anything. */
   paymentMethod?: string;
   paymentReference?: string;
+  /** The applicant said they had already paid (gave a date, a bank reference or a receipt). */
+  paidReported?: boolean;
 };
 
 export type FeeReceiptEmail = {
@@ -204,9 +206,12 @@ export async function sendApplicationConfirmation(input: ConfirmationInput): Pro
   // Applicants get Email A, whose wording the office can edit in Settings. The Supporter-list
   // confirmation below is not one of the client's emails and keeps its fixed wording.
   if (!input.supporter) {
-    const feeNote = input.fee || payRef
-      ? `You told us you paid the joining fee${input.fee ? ` of ${input.fee}` : ""}${payRef ? `, with the reference ${payRef}` : ""}. We will confirm it against our account. There is nothing further for you to do.`
-      : "";
+    // Not paid yet: ask them to quote the application reference, so the fee is matched to them
+    // automatically when the office uploads the bank statement (Joining fees screen).
+    const feeNote =
+      input.paidReported || payRef
+        ? `You told us you paid the joining fee${input.fee ? ` of ${input.fee}` : ""}${payRef ? `, with the reference ${payRef}` : ""}. We will confirm it against our account. There is nothing further for you to do.`
+        : `If you have not paid the joining fee${input.fee ? ` of ${input.fee}` : ""} yet, please write ${ref} as the reference (or narration) on your transfer. That way we can match your payment to you straight away.`;
     const email = await renderTemplate(
       "A",
       { FirstName: name, ApplicationRef: ref, Fee: input.fee ?? "", PaymentReference: payRef, FeeNote: feeNote },

@@ -52,7 +52,7 @@ export function WelcomeAutoSendCard() {
       <p className="m-0 text-[14px] text-body">
         When this is on, the welcome email and pack go out by themselves as soon as a member is <strong>approved</strong> and their{" "}
         <strong>joining fee is confirmed</strong>, whichever happens second. Each member gets it once. When it is off, an officer sends it
-        with the <em>Send welcome pack</em> button. Keep it off while testing with real records.
+        with the <em>Send welcome pack</em> button. On by default.
       </p>
       {err ? <Banner tone="danger">{err}</Banner> : null}
       <div>

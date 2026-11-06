@@ -32,10 +32,9 @@ const WELCOME_AUTO_SEND = "welcome_pack_auto_send";
 
 /**
  * Whether the welcome pack goes out by itself (brief acceptance criterion: "The welcome email and
- * pack arrive within 5 minutes of approval"). Off until the office switches it on, so testing with
- * real records never emails a real applicant by surprise.
+ * pack arrive within 5 minutes of approval"). On unless the office switches it off.
  */
-export const isWelcomeAutoSend = () => getSetting(WELCOME_AUTO_SEND, false);
+export const isWelcomeAutoSend = () => getSetting(WELCOME_AUTO_SEND, true);
 
 export async function setWelcomeAutoSend(on: boolean, actor: string) {
   const before = await isWelcomeAutoSend();
