@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -329,6 +329,22 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     blocks: [],
     mustInclude: ["{{Message}}"],
   },
+  R: {
+    key: "R",
+    name: "R. Vote open",
+    when: "Sent automatically to every member with an email address the moment an officer clicks Open on a vote in Meetings and votes.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "Motion", description: "The motion being voted on", sample: "Approve the 2027 operating budget" },
+      { name: "PortalLink", description: "Web address of the member account", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [
+      { name: "MOTION_DETAILS", description: "The details the officer wrote for the motion (left out if there are none)", sample: "" },
+      { name: "BUTTON", description: "A “Vote in your account” button", sample: "" },
+    ],
+    mustInclude: ["{{Motion}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -596,6 +612,23 @@ HomeBridge Membership Team`,
 HomeBridge Cooperative
 Membership number: {{MemberNo}}`,
   },
+  R: {
+    subject: "HomeBridge vote now open: {{Motion}}",
+    body: `Dear {{FirstName}},
+
+A vote is now open to all HomeBridge members on this motion:
+
+**{{Motion}}**
+
+{{MOTION_DETAILS}}
+
+Please sign in to your account to vote For, Against or Abstain. Each member has one vote, and it cannot be changed once cast. If you cannot vote yourself, you can give your proxy to another member on the same page.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
 };
 
 // ---------- Stored templates ----------
@@ -766,6 +799,7 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
   const blocks: Record<string, Block> = {
     REFERENCE_BOX: highlightBox("Your application reference", vars.ApplicationRef ?? ""),
     NEEDED_BOX: quoteBox(vars.Needed ?? ""),
+    MOTION_DETAILS: quoteBox("The budget sets out running costs and the first two projects for 2027. Full papers are in your account."),
     BUTTON: buttonBlock(
       key === "B"
         ? "Respond in your account"
@@ -775,7 +809,9 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
             ? "See your contributions"
             : key === "O" || key === "P"
               ? "Open your account"
-              : "Open the member portal",
+              : key === "R"
+                ? "Vote in your account"
+                : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),
     DETAILS: detailsTable([

@@ -70,6 +70,11 @@ const ACTION_LABEL: Record<string, string> = {
   "email.contribution_reminder_sent": "Emailed missed contribution reminder",
   "email.contribution_reminder_failed": "Missed contribution reminder failed",
   "report.exported": "Exported a board report",
+  "vote.motion_created": "Wrote a motion",
+  "vote.opened": "Opened a vote",
+  "vote.closed": "Closed a vote",
+  "email.vote_open_sent": "Emailed members that a vote is open",
+  "email.vote_open_failed": "Vote-open email failed for some members",
 };
 
 // One fixed zone, so officers in Benin City, Abuja and the UK read the same clock and the page

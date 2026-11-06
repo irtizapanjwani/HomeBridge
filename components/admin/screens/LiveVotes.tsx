@@ -45,9 +45,13 @@ export function OnlineVotesCard() {
     setBusy(true);
     try {
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; emailed?: { sent: number; failed: number; of: number } | null };
       if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
-      toast(done);
+      const e = d.emailed;
+      toast(
+        e ? `${done} ${e.sent} of ${e.of} member${e.of === 1 ? "" : "s"} emailed${e.failed ? ` — ${e.failed} failed, see the audit log` : ""}.` : done,
+        e?.failed ? "warn" : undefined,
+      );
       load();
       return true;
     } catch (e) {
@@ -64,7 +68,7 @@ export function OnlineVotesCard() {
         Online votes
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        Write a motion, then <strong>Open</strong> it: every member sees it in their account and can vote For, Against or Abstain, once.{" "}
+        Write a motion, then <strong>Open</strong> it: every member is emailed straight away, sees it in their account and can vote For, Against or Abstain, once.{" "}
         <strong>Close</strong> it to fix the result, which members then see. Members can give their proxy to another member, who can hold up to
         five (bye-law 16.4). Only totals are shown, never who voted which way.
       </p>
@@ -134,7 +138,7 @@ export function OnlineVotesCard() {
                       variant="primary"
                       disabled={busy}
                       onClick={() => {
-                        if (window.confirm(`Open voting on “${m.title}” to every member now?`)) void call(`/api/admin/motions/${m.id}`, { to: "open" }, "Voting is open.");
+                        if (window.confirm(`Open voting on “${m.title}” to every member now? Every member will be emailed that the vote is open.`)) void call(`/api/admin/motions/${m.id}`, { to: "open" }, "Voting is open.");
                       }}
                     >
                       Open

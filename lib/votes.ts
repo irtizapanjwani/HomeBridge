@@ -15,6 +15,8 @@ import { ObjectId } from "mongodb";
 
 import { recordAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
+import { sendEmailBatch } from "@/lib/email";
+import { buttonBlock, getTemplate, quoteBox, renderEmail } from "@/lib/email-templates";
 import { type MemberDoc, collections as memberCollections } from "@/lib/members";
 
 export const CHOICES = ["For", "Against", "Abstain"] as const;
@@ -152,7 +154,7 @@ export async function createMotion(title: string, details: string, actor: string
 }
 
 /** draft → open → closed, never backwards, so a closed result cannot be reopened and changed. */
-export async function moveMotion(id: string, to: "open" | "closed", actor: string) {
+export async function moveMotion(id: string, to: "open" | "closed", actor: string, site?: string) {
   if (!ObjectId.isValid(id)) return { ok: false as const, error: "Not found" };
   const { motions } = await cols();
   const from: MotionStatus = to === "open" ? "draft" : "open";
@@ -165,7 +167,48 @@ export async function moveMotion(id: string, to: "open" | "closed", actor: strin
     subject: res.title,
     detail: to === "open" ? "Voting opened to all members" : `Voting closed: For ${c!.For}, Against ${c!.Against}, Abstain ${c!.Abstain} — ${resultOf(c!)}`,
   });
-  return { ok: true as const };
+  // Opening a vote tells every member straight away (Email R), so no officer has to send a notice.
+  // The vote is already open even if some emails fail; the result says how many went.
+  const emailed = to === "open" && site ? await announceMotion(res, actor, site).catch(() => null) : null;
+  return { ok: true as const, emailed };
+}
+
+/** Emails every admitted member with an email address that a vote is open (template R). */
+async function announceMotion(m: MotionDoc, actor: string, site: string) {
+  const { members } = await memberCollections();
+  const list = (
+    await members
+      .find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, firstName: 1, email: 1, membership: 1 } })
+      .toArray()
+  ).filter((x) => x.email?.trim());
+  if (!list.length) return { sent: 0, failed: 0, of: 0 };
+  const portal = `${site.replace(/\/+$/, "")}/app`;
+  const template = await getTemplate("R");
+  const blocks = {
+    MOTION_DETAILS: m.details?.trim() ? quoteBox(m.details.trim()) : undefined,
+    BUTTON: buttonBlock("Vote in your account", portal),
+  };
+  const emails = list.map((x) => ({
+    to: x.email,
+    ...renderEmail(
+      template,
+      {
+        FirstName: x.firstName?.trim() || x.fullName.trim().split(/\s+/)[0] || "Member",
+        MemberNo: x.membership!.memberNo,
+        Motion: m.title,
+        PortalLink: portal,
+      },
+      blocks,
+    ),
+  }));
+  const result = await sendEmailBatch(emails);
+  await recordAudit({
+    action: result.failed ? "email.vote_open_failed" : "email.vote_open_sent",
+    actor,
+    subject: m.title,
+    detail: `Vote-open email: ${result.sent} of ${list.length} sent${result.failed ? `, ${result.failed} failed (${result.errors[0] ?? ""})` : ""}`,
+  }).catch(() => {});
+  return { sent: result.sent, failed: result.failed, of: list.length };
 }
 
 // ---------- Members ----------

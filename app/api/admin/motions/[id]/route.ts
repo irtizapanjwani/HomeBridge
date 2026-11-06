@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
+import { siteUrl } from "@/lib/site-url";
 import { moveMotion } from "@/lib/votes";
 
 /** { to: "open" } opens voting; { to: "closed" } closes it and fixes the result. */
@@ -17,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (b.to !== "open" && b.to !== "closed") return NextResponse.json({ ok: false, error: "Unknown action" }, { status: 400 });
   try {
-    const r = await moveMotion(id, b.to, await currentOfficer());
+    const r = await moveMotion(id, b.to, await currentOfficer(), siteUrl(req));
     return r.ok ? NextResponse.json(r) : NextResponse.json(r, { status: 409 });
   } catch {
     return NextResponse.json({ ok: false, error: "That did not work" }, { status: 502 });
