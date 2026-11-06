@@ -132,7 +132,7 @@ export async function missedPayments(period: string): Promise<MissedResult> {
   const { members } = await collections();
   const admitted = await members
     .find(
-      { "membership.memberNo": { $exists: true }, "membership.admittedAt": { $lt: monthEnd(period) } },
+      { "membership.memberNo": { $exists: true }, "membership.admittedAt": { $lt: monthStart(period) } },
       { projection: { reference: 1, fullName: 1, email: 1, country: 1, chapter: 1, membership: 1, contributionReminders: 1, paymentEmails: 1, paymentCycle: 1 } },
     )
     .sort({ "membership.seq": 1 })
@@ -165,7 +165,7 @@ export async function missedPayments(period: string): Promise<MissedResult> {
       paidCount++;
       continue;
     }
-    const short = monthsBetween(periodOf(m.membership!.admittedAt), period).filter((p) => !meetsMinimum(byPeriod.get(p) ?? {}) && !holiday.has(p));
+    const short = monthsBetween(firstMonthAfter(periodOf(m.membership!.admittedAt)), period).filter((p) => !meetsMinimum(byPeriod.get(p) ?? {}) && !holiday.has(p));
     const paid = describe(thisMonth);
     const reminded = m.contributionReminders?.[period];
     rows.push({
@@ -187,10 +187,19 @@ export async function missedPayments(period: string): Promise<MissedResult> {
   return { period, label: periodLabel(period), checked: admitted.length, paidCount, rows };
 }
 
-/** The first moment after the month, so members admitted during it are included. */
-function monthEnd(period: string) {
+/**
+ * A member's first month to pay is the month after the one they were admitted in, the same rule
+ * the automatic reminders use (lib/payment-reminders.ts). So anyone admitted during `period` is not
+ * counted for it: only members admitted before the month began.
+ */
+function monthStart(period: string) {
   const [y, m] = period.split("-").map(Number);
-  return new Date(Date.UTC(y, m, 1)); // month index m is the next month
+  return new Date(Date.UTC(y, m - 1, 1)); // matches periodOf(), which reads months in UTC
+}
+
+function firstMonthAfter(period: string) {
+  const [y, m] = period.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
 }
 
 // ---------- Email F ----------
