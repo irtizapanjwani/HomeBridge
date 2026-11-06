@@ -238,6 +238,8 @@ export type MemberDoc = {
   formsReminders?: { day7?: Date; day14?: Date; lastManual?: Date };
   /** Missed-contribution reminders sent, by the month (YYYY-MM) they were about. */
   contributionReminders?: Record<string, Date>;
+  /** Every payment email a member actually got, by the month (YYYY-MM) it was about, newest last. */
+  paymentEmails?: Record<string, { at: Date; what: string }[]>;
   /**
    * The automatic monthly payment emails already sent, by the month (YYYY-MM) they were about:
    * due (day 1), day5, day7, overdue (day 8), day15, and arrears (the 2/3/6-months-in-a-row notice).

@@ -32,6 +32,15 @@ import { pendingProofMembers } from "@/lib/payment-proofs";
 
 export type Stage = "due" | "day5" | "day7" | "overdue" | "day15";
 
+/** What each automatic email is called on the Who hasn't paid list. */
+const STAGE_NAME: Record<Stage, string> = {
+  due: "Payment due (day 1)",
+  day5: "Friendly reminder (day 5)",
+  day7: "Last day to pay (day 7)",
+  overdue: "Overdue notice (day 8)",
+  day15: "Second overdue notice (day 15)",
+};
+
 const STAGES: { stage: Stage; day: number; template: TemplateKey; label: string }[] = [
   { stage: "due", day: 1, template: "G", label: "Due (day 1)" },
   { stage: "day5", day: 5, template: "H", label: "Reminder (day 5)" },
@@ -76,7 +85,7 @@ export async function clearThisMonth(actor: string) {
   const { members } = await collections();
   const res = await members.updateMany(
     { [`paymentCycle.${period}`]: { $exists: true } },
-    { $unset: { [`paymentCycle.${period}`]: "", [`contributionReminders.${period}`]: "" } },
+    { $unset: { [`paymentCycle.${period}`]: "", [`contributionReminders.${period}`]: "", [`paymentEmails.${period}`]: "" } },
   );
   await recordAudit({
     action: "settings.payment_reminders_reset",
@@ -275,6 +284,9 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
         }));
         if (result.ok) {
           base.sent++;
+          await members
+            .updateOne({ reference: m.reference }, { $push: { [`paymentEmails.${period}`]: { at: new Date(), what: STAGE_NAME[stage.stage] + (testing ? " · test" : "") } } })
+            .catch(() => {});
           // The Missed payments screen shows the overdue notice as "reminded".
           if (stage.stage === "overdue" || stage.stage === "day15") {
             await members.updateOne(
@@ -303,7 +315,12 @@ export async function runPaymentReminders(site: string, opts: RunOptions = {}): 
       const claim = await members.updateOne({ reference: m.reference, [field]: { $exists: false } }, { $set: { [field]: new Date() } });
       if (claim.matchedCount > 0) {
         const result = await sendArrears(m, shortRun, site).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : "unknown error" }));
-        if (result.ok) base.arrearsNotices++;
+        if (result.ok) {
+          base.arrearsNotices++;
+          await members
+            .updateOne({ reference: m.reference }, { $push: { [`paymentEmails.${period}`]: { at: new Date(), what: `${inRow} months in a row notice` } } })
+            .catch(() => {});
+        }
         else await members.updateOne({ reference: m.reference }, { $unset: { [field]: "" } });
         await recordAudit({
           action: result.ok ? "email.arrears_notice_sent" : "email.arrears_notice_failed",

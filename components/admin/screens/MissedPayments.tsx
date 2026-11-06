@@ -18,6 +18,7 @@ type Row = {
   shortMonths: string[];
   lastPaid: string;
   remindedAt: string | null;
+  emails: { at: string; what: string }[];
 };
 type Data = { period: string; current: string; label: string; checked: number; paidCount: number; rows: Row[] };
 
@@ -106,8 +107,8 @@ export function MissedPaymentsCard() {
     download(
       `homebridge-missed-payments-${data.period}.csv`,
       toCsv(
-        ["Member no.", "Name", "Email", "Chapter", "Minimum", "Status", "Received this month", "Months short", "Which months", "Last paid", "Reminded"],
-        data.rows.map((r) => [r.memberNo, r.name, r.email, r.chapter, r.minimum, r.state, r.paid, r.monthsShort, r.shortMonths.join("; "), r.lastPaid, r.remindedAt ?? ""]),
+        ["Member no.", "Name", "Email", "Chapter", "Minimum", "Status", "Received this month", "Months short", "Which months", "Last paid", "Last emailed"],
+        data.rows.map((r) => [r.memberNo, r.name, r.email, r.chapter, r.minimum, r.state, r.paid, r.monthsShort, r.shortMonths.join("; "), r.lastPaid, r.emails[0] ? `${r.emails[0].at} (${r.emails[0].what})` : ""]),
       ),
     );
   }
@@ -189,7 +190,7 @@ export function MissedPaymentsCard() {
           {data.rows.length === 0 ? (
             <Banner tone="info">{data.checked ? `Everyone has paid the minimum for ${data.label}.` : `No members were admitted by ${data.label}.`}</Banner>
           ) : (
-            <Table minWidth={900}>
+            <Table minWidth={1040}>
               <thead>
                 <tr>
                   <Th>Member</Th>
@@ -197,6 +198,7 @@ export function MissedPaymentsCard() {
                   <Th>Minimum</Th>
                   <Th>Months short</Th>
                   <Th>Last paid</Th>
+                  <Th>Last emailed about {data.label}</Th>
                   <Th>{""}</Th>
                 </tr>
               </thead>
@@ -220,9 +222,32 @@ export function MissedPaymentsCard() {
                     </Td>
                     <Td>{r.lastPaid || <span className="text-muted">Never</span>}</Td>
                     <Td>
-                      {r.remindedAt ? <span className="mb-1 block text-[12.5px] text-muted">Overdue reminder sent {r.remindedAt}</span> : null}
-                      <Btn size="sm" variant={r.remindedAt ? "outline" : "primary"} disabled={busy !== null || !r.email} onClick={() => void remind({ memberNos: [r.memberNo] }, r.memberNo)}>
-                        {busy === r.memberNo ? "Sending…" : r.remindedAt ? "Remind again" : "Send reminder"}
+                      {r.emails.length ? (
+                        <>
+                          <strong className="block text-[14px] text-ink">{r.emails[0].at}</strong>
+                          <span className="block text-[12.5px] text-muted">{r.emails[0].what}</span>
+                          {r.emails.length > 1 ? (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-[12.5px] font-semibold text-forest-800">
+                                {r.emails.length} emails this month
+                              </summary>
+                              <ul className="m-0 mt-1 list-none p-0 text-[12.5px] text-body">
+                                {r.emails.map((e, i) => (
+                                  <li key={i}>
+                                    {e.at} · {e.what}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="text-[13px] text-muted">Not emailed yet</span>
+                      )}
+                    </Td>
+                    <Td>
+                      <Btn size="sm" variant={r.emails.length ? "outline" : "primary"} disabled={busy !== null || !r.email} onClick={() => void remind({ memberNos: [r.memberNo] }, r.memberNo)}>
+                        {busy === r.memberNo ? "Sending…" : r.emails.length ? "Email again now" : "Send reminder now"}
                       </Btn>
                     </Td>
                   </tr>

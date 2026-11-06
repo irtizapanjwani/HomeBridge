@@ -76,6 +76,8 @@ export type MissedRow = {
   shortMonths: string[];
   lastPaid: string;
   remindedAt: string | null;
+  /** Payment emails this member got about the month, newest first. */
+  emails: { at: string; what: string }[];
 };
 
 export type MissedResult = {
@@ -88,13 +90,50 @@ export type MissedResult = {
 
 const DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric" });
 
+const WHEN = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
+const CYCLE_NAME: Record<string, string> = {
+  due: "Payment due (day 1)",
+  day5: "Friendly reminder (day 5)",
+  day7: "Last day to pay (day 7)",
+  overdue: "Overdue notice (day 8)",
+  day15: "Second overdue notice (day 15)",
+  arrears: "Months in a row notice",
+};
+const CYCLE_ORDER = ["due", "day5", "day7", "overdue", "day15"];
+
+/**
+ * The payment emails a member got about one month, newest first. Uses the full log kept since it
+ * was added; for older months it is rebuilt from what was recorded then (where a missed morning
+ * marked several stages at once, only the one actually sent is shown).
+ */
+function emailsFor(
+  m: { paymentEmails?: Record<string, { at: Date; what: string }[]>; paymentCycle?: Record<string, Record<string, Date | undefined>>; contributionReminders?: Record<string, Date> },
+  period: string,
+) {
+  let list = m.paymentEmails?.[period] ?? [];
+  if (!list.length) {
+    const cycle = m.paymentCycle?.[period] ?? {};
+    const byTime = new Map<number, string>();
+    for (const stage of CYCLE_ORDER) {
+      const at = cycle[stage];
+      if (at) byTime.set(new Date(at).getTime(), stage); // the latest stage on a timestamp is the one sent
+    }
+    list = [...byTime].map(([t, stage]) => ({ at: new Date(t), what: CYCLE_NAME[stage] }));
+    if (cycle.arrears) list.push({ at: new Date(cycle.arrears), what: CYCLE_NAME.arrears });
+    const manual = m.contributionReminders?.[period];
+    if (manual && !list.some((e) => Math.abs(e.at.getTime() - new Date(manual).getTime()) < 60_000)) list.push({ at: new Date(manual), what: "Reminder" });
+  }
+  return [...list].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).map((e) => ({ at: WHEN.format(new Date(e.at)), what: e.what }));
+}
+
 /** Members short for `period`, with how many months they are behind in total. */
 export async function missedPayments(period: string): Promise<MissedResult> {
   const { members } = await collections();
   const admitted = await members
     .find(
       { "membership.memberNo": { $exists: true }, "membership.admittedAt": { $lt: monthEnd(period) } },
-      { projection: { reference: 1, fullName: 1, email: 1, country: 1, chapter: 1, membership: 1, contributionReminders: 1 } },
+      { projection: { reference: 1, fullName: 1, email: 1, country: 1, chapter: 1, membership: 1, contributionReminders: 1, paymentEmails: 1, paymentCycle: 1 } },
     )
     .sort({ "membership.seq": 1 })
     .toArray();
@@ -142,6 +181,7 @@ export async function missedPayments(period: string): Promise<MissedResult> {
       shortMonths: short.map(periodLabel),
       lastPaid: lastPaid.has(no) ? DAY.format(lastPaid.get(no)!) : "",
       remindedAt: reminded ? DAY.format(reminded) : null,
+      emails: emailsFor(m, period),
     });
   }
   return { period, label: periodLabel(period), checked: admitted.length, paidCount, rows };
@@ -211,7 +251,11 @@ export async function sendMissedReminders(
     }));
     if (result.ok) {
       run.sent++;
-      await members.updateOne({ reference: m.reference }, { $set: { [`contributionReminders.${period}`]: new Date() } });
+      const at = new Date();
+      await members.updateOne(
+        { reference: m.reference },
+        { $set: { [`contributionReminders.${period}`]: at }, $push: { [`paymentEmails.${period}`]: { at, what: `Reminder sent by ${actor}` } } },
+      );
     } else {
       run.failed++;
       run.errors.push(`${no}: ${result.error}`);
