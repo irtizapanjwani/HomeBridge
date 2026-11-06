@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, inputCls } from "../ui";
 
@@ -28,6 +28,7 @@ const STATUS_PILL = { draft: ["grey", "Not open yet"], open: ["warm", "Voting op
 export function OnlineVotesCard() {
   const toast = useToast();
   const [motions, setMotions] = useState<Motion[] | null>(null);
+  const [eligible, setEligible] = useState(0);
   const [err, setErr] = useState("");
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -43,7 +44,7 @@ export function OnlineVotesCard() {
   async function remove(m: { id: string; title: string; status: string; total: number }) {
     const warning =
       m.status === "draft"
-        ? `Delete the motion “${m.title}”? It has not been opened, so no member has seen it.`
+        ? `Delete the draft “${m.title}”? No member has seen it yet.`
         : `Delete “${m.title}” and all ${m.total} vote${m.total === 1 ? "" : "s"} cast on it? ${m.status === "open" ? "Voting is still open: members will no longer see it." : "Its result will be gone."} This cannot be undone. The totals are kept in the audit log.`;
     if (!window.confirm(warning)) return;
     setBusy(true);
@@ -52,7 +53,7 @@ export function OnlineVotesCard() {
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
       if (openId === m.id) setOpenId(null);
-      toast("Motion deleted.");
+      toast("Vote deleted.");
       load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "That did not work.", "warn");
@@ -76,7 +77,7 @@ export function OnlineVotesCard() {
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
       setShowChoices(next);
-      toast(next ? "Individual votes are now shown in “See who voted”." : "Votes are secret again: only totals are shown.");
+      toast(next ? "Each member\u2019s choice now shows under “Who has voted”." : "Choices are secret again: only totals are shown.");
     } catch (e) {
       toast(e instanceof Error ? e.message : "That did not work.", "warn");
     } finally {
@@ -87,7 +88,11 @@ export function OnlineVotesCard() {
   const load = useCallback(() => {
     fetch("/api/admin/motions")
       .then((r) => r.json())
-      .then((d: { ok?: boolean; motions?: Motion[]; error?: string }) => (d.ok ? setMotions(d.motions ?? []) : setErr(d.error || "Could not load the votes.")))
+      .then((d: { ok?: boolean; motions?: Motion[]; eligible?: number; error?: string }) => {
+        if (!d.ok) return setErr(d.error || "Could not load the votes.");
+        setMotions(d.motions ?? []);
+        setEligible(d.eligible ?? 0);
+      })
       .catch(() => setErr("Could not reach the server."));
   }, []);
   useEffect(load, [load]);
@@ -114,139 +119,243 @@ export function OnlineVotesCard() {
   }
 
   return (
-    <Card className="flex flex-col gap-3 p-5">
+    <Card className="flex flex-col gap-5 p-5">
       <CardTitle id="online-votes" aside={<Pill tone="green">Live</Pill>}>
-        Online votes
+        Votes
       </CardTitle>
-      <p className="m-0 text-[14px] text-body">
-        Write a motion, then <strong>Open</strong> it: every member is emailed straight away, sees it in their account and can vote For, Against or Abstain, once.{" "}
-        <strong>Close</strong> it to fix the result, which members then see. Members can give their proxy to another member, who can hold up to
-        five (bye-law 16.4). Only totals are shown, never who voted which way.
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="m-0 text-[15px] text-body">Ask members to vote on a decision. Each vote goes through three steps:</p>
+        <ol className="m-0 grid list-none gap-2 p-0 md:grid-cols-3">
+          {[
+            ["Write it", "Save the question as a draft. Members can't see it yet."],
+            ["Open voting", "Every member is emailed and can vote For, Against or Abstain, once."],
+            ["End voting", "The result is fixed and every member can see it."],
+          ].map(([t, d], i) => (
+            <li key={t} className="flex gap-3 rounded-xl border border-line bg-mist p-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-forest-800 text-[13px] font-bold text-paper">{i + 1}</span>
+              <span className="min-w-0 text-[13.5px] text-body">
+                <strong className="block text-[14.5px] text-ink">{t}</strong>
+                {d}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
       {err ? <Banner tone="danger">{err}</Banner> : null}
-      <div className="grid gap-2">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Motion, e.g. Approve the 2027 operating budget" className={inputCls} aria-label="Motion title" />
-        <textarea
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-          rows={3}
-          placeholder="Details members should read before voting (optional)"
-          className={`${inputCls} py-2`}
-          aria-label="Motion details"
-        />
+
+      <section aria-labelledby="new-vote" className="flex flex-col gap-3 rounded-2xl border border-line p-4">
+        <h3 id="new-vote" className="m-0 text-[16px] font-bold text-ink">
+          Start a new vote
+        </h3>
+        <label className="flex flex-col gap-1 text-[14px] font-semibold text-ink">
+          What are members voting on?
+          <input
+            id="vote-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Approve the 2027 operating budget"
+            className={`${inputCls} font-normal`}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-[14px] font-semibold text-ink">
+          <span>
+            Explain it to members <span className="font-normal text-muted">(optional)</span>
+          </span>
+          <textarea
+            id="vote-details"
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={3}
+            placeholder="Anything members should read before they vote"
+            className={`${inputCls} min-h-[88px] py-2 font-normal`}
+          />
+        </label>
         <div>
           <Btn
             variant="primary"
             disabled={busy || !title.trim()}
             onClick={async () => {
-              if (await call("/api/admin/motions", { title, details }, "Motion saved. Open it when members should vote.")) {
+              if (await call("/api/admin/motions", { title, details }, "Saved as a draft. Click “Open voting” when members should vote.")) {
                 setTitle("");
                 setDetails("");
               }
             }}
           >
-            Save motion
+            Save as draft
           </Btn>
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-mist px-4 py-3">
-        <p className="m-0 text-[14px] text-body">
-          <strong>How each member voted:</strong>{" "}
-          {showChoices === null ? "…" : showChoices ? "shown to officers in “See who voted” (every look is logged)." : "secret. Officers see totals and who took part only."}
+      <section aria-labelledby="your-votes" className="flex flex-col gap-3">
+        <h3 id="your-votes" className="m-0 text-[16px] font-bold text-ink">
+          Your votes
+        </h3>
+        {!motions ? (
+          <p className="m-0 text-[14px] text-muted">Loading…</p>
+        ) : motions.length === 0 ? (
+          <p className="m-0 text-[14px] text-muted">No votes yet. Start one above.</p>
+        ) : (
+          motions.map((m) => (
+            <VoteBox
+              key={m.id}
+              m={m}
+              eligible={eligible}
+              busy={busy}
+              showChoices={Boolean(showChoices)}
+              expanded={openId === m.id}
+              onToggle={() => setOpenId(openId === m.id ? null : m.id)}
+              onOpen={() => {
+                if (window.confirm(`Open voting on “${m.title}”?\n\nEvery member will be emailed and can vote straight away.`))
+                  void call(`/api/admin/motions/${m.id}`, { to: "open" }, "Voting is open.");
+              }}
+              onClose={() => {
+                if (window.confirm(`End voting on “${m.title}”?\n\nThe result is then final and every member can see it. Voting cannot be reopened.`))
+                  void call(`/api/admin/motions/${m.id}`, { to: "closed" }, "Voting has ended. Members can now see the result.");
+              }}
+              onDelete={() => void remove(m)}
+            />
+          ))
+        )}
+      </section>
+
+      <section aria-labelledby="vote-privacy" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-mist px-4 py-3">
+        <p className="m-0 min-w-0 flex-1 text-[14px] text-body">
+          <strong id="vote-privacy" className="text-ink">
+            Privacy:{" "}
+          </strong>
+          {showChoices === null
+            ? "…"
+            : showChoices
+              ? "officers can see each member's choice under “Who has voted”. Every look is recorded in the audit log."
+              : "each member's choice is secret. Officers see the totals and who has voted, not how."}
         </p>
-        <Btn size="sm" variant={showChoices ? "outline" : "primary"} disabled={busy || showChoices === null} onClick={() => void flipChoices()}>
-          {showChoices ? "Make votes secret again" : "Show how each member voted"}
+        <Btn size="sm" disabled={busy || showChoices === null} onClick={() => void flipChoices()}>
+          {showChoices ? "Hide choices again" : "Show each member's choice"}
         </Btn>
+      </section>
+    </Card>
+  );
+}
+
+const STATUS_LABEL = {
+  draft: ["grey", "Draft"],
+  open: ["warm", "Voting open"],
+  closed: ["green", "Voting ended"],
+} as const;
+
+const RESULT_TEXT: Record<string, string> = {
+  Passed: "Passed: more members voted For than Against.",
+  "Not passed": "Not passed: more members voted Against than For.",
+  Tied: "Tied: the same number voted For and Against.",
+  "No votes cast": "No votes were cast.",
+};
+
+/** One vote, laid out so an officer can read its state at a glance. */
+function VoteBox({
+  m,
+  eligible,
+  busy,
+  showChoices,
+  expanded,
+  onToggle,
+  onOpen,
+  onClose,
+  onDelete,
+}: {
+  m: Motion;
+  eligible: number;
+  busy: boolean;
+  showChoices: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  const pct = eligible ? Math.min(100, Math.round((m.total / eligible) * 100)) : 0;
+  const tiles = [
+    ["For", m.counts.For, "border-forest-800 text-forest-800"],
+    ["Against", m.counts.Against, "border-danger text-danger"],
+    ["Abstain", m.counts.Abstain, "border-line text-muted"],
+  ] as const;
+  return (
+    <article className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h4 className="m-0 text-[17px] font-bold text-ink">{m.title}</h4>
+          <p className="m-0 text-[12.5px] text-muted">
+            Created {m.createdAt}
+            {m.openedAt ? ` · opened ${m.openedAt}` : ""}
+            {m.closedAt ? ` · ended ${m.closedAt}` : ""}
+          </p>
+        </div>
+        <Pill tone={STATUS_LABEL[m.status][0]}>{STATUS_LABEL[m.status][1]}</Pill>
+      </div>
+      {m.details ? <p className="m-0 text-[14px] whitespace-pre-line text-body">{m.details}</p> : null}
+
+      {m.status === "draft" ? (
+        <p className="m-0 rounded-xl bg-mist px-3 py-2 text-[14px] text-body">Members can&rsquo;t see this yet. Open voting when you are ready.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            {tiles.map(([label, n, cls]) => (
+              <div key={label} className={`rounded-xl border-2 bg-paper px-3 py-2 text-center ${cls}`}>
+                <span className="block text-[26px] leading-tight font-bold tabular-nums">{n}</span>
+                <span className="block text-[13px] font-semibold">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="h-2.5 overflow-hidden rounded-full bg-mist" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Members who have voted">
+              <div className="h-full rounded-full bg-forest-800" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="m-0 text-[13px] text-muted">
+              <strong className="text-ink">
+                {m.total} of {eligible} members
+              </strong>{" "}
+              have voted ({pct}%){m.byProxy ? ` · ${m.byProxy} through a proxy` : ""}
+            </p>
+          </div>
+          {m.status === "closed" ? (
+            <p className="m-0 rounded-xl border border-line bg-mist px-3 py-2 text-[14.5px] text-ink">
+              <strong>Result: </strong>
+              {RESULT_TEXT[m.result] ?? m.result}
+            </p>
+          ) : null}
+        </>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {m.status === "draft" ? (
+          <Btn variant="primary" disabled={busy} onClick={onOpen}>
+            Open voting and email members
+          </Btn>
+        ) : m.status === "open" ? (
+          <Btn variant="primary" disabled={busy} onClick={onClose}>
+            End voting and show the result
+          </Btn>
+        ) : null}
+        {m.status !== "draft" ? (
+          <Btn aria-expanded={expanded} onClick={onToggle}>
+            {expanded ? "Hide who has voted" : "Who has voted"}
+          </Btn>
+        ) : null}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDelete}
+          className="ml-auto text-[13.5px] font-semibold text-danger underline underline-offset-[3px] disabled:opacity-50"
+        >
+          Delete
+        </button>
       </div>
 
-      {motions && motions.length ? (
-        <Table minWidth={760}>
-          <thead>
-            <tr>
-              <Th>Motion</Th>
-              <Th>Status</Th>
-              <Th>Votes</Th>
-              <Th>{""}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {motions.map((m) => (
-              <Fragment key={m.id}>
-              <tr>
-                <Td>
-                  <strong>{m.title}</strong>
-                  <span className="block text-[12.5px] text-muted">
-                    Written {m.createdAt} by {m.createdBy}
-                    {m.openedAt ? ` · opened ${m.openedAt}` : ""}
-                    {m.closedAt ? ` · closed ${m.closedAt}` : ""}
-                  </span>
-                </Td>
-                <Td>
-                  <Pill tone={STATUS_PILL[m.status][0]}>{STATUS_PILL[m.status][1]}</Pill>
-                  {m.result ? <span className="mt-1 block font-semibold">{m.result}</span> : null}
-                </Td>
-                <Td>
-                  {m.total} vote{m.total === 1 ? "" : "s"}
-                  <span className="block text-[12.5px] text-muted">
-                    For {m.counts.For} · Against {m.counts.Against} · Abstain {m.counts.Abstain}
-                    {m.byProxy ? ` · ${m.byProxy} by proxy` : ""}
-                  </span>
-                  {m.status !== "draft" ? (
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(openId === m.id ? null : m.id)}
-                      aria-expanded={openId === m.id}
-                      className="mt-1 text-[13px] font-semibold text-forest-800 underline underline-offset-[3px]"
-                    >
-                      {openId === m.id ? "Hide who voted" : "See who voted"}
-                    </button>
-                  ) : null}
-                </Td>
-                <Td>
-                  {m.status === "draft" ? (
-                    <Btn
-                      size="sm"
-                      variant="primary"
-                      disabled={busy}
-                      onClick={() => {
-                        if (window.confirm(`Open voting on “${m.title}” to every member now? Every member will be emailed that the vote is open.`)) void call(`/api/admin/motions/${m.id}`, { to: "open" }, "Voting is open.");
-                      }}
-                    >
-                      Open
-                    </Btn>
-                  ) : m.status === "open" ? (
-                    <Btn
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        if (window.confirm(`Close voting on “${m.title}”? The result is then fixed and cannot be reopened.`))
-                          void call(`/api/admin/motions/${m.id}`, { to: "closed" }, "Voting closed. Members can now see the result.");
-                      }}
-                    >
-                      Close
-                    </Btn>
-                  ) : null}
-                  <Btn size="sm" variant="ghost" className="ml-1" disabled={busy} onClick={() => void remove(m)}>
-                    Delete
-                  </Btn>
-                </Td>
-              </tr>
-              {openId === m.id ? (
-                <tr>
-                  <td colSpan={4} className="border-b border-line bg-mist px-4 py-3">
-                    <Turnout key={String(showChoices)} id={m.id} />
-                  </td>
-                </tr>
-              ) : null}
-              </Fragment>
-            ))}
-          </tbody>
-        </Table>
-      ) : motions ? (
-        <p className="m-0 text-[14px] text-muted">No motions yet.</p>
+      {expanded ? (
+        <div className="rounded-xl border border-line bg-mist p-3">
+          <Turnout key={String(showChoices)} id={m.id} />
+        </div>
       ) : null}
-    </Card>
+    </article>
   );
 }
 
@@ -380,51 +489,53 @@ function Turnout({ id }: { id: string }) {
   if (err) return <p className="m-0 text-[13.5px] text-danger">{err}</p>;
   if (!data) return <p className="m-0 text-[13.5px] text-muted">Loading…</p>;
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="min-w-0">
-        <p className="m-0 mb-1 text-[13px] font-semibold text-ink">Voted ({data.voted.length})</p>
-        {data.voted.length ? (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13.5px]">
-            {data.voted.map((v) => (
-              <li key={v.memberNo}>
-                <strong>{v.name || v.memberNo}</strong> <span className="font-mono text-[12px] text-muted">{v.memberNo}</span>
-                {v.choice ? (
-                  <span className="ml-2 align-middle">
-                    <Pill tone={CHOICE_TONE[v.choice]}>{v.choice}</Pill>
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="min-w-0">
+          <p className="m-0 mb-2 text-[14px] font-bold text-ink">Has voted ({data.voted.length})</p>
+          {data.voted.length ? (
+            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+              {data.voted.map((v) => (
+                <li key={v.memberNo} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
+                  <span className="min-w-0 text-[14px]">
+                    <strong className="block text-ink">{v.name || v.memberNo}</strong>
+                    <span className="block text-[12px] text-muted">
+                      {v.memberNo} · {v.at}
+                      {v.byProxy ? ` · voted for them by ${v.byProxy}` : ""}
+                    </span>
                   </span>
-                ) : null}
-                <span className="block text-[12.5px] text-muted">
-                  {v.at}
-                  {v.byProxy ? ` · cast by proxy holder ${v.byProxy}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="m-0 text-[13.5px] text-muted">Nobody has voted yet.</p>
-        )}
+                  {v.choice ? <Pill tone={CHOICE_TONE[v.choice]}>{v.choice}</Pill> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="m-0 text-[14px] text-muted">Nobody has voted yet.</p>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="m-0 mb-2 text-[14px] font-bold text-ink">Still to vote ({data.notVoted.length})</p>
+          {data.notVoted.length ? (
+            <ul className="m-0 flex max-h-72 list-none flex-col gap-1.5 overflow-y-auto p-0">
+              {data.notVoted.map((v) => (
+                <li key={v.memberNo} className="rounded-lg bg-paper px-3 py-2 text-[14px]">
+                  <span className="block text-ink">{v.name}</span>
+                  <span className="block text-[12px] text-muted">
+                    {v.memberNo}
+                    {v.chapter ? ` · ${v.chapter}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="m-0 text-[14px] text-muted">Every member has voted.</p>
+          )}
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="m-0 mb-1 text-[13px] font-semibold text-ink">Not voted yet ({data.notVoted.length})</p>
-        {data.notVoted.length ? (
-          <ul className="m-0 flex max-h-64 list-none flex-col gap-1 overflow-y-auto p-0 text-[13.5px]">
-            {data.notVoted.map((v) => (
-              <li key={v.memberNo}>
-                {v.name} <span className="font-mono text-[12px] text-muted">{v.memberNo}</span>
-                {v.chapter ? <span className="text-[12.5px] text-muted"> · {v.chapter}</span> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="m-0 text-[13.5px] text-muted">Every member has voted.</p>
-        )}
-      </div>
-      <p className="m-0 text-[12.5px] text-muted md:col-span-2">
+      <p className="m-0 text-[12.5px] text-muted">
         {data.showChoices
-          ? "Individual votes are switched on. Opening this list is recorded in the audit log."
-          : "This shows who took part, not how anyone voted. To see each member's choice, use “Show how each member voted” above (only if the Board agrees)."}
+          ? "Each member's choice is shown because Privacy is switched on below. Opening this list is recorded in the audit log."
+          : "Choices are secret, so only who has voted is shown. The Privacy switch below can show each choice, if the Board agrees."}
       </p>
     </div>
   );
 }
-

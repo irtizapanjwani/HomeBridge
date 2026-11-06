@@ -112,9 +112,16 @@ async function counts(motionId: ObjectId) {
   return out;
 }
 
-const resultOf = (c: Record<Choice, number>) => (c.For > c.Against ? "Passed" : c.Against > c.For ? "Not passed" : "Tied");
+const resultOf = (c: Record<Choice, number>) =>
+  c.For + c.Against + c.Abstain === 0 ? "No votes cast" : c.For > c.Against ? "Passed" : c.Against > c.For ? "Not passed" : "Tied";
 
 // ---------- Officers ----------
+
+/** How many members can vote: everyone admitted. */
+export async function eligibleVoters() {
+  const { members } = await memberCollections();
+  return members.countDocuments({ "membership.memberNo": { $exists: true } });
+}
 
 export async function listMotionsForAdmin() {
   // Reads never wait for index set-up; writes (votes, proxies) still do, as they rely on it.
