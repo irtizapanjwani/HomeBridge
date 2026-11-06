@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { recordAudit } from "@/lib/audit";
+import { sendInfoReplyAlert } from "@/lib/email";
+import { siteUrl } from "@/lib/site-url";
 import { isDbConfigured } from "@/lib/db";
 import { DOC_LABEL, DOC_MAX_BYTES, INFO_MESSAGE_MAX, UPLOADABLE_DOC_TYPES, isDocContentType, isDocType } from "@/lib/document-types";
 import { isDocumentStorageConfigured, saveDocument } from "@/lib/documents";
@@ -117,6 +119,22 @@ export async function POST(req: Request) {
           before: "Info requested",
           after: "In review",
         });
+        // Tell the office straight away, so nobody has to keep checking for replies.
+        const sent = await sendInfoReplyAlert({
+          reference: ref,
+          fullName: member.fullName,
+          email: member.email,
+          asked: member.decision?.outcome === "Info requested" ? member.decision.reason : undefined,
+          message,
+          withFile: Boolean(documentId),
+          adminUrl: `${siteUrl(req)}/admin#applications`,
+        }).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : "unknown error" }));
+        await recordAudit({
+          action: sent.ok ? "email.info_reply_alert_sent" : "email.info_reply_alert_failed",
+          actor: "System",
+          subject: ref,
+          detail: sent.ok ? "Office emailed that the applicant sent the information asked for" : `Office alert could not be sent: ${sent.error}`,
+        }).catch(() => {});
       }
     }
 

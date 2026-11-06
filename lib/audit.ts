@@ -76,6 +76,8 @@ const ACTION_LABEL: Record<string, string> = {
   "vote.choices_viewed": "Viewed how members voted",
   "meeting.notice_sent": "Set the AGM and emailed the notice",
   "meeting.reply": "Member replied to the AGM notice",
+  "email.info_reply_alert_sent": "Office told: applicant sent more information",
+  "email.info_reply_alert_failed": "Office alert about more information failed",
   "reconciliation.signed_off": "Month-end check signed off",
   "reconciliation.auto_withdrawn": "Automatic month-end sign-off withdrawn",
   "reconciliation.line_dismissed": "Bank payment set aside (not a contribution)",

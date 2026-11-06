@@ -601,3 +601,73 @@ export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResu
   }
   return last;
 }
+
+export type InfoReplyAlertInput = {
+  reference: string;
+  fullName: string;
+  email?: string;
+  /** What the officer asked for, if it was recorded. */
+  asked?: string;
+  /** The applicant's answer. */
+  message: string;
+  /** Whether they attached a file (the file itself never goes by email). */
+  withFile: boolean;
+  adminUrl?: string;
+};
+
+/**
+ * Tells the office that an applicant has answered "more information needed" from their account, so
+ * nobody has to keep checking the admin panel. Goes to the same addresses as new-application alerts.
+ */
+export async function sendInfoReplyAlert(input: InfoReplyAlertInput): Promise<SendResult> {
+  const recipients = officeRecipients();
+  if (!recipients.length) return { ok: true, id: "" };
+
+  const subject = `${input.fullName} sent the information you asked for (${input.reference})`;
+  const text = [
+    `${input.fullName} has replied to your request for more information on their HomeBridge application.`,
+    ``,
+    `Application: ${input.reference}`,
+    input.email ? `Email: ${input.email}` : "",
+    input.asked ? `You asked: ${input.asked}` : "",
+    ``,
+    `Their reply:`,
+    input.message || "(no message)",
+    input.withFile ? `\nThey also attached a file. Open it in the admin panel.` : "",
+    ``,
+    `The application is back "In review" and waiting for you.`,
+    input.adminUrl ? `Open it: ${input.adminUrl}` : `Open the admin panel to review it.`,
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
+    <tr><td style="padding:28px">
+      <p style="margin:0 0 16px"><strong>${esc(input.fullName)}</strong> has replied to your request for more information.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#F3F1EA;border-radius:8px">
+        <tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px;width:120px">Application</td><td style="padding:8px 16px;font-weight:600">${esc(input.reference)}</td></tr>
+        ${input.email ? `<tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px">Email</td><td style="padding:8px 16px;font-weight:600">${esc(input.email)}</td></tr>` : ""}
+        ${input.asked ? `<tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px">You asked</td><td style="padding:8px 16px">${esc(input.asked)}</td></tr>` : ""}
+      </table>
+      <p style="margin:0 0 6px;font-size:13px;color:#6B6A61">Their reply</p>
+      <div style="margin:0 0 16px;padding:14px 16px;border-left:4px solid #1F4D3A;background:#F3F1EA;border-radius:4px;white-space:pre-wrap">${esc(input.message || "(no message)")}</div>
+      ${input.withFile ? `<p style="margin:0 0 16px"><strong>They also attached a file.</strong> Open it in the admin panel.</p>` : ""}
+      <p style="margin:0 0 20px">The application is back <strong>In review</strong> and waiting for you.</p>
+      ${
+        input.adminUrl
+          ? `<p style="margin:0"><a href="${esc(input.adminUrl)}" style="display:inline-block;background:#1F4D3A;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Open the application</a></p>`
+          : ""
+      }
+    </td></tr>
+  </table>
+</body></html>`;
+
+  let last: SendResult = { ok: true, id: "" };
+  for (const to of recipients) {
+    const sent = await sendEmail({ to, subject, text, html });
+    if (!sent.ok) last = sent;
+  }
+  return last;
+}
