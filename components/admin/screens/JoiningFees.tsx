@@ -1,59 +1,103 @@
 "use client";
 
-import { type JoiningFee } from "@/lib/admin-data";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { DownloadIcon } from "@/components/ui/Icons";
-import { useAdmin } from "../store";
-import { exportReport, joiningFeeReport } from "../exports";
-import { fmtDate, money, naira } from "../lib";
-import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, StatTile, Table, Td, Th, cx, inputCls } from "../ui";
+import { download, toCsv, toXls } from "../lib";
+import { Banner, Btn, Card, Empty, Field, PageHeader, Pill, StatTile, Table, Td, Th, inputCls } from "../ui";
 import { StatementMatchCard } from "./StatementMatch";
 
+type FeeRow = {
+  reference: string;
+  memberNo: string;
+  name: string;
+  email: string;
+  form: string;
+  amount: string;
+  currency: "NGN" | "GBP";
+  value: number;
+  method: string;
+  paidOn: string;
+  receiptNo: string;
+  confirmedOn: string;
+  confirmedBy: string;
+  status: "Confirmed" | "Payment reported" | "Not paid yet";
+};
+type Ledger = { rows: FeeRow[]; totals: { confirmed: number; ngn: number; gbp: number; reported: number; unpaid: number } };
+
+const TONE = { Confirmed: "green", "Payment reported": "warm", "Not paid yet": "grey" } as const;
+
+/**
+ * The one-off joining fee (₦10,000 or £10) paid to VEKAT Group Ltd. Everything on this screen is
+ * read from the live member records: the statement matcher at the top, then every fee owed or paid.
+ */
 export function JoiningFeesScreen() {
-  const s = useAdmin();
   const toast = useToast();
-  const [channel, setChannel] = s.ui("fees.channel", "all");
-  const [status, setStatus] = s.ui("fees.status", "all");
+  const [data, setData] = useState<Ledger | null>(null);
+  const [err, setErr] = useState("");
+  const [status, setStatus] = useState("all");
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const rows = s.fees
-    .filter((f) => channel === "all" || f.channel === channel)
-    .filter((f) => status === "all" || f.status === status)
-    .sort((a, b) => b.paidAt.localeCompare(a.paidAt));
-  const counted = s.fees.filter((f) => f.status !== "Receipt uploaded");
-  const totals = (["NGN", "GBP", "USD", "EUR"] as const).map((c) => [c, counted.filter((f) => f.currency === c).reduce((t, f) => t + f.amount, 0)] as const).filter(([, v]) => v > 0);
-  const toMatch = s.fees.filter((f) => f.status === "Receipt uploaded");
+  const load = useCallback(() => {
+    setErr("");
+    fetch("/api/admin/fees/ledger", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: Ledger & { ok?: boolean; error?: string }) => (d.ok ? setData(d) : setErr(d.error || "Could not load the joining fees.")))
+      .catch(() => setErr("Could not reach the server."));
+  }, []);
+  useEffect(load, [load]);
 
-  const exportReason = !s.can("fees.export") ? "Your role cannot export joining-fee payments." : undefined;
-  const matchReason = !s.can("fees.match") ? "Only the Finance officer matches First Bank receipts to the statement." : undefined;
+  const needle = q.trim().toLowerCase();
+  const rows = (data?.rows ?? [])
+    .filter((r) => status === "all" || r.status === status)
+    .filter((r) => !needle || [r.name, r.reference, r.memberNo, r.email, r.receiptNo].some((v) => v.toLowerCase().includes(needle)));
 
   function exportFees(kind: "csv" | "xls") {
-    exportReport(joiningFeeReport(s), kind);
-    s.addLog(`Exported joining-fee report for VEKAT (${kind.toUpperCase()})`, `${s.fees.length} rows`, "—", "Downloaded");
+    if (!data) return;
+    const columns = ["Application ref", "Member no.", "Name", "Email", "Form", "Amount", "Method", "Paid on (as reported)", "Receipt", "Confirmed on", "Confirmed by", "Status"];
+    const body = data.rows.map((r) => [r.reference, r.memberNo, r.name, r.email, r.form, r.amount, r.method, r.paidOn, r.receiptNo, r.confirmedOn, r.confirmedBy, r.status]);
+    const date = new Date().toISOString().slice(0, 10);
+    if (kind === "csv") download(`homebridge-joining-fees-${date}.csv`, toCsv(columns, body));
+    else download(`homebridge-joining-fees-${date}.xls`, toXls(columns, body), "application/vnd.ms-excel");
   }
 
-  function match(f: JoiningFee) {
-    s.setFees((cur) => cur.map((x) => (x.id === f.id ? { ...x, status: "Matched to First Bank", matchedBy: s.role.person } : x)));
-    s.addLog("Matched joining-fee receipt to First Bank statement", `${f.id} · ${f.ref}`, "Receipt uploaded", "Matched to First Bank");
-    const app = s.apps.find((a) => a.memberNo === f.ref && a.status === "Approved (fee due)");
-    if (app) {
-      s.setApps((cur) => cur.map((a) => (a.id === app.id ? { ...a, status: "Fee paid" } : a)));
-      s.addLog("Application status changed", app.id, "Approved (fee due)", "Fee paid");
+  async function confirm(r: FeeRow) {
+    if (!window.confirm(`Confirm that ${r.name} has paid the ${r.amount} joining fee?\n\nA receipt is issued and emailed to them straight away.`)) return;
+    setBusy(r.reference);
+    try {
+      const res = await fetch(`/api/admin/applications/${encodeURIComponent(r.reference)}/fee`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; receiptNo?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      toast(`Fee confirmed${d.receiptNo ? `: receipt ${d.receiptNo}` : ""}, emailed to ${r.name}.`);
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That did not work.", "warn");
+    } finally {
+      setBusy(null);
     }
-    toast(`${money(f.amount, f.currency)} matched for ${f.ref}.${app ? ` ${app.id} is now Fee paid.` : ""}`);
   }
+
+  const t = data?.totals;
+  const received = t ? [t.ngn ? `₦${t.ngn.toLocaleString("en-GB")}` : "", t.gbp ? `£${t.gbp.toFixed(2)}` : ""].filter(Boolean).join(" + ") || "₦0" : "…";
 
   return (
     <>
       <PageHeader
         title="Joining fees (VEKAT)"
-        subtitle={`Paid to ${s.settings.joiningFeePayee} · not share capital · never refunded (6.3, 12.4)`}
+        subtitle="Paid to VEKAT Group Ltd · not share capital · never refunded (6.3, 12.4)"
+        live
         actions={
           <>
-            <Btn reason={exportReason} onClick={() => exportFees("xls")}>
+            <Btn disabled={!data} onClick={() => exportFees("xls")}>
               <DownloadIcon size={17} /> Excel
             </Btn>
-            <Btn variant="primary" reason={exportReason} onClick={() => exportFees("csv")}>
-              <DownloadIcon size={17} /> Export joining-fee report
+            <Btn variant="primary" disabled={!data} onClick={() => exportFees("csv")}>
+              <DownloadIcon size={17} /> Export (CSV)
             </Btn>
           </>
         }
@@ -62,72 +106,95 @@ export function JoiningFeesScreen() {
       <StatementMatchCard />
 
       <Banner tone="info" title="Two payees, never mixed.">
-        The one-off joining fee ({naira(s.settings.joiningFeeNgn)} or £{s.settings.joiningFeeGbp}) is VEKAT’s charge for registration, ID checks and onboarding. It goes to{" "}
-        {s.settings.joiningFeePayee}’s Stripe account (GBP, USD, EUR) or First Bank naira account — never into the Society’s accounts, never counted as shares and never refunded.
-        {s.access("fees") !== "act" ? ` ${s.role.title} can view and export this list but not change it.` : ""}
+        The one-off joining fee (₦10,000 or £10) is VEKAT&rsquo;s charge for registration, ID checks and onboarding. It is paid to VEKAT Group Ltd, never into
+        the cooperative&rsquo;s accounts, never counted as shares and never refunded.
       </Banner>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Fees received" value={counted.length} sub="Stripe paid + First Bank matched" />
-        <StatTile label="Received by currency" value={totals.length ? money(totals[0][1], totals[0][0]) : "—"} sub={totals.slice(1).map(([c, v]) => money(v, c)).join(" · ") || "No other currencies"} />
-        <StatTile tone="warm" label="Receipts to match" value={toMatch.length} sub="First Bank transfers — finance matches to statement" />
-        <StatTile label="Payee (a setting)" value={<span className="text-[22px]">{s.settings.joiningFeePayee}</span>} sub="Changed only with two-admin approval" />
+      {err ? <Banner tone="danger">{err}</Banner> : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Fees confirmed" value={t ? t.confirmed : "…"} sub="Receipt issued and emailed" />
+        <StatTile label="Received" value={received} sub="From confirmed fees" />
+        <StatTile tone="warm" label="Reported, to check" value={t ? t.reported : "…"} sub="Applicant says they paid; match it to the bank" />
+        <StatTile label="Not paid yet" value={t ? t.unpaid : "…"} sub="Approved members still owing the fee" />
       </div>
 
       <Card className="p-5">
-        <div className="flex flex-wrap gap-3">
-          <Field label="Channel" className="w-52">
-            <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputCls}>
-              <option value="all">Stripe and First Bank</option>
-              <option value="stripe">Stripe (GBP, USD, EUR)</option>
-              <option value="firstbank">First Bank (NGN)</option>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Show" className="w-56">
+            <select id="fees-status" value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+              <option value="all">Everyone</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Payment reported">Reported, to check</option>
+              <option value="Not paid yet">Not paid yet</option>
             </select>
           </Field>
-          <Field label="Status" className="w-52">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
-              <option value="all">All</option>
-              <option>Paid — Stripe</option>
-              <option>Receipt uploaded</option>
-              <option>Matched to First Bank</option>
-            </select>
+          <Field label="Search" className="min-w-[220px] flex-1">
+            <input id="fees-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, email, HBA-, HBC- or receipt number" className={inputCls} />
           </Field>
         </div>
         <div className="mt-5">
-          {rows.length === 0 ? (
-            <Empty title="No joining-fee payments match these filters." />
+          {!data ? (
+            <p className="m-0 text-[14px] text-muted">Loading…</p>
+          ) : rows.length === 0 ? (
+            <Empty title={data.rows.length ? "Nobody matches these filters." : "No joining fees yet. Approved members appear here."} />
           ) : (
-            <Table minWidth={900} label="Joining-fee payments">
+            <Table minWidth={900} label="Joining fees">
               <thead>
                 <tr>
-                  <Th>Reference</Th>
-                  <Th>Name</Th>
-                  <Th>Channel</Th>
-                  <Th right>Amount</Th>
-                  <Th>Paid on</Th>
-                  <Th>Stripe id / receipt</Th>
+                  <Th>Member</Th>
+                  <Th>Amount</Th>
+                  <Th>Paid</Th>
+                  <Th>Receipt</Th>
                   <Th>Status</Th>
-                  <Th>Action</Th>
+                  <Th>{""}</Th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((f) => (
-                  <tr key={f.id}>
-                    <Td className="font-semibold whitespace-nowrap text-forest-800">{f.ref}</Td>
-                    <Td className="whitespace-nowrap">{f.name}</Td>
-                    <Td className="whitespace-nowrap">{f.channel === "stripe" ? "Stripe" : "First Bank"}</Td>
-                    <Td right>{money(f.amount, f.currency)}</Td>
-                    <Td className="whitespace-nowrap">{fmtDate(f.paidAt, true)}</Td>
-                    <Td className={cx("text-[13px] text-muted", "max-w-[180px] truncate")}>{f.stripeId ?? f.receipt}</Td>
+                {rows.map((r) => (
+                  <tr key={r.reference}>
                     <Td>
-                      <Pill>{f.status}</Pill>
+                      <strong className="block">{r.name}</strong>
+                      <span className="block font-mono text-[12px] text-muted">{[r.memberNo, r.reference].filter(Boolean).join(" · ")}</span>
+                      <span className="block text-[12px] text-muted">{r.form}</span>
+                    </Td>
+                    <Td>{r.amount}</Td>
+                    <Td>
+                      {r.paidOn || <span className="text-muted">—</span>}
+                      <span className="block text-[12px] text-muted">{r.method}</span>
                     </Td>
                     <Td>
-                      {f.status === "Receipt uploaded" ? (
-                        <Btn size="sm" variant="gold" reason={matchReason} onClick={() => match(f)}>
-                          Match to statement
+                      {r.receiptNo ? (
+                        <>
+                          <span className="font-mono text-[12.5px]">{r.receiptNo}</span>
+                          <span className="block text-[12px] text-muted">
+                            {r.confirmedOn}
+                            {r.confirmedBy ? ` · ${r.confirmedBy}` : ""}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </Td>
+                    <Td>
+                      <Pill tone={TONE[r.status]}>{r.status === "Payment reported" ? "Reported" : r.status}</Pill>
+                    </Td>
+                    <Td>
+                      {r.receiptNo ? (
+                        <a
+                          href={`/api/admin/applications/${encodeURIComponent(r.reference)}/fee-receipt`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[13px] font-semibold text-forest-800 underline underline-offset-[3px]"
+                        >
+                          Receipt PDF
+                        </a>
+                      ) : r.memberNo ? (
+                        <Btn size="sm" disabled={busy !== null} onClick={() => void confirm(r)}>
+                          {busy === r.reference ? "Confirming…" : "Confirm fee received"}
                         </Btn>
                       ) : (
-                        <span className="text-[13px] text-muted">{f.matchedBy}</span>
+                        <span className="text-[12px] text-muted">Approve first</span>
                       )}
                     </Td>
                   </tr>
@@ -136,9 +203,6 @@ export function JoiningFeesScreen() {
             </Table>
           )}
         </div>
-        <p className="m-0 mt-4 text-[13px] text-muted">
-          VEKAT reports the number and total of joining fees to the Board every quarter and in the annual report (6.3). Stripe payments are confirmed by webhook; First Bank payments by receipt upload and statement match.
-        </p>
       </Card>
     </>
   );
