@@ -63,13 +63,10 @@ function WaitingBox() {
       const h = holidays?.pending?.length ?? 0;
       const m = missed?.rows?.length ?? 0;
       const u = rec?.unmatched?.length ?? 0;
-      // Only accounts that had money in last month need signing off.
-      const unsigned = rec?.accounts?.filter((a) => !a.signOff && (a.recordedCount > 0 || a.uploadedTotal > 0)).length ?? 0;
       setTodos([
         { key: "proofs", n: p, text: `proof${p === 1 ? "" : "s"} of payment to check`, target: "proofs", urgent: true },
         { key: "holidays", n: h, text: `payment holiday request${h === 1 ? "" : "s"} to answer`, target: "holidays", urgent: true },
-        { key: "unmatched", n: u, text: `bank payment${u === 1 ? "" : "s"} not recorded yet`, target: "reconciliation", urgent: true },
-        { key: "signoff", n: unsigned, text: `account${unsigned === 1 ? "" : "s"} to sign off for ${rec?.label ?? "last month"}`, target: "reconciliation", urgent: true },
+        { key: "unmatched", n: u, text: `bank payment${u === 1 ? "" : "s"} we couldn't match to a member`, target: "reconciliation", urgent: true },
         { key: "missed", n: m, text: `member${m === 1 ? " hasn't" : "s haven't"} paid for ${missed?.label ?? "this month"} yet`, target: "missed-payments", urgent: false },
       ]);
     });
