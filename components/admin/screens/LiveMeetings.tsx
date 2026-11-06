@@ -51,7 +51,32 @@ function AgmCard({ data, err, load }: { data: Data | null; err: string; load: ()
   const [place, setPlace] = useState("");
   const [agenda, setAgenda] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [tell, setTell] = useState(true);
+  const [reason, setReason] = useState("");
   const showForm = !agm || editing;
+
+  async function cancel() {
+    if (!agm || !data) return;
+    if (!window.confirm(tell ? `Cancel the AGM and email all ${data.voters.total} members that it is cancelled?` : "Cancel the AGM without emailing members?")) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/meetings", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tellMembers: tell, reason }) });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; sent?: number; failed?: number; of?: number };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      toast(
+        tell ? `Meeting cancelled. ${d.sent} of ${d.of} members emailed${d.failed ? `, ${d.failed} failed` : ""}.` : "Meeting cancelled. Members were not emailed.",
+        d.failed ? "warn" : undefined,
+      );
+      setCancelling(false);
+      setReason("");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That did not work.", "warn");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function startEdit() {
     if (agm) {
@@ -119,11 +144,43 @@ function AgmCard({ data, err, load }: { data: Data | null; err: string; load: ()
                 {agm.failed ? ` (${agm.failed} failed, see the audit log)` : ""}.
               </p>
               {data.replies ? <RepliesPanel r={data.replies} voters={data.voters} /> : null}
-              <div>
+              <div className="flex flex-wrap gap-2">
                 <Btn size="sm" onClick={startEdit}>
                   Move the meeting
                 </Btn>
+                <Btn size="sm" variant="ghost" onClick={() => setCancelling(!cancelling)}>
+                  Cancel the meeting
+                </Btn>
               </div>
+              {cancelling ? (
+                <div className="flex flex-col gap-2.5 rounded-xl border border-[#E9B9AD] bg-[#F9E7E2] p-3.5">
+                  <strong className="text-[14.5px] text-danger">Cancel this meeting?</strong>
+                  <label className="flex items-start gap-2 text-[14px] text-ink">
+                    <input type="checkbox" checked={tell} onChange={(e) => setTell(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-forest-700" />
+                    <span>
+                      Email all members that it is cancelled
+                      <span className="block text-[12.5px] text-muted">They were sent the notice, so it is best to tell them.</span>
+                    </span>
+                  </label>
+                  {tell ? (
+                    <input
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="Reason (optional), e.g. venue not available"
+                      className={inputCls}
+                      aria-label="Reason for cancelling"
+                    />
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Btn size="sm" variant="primary" disabled={busy} onClick={() => void cancel()}>
+                      {busy ? "Cancelling…" : "Yes, cancel the meeting"}
+                    </Btn>
+                    <Btn size="sm" variant="ghost" disabled={busy} onClick={() => setCancelling(false)}>
+                      Keep it
+                    </Btn>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {showForm ? (

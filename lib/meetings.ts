@@ -122,6 +122,62 @@ export async function setAgm(input: { date: string; time: string; place: string;
   return { ok: true as const, agm };
 }
 
+/**
+ * Cancels the AGM. If its notice already went out, members can be told (the office's notice wrapper,
+ * template Q). The meeting card disappears from every member's account straight away.
+ */
+export async function cancelAgm(input: { tellMembers: boolean; reason: string }, actor: string, site: string) {
+  const agm = await getAgm();
+  if (!agm) return { ok: false as const, error: "There is no meeting to cancel." };
+  const label = meetingLabel(agm.date, agm.time);
+  const reason = input.reason.trim().slice(0, 1000);
+
+  let result = { sent: 0, failed: 0, errors: [] as string[] };
+  let of = 0;
+  if (input.tellMembers && agm.date >= lagosToday()) {
+    const { members } = await collections();
+    const list = (
+      await members.find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, firstName: 1, email: 1, membership: 1 } }).toArray()
+    ).filter((m) => m.email?.trim());
+    of = list.length;
+    const wrapper = await getTemplate("Q");
+    const subject = `The Annual General Meeting on ${label} is cancelled`;
+    const message = [
+      `The Annual General Meeting planned for **${label}** at ${agm.place} has been cancelled.`,
+      reason ? `Reason: ${reason}` : "",
+      "We will email you a new notice, at least 21 days ahead, when a new date is set. There is nothing you need to do.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const template = {
+      subject: wrapper.subject.replace(/\{\{\s*Subject\s*\}\}/g, subject),
+      body: wrapper.body.replace(/\{\{\s*Message\s*\}\}/g, message),
+    };
+    if (list.length) {
+      result = await sendEmailBatch(
+        list.map((m) => ({
+          to: m.email,
+          ...renderEmail(template, { FirstName: m.firstName?.trim() || m.fullName.trim().split(/\s+/)[0] || "Member", MemberNo: m.membership!.memberNo }),
+        })),
+      );
+    }
+  }
+  void site;
+
+  await setSetting(KEY, null, actor, `AGM of ${label} cancelled`, label, "Not set");
+  await recordAudit({
+    action: "meeting.cancelled",
+    actor,
+    subject: "Annual General Meeting",
+    before: label,
+    after: "Cancelled",
+    detail: `AGM of ${label} cancelled${reason ? ` (${reason})` : ""}${
+      input.tellMembers ? `: ${result.sent} of ${of} members emailed${result.failed ? `, ${result.failed} failed (${result.errors[0] ?? ""})` : ""}` : ", members not emailed"
+    }`,
+  }).catch(() => {});
+  return { ok: true as const, sent: result.sent, failed: result.failed, of };
+}
+
 // ---------- Replies: will the member attend? ----------
 
 export type AgmAnswer = "yes" | "no";
