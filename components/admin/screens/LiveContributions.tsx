@@ -19,7 +19,7 @@ type Line = {
   autoRecorded?: boolean;
   autoError?: string;
 };
-type Recent = { receiptNo: string; memberNo: string; amount: string; period: string; paidAt: string; bankRef: string; source: string; emailed: boolean };
+type Recent = { receiptNo: string; memberNo: string; name?: string; amount: string; period: string; paidAt: string; bankRef: string; source: string; emailed: boolean };
 
 const SAMPLE = `Date,Narration,Reference,Debit,Credit,Balance
 30/10/2026,TRF FROM ADAEZE OKAFOR HBC-EDO-26-00008 CONTRIBUTION,UBA2610300001,,5000.00,105000.00
@@ -75,7 +75,7 @@ export function LiveContributionsCard() {
   }, []);
   useEffect(load, [load]);
 
-  const nameOf = (no: string) => members.find((m) => m.memberNo === no)?.name ?? "";
+  const nameOf = (no: string, saved = "") => members.find((m) => m.memberNo === no)?.name ?? saved;
 
   async function read(file: File | undefined) {
     if (!file) return;
@@ -392,8 +392,8 @@ export function LiveContributionsCard() {
                 {shownRecent.map((c) => (
                   <tr key={c.receiptNo}>
                     <Td>
-                      <strong className="block">{nameOf(c.memberNo) || c.memberNo}</strong>
-                      {nameOf(c.memberNo) ? <span className="block font-mono text-[12.5px] text-muted">{c.memberNo}</span> : null}
+                      <strong className="block">{nameOf(c.memberNo, c.name) || c.memberNo}</strong>
+                      {nameOf(c.memberNo, c.name) ? <span className="block font-mono text-[12.5px] text-muted">{c.memberNo}</span> : null}
                     </Td>
                     <Td className="font-semibold">{c.amount}</Td>
                     <Td>{c.period}</Td>

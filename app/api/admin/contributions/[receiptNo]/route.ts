@@ -13,8 +13,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ receipt
   if (!/^HBC-CR-\d{4}-\d{5,}$/.test(receiptNo)) return new NextResponse("Invalid receipt number", { status: 400 });
   try {
     const c = await findContribution(receiptNo);
-    const member = c ? await (await collections()).members.findOne({ reference: c.memberRef }) : null;
-    if (!c || !member) return new NextResponse("Not found", { status: 404 });
+    if (!c) return new NextResponse("Receipt not found", { status: 404 });
+    // The member record may have been re-imported (new reference) or removed since: fall back to the
+    // membership number, then to the name saved on the contribution. The receipt always opens.
+    const { members } = await collections();
+    const member =
+      (await members.findOne({ reference: c.memberRef }, { projection: { fullName: 1 } })) ??
+      (await members.findOne({ "membership.memberNo": c.memberNo }, { projection: { fullName: 1 } }));
     return new NextResponse((await receiptPdfFor(member, c)) as BodyInit, {
       headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${receiptNo}.pdf"`, "Cache-Control": "private, no-store" },
     });

@@ -25,6 +25,7 @@ export async function GET() {
       recent: recent.map((c) => ({
         receiptNo: c.receiptNo,
         memberNo: c.memberNo,
+        name: c.memberName ?? "",
         amount: money(c.amount, c.currency),
         period: periodLabel(c.period),
         paidAt: DATE.format(c.paidAt),

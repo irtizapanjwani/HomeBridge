@@ -30,6 +30,8 @@ export type ContributionDoc = {
   receiptNo: string;
   memberNo: string;
   memberRef: string;
+  /** The member's name when it was recorded, so the receipt still opens if the record changes later. */
+  memberName?: string;
   amount: number;
   currency: ContributionCurrency;
   /** The month it counts for, YYYY-MM. Normally the month it was received. */
@@ -229,6 +231,7 @@ export async function recordContribution(input: RecordInput, actor: string): Pro
     receiptNo,
     memberNo: member.membership.memberNo,
     memberRef: member.reference,
+    memberName: member.fullName,
     amount: Math.round(input.amount * 100) / 100,
     currency: input.currency,
     period,
@@ -263,10 +266,10 @@ export function money(amount: number, currency: ContributionCurrency) {
   return `${sym}${amount.toLocaleString("en-GB", { minimumFractionDigits: currency === "NGN" ? 0 : 2, maximumFractionDigits: 2 })}`;
 }
 
-export function receiptPdfFor(member: MemberDoc, c: ContributionDoc) {
+export function receiptPdfFor(member: Pick<MemberDoc, "fullName"> | null, c: ContributionDoc) {
   return buildContributionReceipt({
     receiptNo: c.receiptNo,
-    fullName: member.fullName,
+    fullName: member?.fullName || c.memberName || `Member ${c.memberNo}`,
     memberNo: c.memberNo,
     amount: c.amount,
     currency: c.currency,
