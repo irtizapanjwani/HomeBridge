@@ -4,6 +4,7 @@ import { isDbConfigured } from "@/lib/db";
 import { runPaymentReminders } from "@/lib/payment-reminders";
 import { siteUrl } from "@/lib/site-url";
 import { runMonthlyStatements } from "@/lib/statements";
+import { autoSignOff } from "@/lib/reconciliation";
 
 /**
  * Called once a day by Vercel Cron (vercel.json), 07:00 UTC = 08:00 Lagos. Vercel sends
@@ -24,7 +25,12 @@ export async function GET(req: Request) {
       console.error("[cron] statements failed:", err instanceof Error ? err.message : "unknown error");
       return null;
     });
-    return NextResponse.json({ ok: true, reminders, statements });
+    // Month-end check: sign off last month's accounts whose bank payments are all recorded.
+    const d = new Date();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    const reconciled = await autoSignOff(d.toISOString().slice(0, 7)).catch(() => null);
+    return NextResponse.json({ ok: true, reminders, statements, reconciled });
   } catch (err) {
     console.error("[cron] payment reminders failed:", err instanceof Error ? err.message : "unknown error");
     return NextResponse.json({ ok: false, error: "Reminders failed" }, { status: 502 });
