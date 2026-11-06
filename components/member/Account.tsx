@@ -12,6 +12,7 @@ import { FormsCard, type FormsView } from "./Forms";
 import { ContactEditor, MembershipCard, type MembershipView } from "./Membership";
 import { ContributionsCard, type ContributionsView } from "./Contributions";
 import { GlanceCard, type GlanceView, IdeasCard, type IdeaView, type MotionView, VotesCard } from "./Community";
+import { MeetingCard, type MeetingView } from "./Meeting";
 
 export type AccountView = {
   reference: string;
@@ -45,6 +46,8 @@ export type AccountView = {
   /** Cooperative-wide totals, votes and ideas, once admitted. */
   glance?: GlanceView;
   motions?: MotionView[];
+  /** The next general meeting and the member's reply, while one is coming up. */
+  meeting?: MeetingView;
   ideas?: IdeaView[];
   /** What the member can change themselves. */
   contact: { whatsapp: string; address: string; city: string };
@@ -128,6 +131,7 @@ export function Account({ view }: { view: AccountView }) {
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
           {view.forms && <FormsCard forms={view.forms} />}
           {view.contributions && <ContributionsCard c={view.contributions} />}
+          {view.meeting && <MeetingCard meeting={view.meeting} />}
           {view.motions && <VotesCard motions={view.motions} />}
           {view.ideas && <IdeasCard ideas={view.ideas} />}
 

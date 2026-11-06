@@ -358,7 +358,7 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     ],
     blocks: [
       { name: "AGENDA", description: "The agenda the officer wrote, as a numbered list", sample: "" },
-      { name: "BUTTON", description: "An “Open your account” button", sample: "" },
+      { name: "BUTTON", description: "A “See the meeting and reply” button", sample: "" },
     ],
     mustInclude: ["{{MeetingDate}}"],
   },
@@ -659,7 +659,7 @@ This is formal notice of the **HomeBridge Cooperative Annual General Meeting**.
 
 {{AGENDA}}
 
-Every member may attend and vote. If you cannot attend, you can give your proxy to another member. Votes on motions can also be cast online in your account once they open.
+Every member may attend and vote. Please let us know in your account whether you will come. If you cannot attend, you can give your proxy to another member, and votes on motions can also be cast online in your account once they open.
 
 {{BUTTON}}
 
@@ -862,7 +862,7 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
               : key === "R"
                 ? "Vote in your account"
                 : key === "S"
-                  ? "Open your account"
+                  ? "See the meeting and reply"
                   : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),

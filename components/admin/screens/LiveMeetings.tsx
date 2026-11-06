@@ -5,7 +5,9 @@ import { useToast } from "@/components/ui/Toast";
 import { Banner, Btn, Card, CardTitle, Field, Pill, cx, inputCls } from "../ui";
 
 type Agm = { date: string; time: string; place: string; agenda: string; noticeSentAt: string; sent: number; failed: number; of: number };
-type Data = { agm: Agm | null; voters: { total: number; home: number; diaspora: number }; earliest: string; noticeDays: number };
+type Person = { memberNo: string; name: string; group: "home" | "diaspora"; chapter: string };
+type Replies = { yes: Person[]; no: Person[]; noReply: Person[]; yesHome: number; yesDiaspora: number };
+type Data = { agm: Agm | null; voters: { total: number; home: number; diaspora: number }; replies: Replies | null; earliest: string; noticeDays: number };
 
 const DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const STAMP = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -116,6 +118,7 @@ function AgmCard({ data, err, load }: { data: Data | null; err: string; load: ()
                 Notice emailed {STAMP.format(new Date(agm.noticeSentAt))} to {agm.sent} of {agm.of} members
                 {agm.failed ? ` (${agm.failed} failed, see the audit log)` : ""}.
               </p>
+              {data.replies ? <RepliesPanel r={data.replies} voters={data.voters} /> : null}
               <div>
                 <Btn size="sm" onClick={startEdit}>
                   Move the meeting
@@ -220,3 +223,67 @@ function QuorumCard({ data, err }: { data: Data | null; err: string }) {
     </Card>
   );
 }
+
+/** Members' answers to "Will you attend?", and whether the meeting looks like it will be quorate. */
+function RepliesPanel({ r, voters }: { r: Replies; voters: Data["voters"] }) {
+  const [open, setOpen] = useState(false);
+  const required = Math.min(Math.ceil(voters.total * 0.2), 50);
+  const each = Math.ceil(required * 0.25);
+  const likely = r.yes.length >= required && r.yesHome >= each && r.yesDiaspora >= each;
+  const tiles = [
+    ["Coming", r.yes.length, "border-forest-800 text-forest-800"],
+    ["Can't come", r.no.length, "border-danger text-danger"],
+    ["No reply yet", r.noReply.length, "border-line text-muted"],
+  ] as const;
+  const list = (title: string, people: Person[]) => (
+    <div className="min-w-0">
+      <p className="m-0 mb-1 text-[13px] font-bold text-ink">
+        {title} ({people.length})
+      </p>
+      {people.length ? (
+        <ul className="m-0 flex max-h-56 list-none flex-col gap-1 overflow-y-auto p-0 text-[13px]">
+          {people.map((p) => (
+            <li key={p.memberNo} className="rounded-md bg-paper px-2 py-1">
+              <span className="block text-ink">{p.name}</span>
+              <span className="block text-[11.5px] text-muted">
+                {p.memberNo} · {p.group === "home" ? "Home" : "Diaspora"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m-0 text-[13px] text-muted">Nobody.</p>
+      )}
+    </div>
+  );
+  return (
+    <div className="mt-1 flex flex-col gap-2 border-t border-line pt-3">
+      <p className="m-0 text-[14px] font-semibold text-ink">Members&rsquo; replies</p>
+      <div className="grid grid-cols-3 gap-2">
+        {tiles.map(([label, n, cls]) => (
+          <div key={label} className={`rounded-xl border-2 bg-paper px-2 py-1.5 text-center ${cls}`}>
+            <span className="block text-[22px] leading-tight font-bold tabular-nums">{n}</span>
+            <span className="block text-[12.5px] font-semibold">{label}</span>
+          </div>
+        ))}
+      </div>
+      <p className={cx("m-0 text-[13.5px]", likely ? "text-forest-800" : "text-body")}>
+        {likely ? "On these replies the meeting should be quorate" : "Not enough replies yet for a quorum"}: {r.yes.length} coming ({r.yesHome} home, {r.yesDiaspora} diaspora); needs{" "}
+        {required} ({each} home and {each} diaspora).
+      </p>
+      <div>
+        <Btn size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Hide names" : "See names"}
+        </Btn>
+      </div>
+      {open ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {list("Coming", r.yes)}
+          {list("Can't come", r.no)}
+          {list("No reply yet", r.noReply)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { isEmailConfigured } from "@/lib/email";
-import { NOTICE_DAYS, earliestAgmDate, getAgm, setAgm, voterCounts } from "@/lib/meetings";
+import { NOTICE_DAYS, agmReplies, earliestAgmDate, getAgm, setAgm, voterCounts } from "@/lib/meetings";
 import { siteUrl } from "@/lib/site-url";
 
 /** The AGM as set, plus the numbers the quorum calculator needs. */
@@ -11,8 +11,8 @@ export async function GET() {
   if (!(await isSignedIn())) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   if (!isDbConfigured()) return NextResponse.json({ ok: false, error: "No database is configured" }, { status: 503 });
   try {
-    const [agm, voters] = await Promise.all([getAgm(), voterCounts()]);
-    return NextResponse.json({ ok: true, agm, voters, earliest: earliestAgmDate(), noticeDays: NOTICE_DAYS }, { headers: { "Cache-Control": "no-store" } });
+    const [agm, voters, replies] = await Promise.all([getAgm(), voterCounts(), agmReplies()]);
+    return NextResponse.json({ ok: true, agm, voters, replies, earliest: earliestAgmDate(), noticeDays: NOTICE_DAYS }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("[admin] meetings failed:", err instanceof Error ? err.message : "unknown error");
     return NextResponse.json({ ok: false, error: "Could not load the meeting details" }, { status: 502 });

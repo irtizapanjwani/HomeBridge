@@ -11,11 +11,14 @@ import { getSetting, setSetting } from "@/lib/app-settings";
 import { recordAudit } from "@/lib/audit";
 import { sendEmailBatch } from "@/lib/email";
 import { agendaBlock, buttonBlock, getTemplate, renderEmail } from "@/lib/email-templates";
-import { collections } from "@/lib/members";
+import { getDb } from "@/lib/db";
+import { type MemberDoc, collections } from "@/lib/members";
 
 export const NOTICE_DAYS = 21;
 
 export type Agm = {
+  /** Stays the same when the meeting is moved, so members' replies carry over. */
+  id?: string;
   /** YYYY-MM-DD */
   date: string;
   /** HH:MM, Lagos time */
@@ -84,7 +87,7 @@ export async function setAgm(input: { date: string; time: string; place: string;
   ).filter((m) => m.email?.trim());
   const portal = `${site.replace(/\/+$/, "")}/app`;
   const template = await getTemplate("S");
-  const blocks = { AGENDA: agendaBlock(agenda), BUTTON: buttonBlock("Open your account", portal) };
+  const blocks = { AGENDA: agendaBlock(agenda), BUTTON: buttonBlock("See the meeting and reply", `${portal}#meeting`) };
   const result = list.length
     ? await sendEmailBatch(
         list.map((m) => ({
@@ -104,7 +107,9 @@ export async function setAgm(input: { date: string; time: string; place: string;
       )
     : { sent: 0, failed: 0, errors: [] as string[] };
 
-  const agm: Agm = { date, time, place, agenda, noticeSentAt: new Date().toISOString(), sent: result.sent, failed: result.failed, of: list.length };
+  // Moving an upcoming meeting keeps its replies; setting one after the last has passed starts afresh.
+  const id = before && before.date >= lagosToday() ? agmIdOf(before) : `agm-${Date.now()}`;
+  const agm: Agm = { id, date, time, place, agenda, noticeSentAt: new Date().toISOString(), sent: result.sent, failed: result.failed, of: list.length };
   await setSetting(KEY, agm, actor, `AGM set for ${label}, ${place}`, before ? meetingLabel(before.date, before.time) : "Not set", label);
   await recordAudit({
     action: result.failed ? "meeting.notice_failed" : "meeting.notice_sent",
@@ -115,4 +120,93 @@ export async function setAgm(input: { date: string; time: string; place: string;
     detail: `AGM notice: ${result.sent} of ${list.length} members emailed${result.failed ? `, ${result.failed} failed (${result.errors[0] ?? ""})` : ""}`,
   }).catch(() => {});
   return { ok: true as const, agm };
+}
+
+// ---------- Replies: will the member attend? ----------
+
+export type AgmAnswer = "yes" | "no";
+type ReplyDoc = { agmId: string; memberNo: string; name: string; answer: AgmAnswer; at: Date };
+
+const agmIdOf = (a: Agm) => a.id ?? `agm-${a.noticeSentAt}`;
+
+async function replies() {
+  const c = (await getDb()).collection<ReplyDoc>("agm_replies");
+  repliesIndexed ??= c.createIndex({ agmId: 1, memberNo: 1 }, { unique: true }).then(
+    () => undefined,
+    () => {
+      repliesIndexed = null;
+    },
+  );
+  return c;
+}
+let repliesIndexed: Promise<void> | null = null;
+
+/** The meeting is shown to members until the end of its day. */
+async function upcomingAgm() {
+  const agm = await getAgm();
+  return agm && agm.date >= lagosToday() ? agm : null;
+}
+
+const agendaItems = (agenda: string) =>
+  agenda
+    .split("\n")
+    .map((l) => l.replace(/^\s*(\d+[.)]|[-*])\s*/, "").trim())
+    .filter(Boolean);
+
+export type MeetingView = { when: string; place: string; agenda: string[]; daysLeft: number; answer: AgmAnswer | null };
+
+/** What the member's account shows: the next meeting and their own reply. */
+export async function meetingForMember(memberNo: string): Promise<MeetingView | null> {
+  const agm = await upcomingAgm();
+  if (!agm) return null;
+  const mine = await (await replies()).findOne({ agmId: agmIdOf(agm), memberNo });
+  const daysLeft = Math.round((Date.parse(`${agm.date}T12:00:00Z`) - Date.parse(`${lagosToday()}T12:00:00Z`)) / 86_400_000);
+  return { when: meetingLabel(agm.date, agm.time), place: agm.place, agenda: agendaItems(agm.agenda), daysLeft, answer: mine?.answer ?? null };
+}
+
+export async function replyToAgm(member: MemberDoc, answer: AgmAnswer) {
+  if (!member.membership) return { ok: false as const, error: "Only members can reply." };
+  const agm = await upcomingAgm();
+  if (!agm) return { ok: false as const, error: "There is no meeting to reply to just now." };
+  const memberNo = member.membership.memberNo;
+  await (await replies()).updateOne(
+    { agmId: agmIdOf(agm), memberNo },
+    { $set: { answer, name: member.fullName, at: new Date() } },
+    { upsert: true },
+  );
+  await recordAudit({
+    action: "meeting.reply",
+    actor: `Member (${memberNo})`,
+    subject: "Annual General Meeting",
+    detail: answer === "yes" ? "Will attend" : "Cannot attend",
+  }).catch(() => {});
+  return { ok: true as const };
+}
+
+/** Who has said they will come, who cannot, and who has not replied, for the admin AGM card. */
+export async function agmReplies() {
+  const agm = await getAgm();
+  if (!agm) return null;
+  const { members } = await collections();
+  const [rows, admitted] = await Promise.all([
+    (await replies()).find({ agmId: agmIdOf(agm) }).sort({ at: -1 }).toArray(),
+    members
+      .find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, country: 1, chapter: 1, membership: 1 } })
+      .sort({ "membership.seq": 1 })
+      .toArray(),
+  ]);
+  const byNo = new Map(admitted.map((m) => [m.membership!.memberNo, m]));
+  const replied = new Set(rows.map((r) => r.memberNo));
+  const person = (no: string, name: string) => {
+    const m = byNo.get(no);
+    return { memberNo: no, name: m?.fullName ?? name, group: m?.country === "Nigeria" ? "home" : "diaspora", chapter: m?.chapter ?? "" };
+  };
+  const yes = rows.filter((r) => r.answer === "yes").map((r) => person(r.memberNo, r.name));
+  return {
+    yes,
+    no: rows.filter((r) => r.answer === "no").map((r) => person(r.memberNo, r.name)),
+    noReply: admitted.filter((m) => !replied.has(m.membership!.memberNo)).map((m) => person(m.membership!.memberNo, m.fullName)),
+    yesHome: yes.filter((p) => p.group === "home").length,
+    yesDiaspora: yes.filter((p) => p.group === "diaspora").length,
+  };
 }

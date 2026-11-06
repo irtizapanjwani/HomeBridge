@@ -13,6 +13,7 @@ import { proofsFor } from "@/lib/payment-proofs";
 import { lagosToday } from "@/lib/payment-reminders";
 import { transparency } from "@/lib/transparency";
 import { ideasFor, motionsForMember } from "@/lib/votes";
+import { meetingForMember } from "@/lib/meetings";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Lagos",
@@ -64,13 +65,14 @@ export default async function MemberAccountPage() {
   const proofs = m.membership ? await proofsFor(m.reference).catch(() => []) : [];
   const holidays = m.membership ? await holidaysFor(m.reference).catch(() => []) : [];
   // Each of these is optional: a failure leaves its card out rather than taking the page down.
-  const [glance, motions, ideas] = m.membership
+  const [glance, motions, ideas, meeting] = m.membership
     ? await Promise.all([
         transparency().catch(() => undefined),
         motionsForMember(m.membership.memberNo).catch(() => undefined),
         ideasFor(m.reference).catch(() => undefined),
+        meetingForMember(m.membership.memberNo).catch(() => null),
       ])
-    : [undefined, undefined, undefined];
+    : [undefined, undefined, undefined, null];
   const SHORT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric" });
 
   const view: AccountView = {
@@ -132,6 +134,7 @@ export default async function MemberAccountPage() {
     contact: { whatsapp: m.whatsapp || m.contact, address: m.address ?? "", city: m.city ?? "" },
     ...(glance ? { glance } : {}),
     ...(motions ? { motions } : {}),
+    ...(meeting ? { meeting } : {}),
     ...(ideas ? { ideas } : {}),
     ...(packMemberOf(m)
       ? {
