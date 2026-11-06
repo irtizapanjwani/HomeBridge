@@ -52,8 +52,8 @@ const ARREARS_STEPS: Record<number, string> = {
 const AUTO_KEY = "payment_reminders_auto";
 const DIGEST_KEY = "payment_digest_last";
 
-/** Off until the office switches it on, so testing never emails a real member by surprise. */
-export const isPaymentRemindersAuto = () => getSetting(AUTO_KEY, false);
+/** On unless the office switches it off (client asked for reminders to run by default). */
+export const isPaymentRemindersAuto = () => getSetting(AUTO_KEY, true);
 
 export async function setPaymentRemindersAuto(on: boolean, actor: string) {
   const before = await isPaymentRemindersAuto();

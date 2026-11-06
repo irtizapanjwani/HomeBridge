@@ -24,8 +24,8 @@ const DAY_MS = 86_400_000;
 
 const AUTO_KEY = "forms_reminders_auto";
 
-/** Off until the office switches it on, so testing never emails a real member by surprise. */
-export const isRemindersAuto = () => getSetting(AUTO_KEY, false);
+/** On unless the office switches it off (client asked for reminders to run by default). */
+export const isRemindersAuto = () => getSetting(AUTO_KEY, true);
 
 export async function setRemindersAuto(on: boolean, actor: string) {
   const before = await isRemindersAuto();

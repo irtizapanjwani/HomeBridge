@@ -312,7 +312,7 @@ export function FormsRemindersCard() {
       <p className="m-0 text-[14px] text-body">
         When this is on, members who have not signed their declaration or nominee form get Email E <strong>7 days</strong> and again{" "}
         <strong>14 days</strong> after their welcome pack, checked every morning at 08:00 Lagos time. Each reminder goes once. The wording is
-        email E under Email templates. Keep it off while testing with real records.
+        email E under Email templates. On by default.
       </p>
       {err ? <Banner tone="danger">{err}</Banner> : null}
       <div className="flex flex-wrap gap-2">
@@ -424,7 +424,7 @@ export function PaymentRemindersCard() {
         <strong>day 1</strong> due (G), <strong>day 5</strong> reminder (H), <strong>day 7</strong> last day (I), <strong>day 8</strong> overdue
         (F), <strong>day 15</strong> second notice (J). At 2, 3 and 6 months in a row they also get notice K. From day 8 the office gets one list a
         day of everyone overdue. Each email goes once, and a member who pays stops getting them. New members start the month after they are
-        admitted. Keep it off while testing with real records.
+        admitted. On by default.
       </p>
       {today ? <p className="m-0 text-[13px] text-muted">Today is day {today.day} of the month in Lagos.</p> : null}
       {err ? <Banner tone="danger">{err}</Banner> : null}
