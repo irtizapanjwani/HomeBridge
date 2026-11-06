@@ -21,6 +21,28 @@ const apiKey = process.env.RESEND_API_KEY;
 
 export const isEmailConfigured = () => Boolean(apiKey);
 
+/**
+ * How email is set up right now, for the admin screens. In test mode (no EMAIL_FROM) Resend only
+ * delivers to the address that owns the Resend account, so mail to anyone else is refused.
+ */
+export function emailSetup() {
+  const from = process.env.EMAIL_FROM?.trim() || "";
+  return { configured: Boolean(apiKey), testMode: !from, from: from || TEST_FROM };
+}
+
+/** Resend's error message, in words an officer can act on. */
+export function explainEmailError(raw: string) {
+  const m = raw.toLowerCase();
+  if (m.includes("resend_api_key")) return "Email is not switched on: RESEND_API_KEY is missing from the settings.";
+  if (m.includes("testing emails") || m.includes("own email address"))
+    return "Email is still in test mode, so Resend only delivers to the Resend account owner's address. Set EMAIL_FROM to an address on the verified domain to send to members.";
+  if (m.includes("not verified"))
+    return "The sending address in EMAIL_FROM is on a domain Resend has not verified yet. Verify the domain in Resend, or fix EMAIL_FROM.";
+  if (m.includes("api key is invalid") || m.includes("invalid api key")) return "RESEND_API_KEY is wrong or has been revoked.";
+  if (m.includes("rate limit") || m.includes("too many")) return "Resend's sending limit was hit. Wait a minute and try again.";
+  return `Resend refused it: ${raw}`;
+}
+
 export type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
 export type Attachment = {

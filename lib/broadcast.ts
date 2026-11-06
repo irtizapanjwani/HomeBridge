@@ -11,7 +11,7 @@ import "server-only";
 
 import { recordAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
-import { sendEmailBatch } from "@/lib/email";
+import { explainEmailError, sendEmailBatch } from "@/lib/email";
 import { getTemplate, renderEmail } from "@/lib/email-templates";
 import { collections } from "@/lib/members";
 import { currentPeriod, missedPayments } from "@/lib/missed-payments";
@@ -51,6 +51,8 @@ type BroadcastDoc = {
   at: Date;
   /** Who it went to, so the office can see later exactly which members got it. */
   to?: { memberNo: string; name: string; email: string }[];
+  /** Why emails failed, in plain words, when any did. */
+  error?: string;
 };
 
 async function log() {
@@ -133,6 +135,7 @@ export async function sendBroadcast(a: Audience, subject: string, message: strin
     ...renderEmail(template, { FirstName: m.firstName?.trim() || m.fullName.trim().split(/\s+/)[0] || "Member", MemberNo: m.membership!.memberNo }),
   }));
   const result = await sendEmailBatch(emails);
+  const error = result.failed ? explainEmailError(result.errors[0] ?? "unknown error") : undefined;
 
   await (await log()).insertOne({
     subject: subj,
@@ -144,6 +147,7 @@ export async function sendBroadcast(a: Audience, subject: string, message: strin
     by: actor,
     at: new Date(),
     to: list.map((m) => ({ memberNo: m.membership!.memberNo, name: m.fullName, email: m.email })),
+    ...(error ? { error } : {}),
   });
   await recordAudit({
     action: "notice.sent",
@@ -151,7 +155,7 @@ export async function sendBroadcast(a: Audience, subject: string, message: strin
     subject: subj,
     detail: `Notice to ${audienceLabel(a)}: ${result.sent} of ${list.length} sent by email${result.failed ? `, ${result.failed} failed (${result.errors[0] ?? ""})` : ""}`,
   });
-  return { ok: true as const, recipients: list.length, ...result };
+  return { ok: true as const, recipients: list.length, ...result, error };
 }
 
 const DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -168,5 +172,6 @@ export async function recentBroadcasts() {
     at: DAY.format(b.at),
     message: b.message,
     to: b.to ?? [],
+    error: b.error ?? "",
   }));
 }

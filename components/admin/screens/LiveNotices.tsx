@@ -16,7 +16,9 @@ type Recent = {
   at: string;
   message: string;
   to: { memberNo: string; name: string; email: string }[];
+  error: string;
 };
+type EmailSetup = { configured: boolean; testMode: boolean; from: string };
 type Kind = "all" | "zone" | "behind" | "pick";
 
 const KINDS: [Kind, string, string][] = [
@@ -46,15 +48,18 @@ export function NoticesCard() {
   const [preview, setPreview] = useState<{ subject: string; html: string; as: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [mail, setMail] = useState<EmailSetup | null>(null);
+  const [outcome, setOutcome] = useState<{ sent: number; of: number; error: string } | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/admin/notices")
       .then((r) => r.json())
-      .then((d: { ok?: boolean; zones?: string[]; recent?: Recent[]; members?: Person[]; error?: string }) => {
+      .then((d: { ok?: boolean; zones?: string[]; recent?: Recent[]; members?: Person[]; email?: EmailSetup; error?: string }) => {
         if (!d.ok) return setErr(d.error || "Could not load notices.");
         setZones(d.zones ?? []);
         setRecent(d.recent ?? []);
         setEveryone(d.members ?? []);
+        setMail(d.email ?? null);
         setZone((z) => z || d.zones?.[0] || "");
       })
       .catch(() => setErr("Could not reach the server."));
@@ -114,11 +119,13 @@ export function NoticesCard() {
     if (!window.confirm(`Send “${subject}” by email to ${count} member${count === 1 ? "" : "s"}?\n\n${names}${count > 5 ? ` and ${count - 5} more` : ""}`)) return;
     setBusy(true);
     setErr("");
+    setOutcome(null);
     try {
       const res = await fetch("/api/admin/notices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audience, subject, message }) });
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; sent?: number; failed?: number; recipients?: number };
       if (!res.ok || !d.ok) throw new Error(d.error || "The notice could not be sent.");
-      toast(`Sent to ${d.sent} of ${d.recipients} member${d.recipients === 1 ? "" : "s"}${d.failed ? `, ${d.failed} failed (see the audit log)` : ""}.`, d.failed ? "warn" : undefined);
+      setOutcome({ sent: d.sent ?? 0, of: d.recipients ?? 0, error: d.error ?? "" });
+      if (!d.failed) toast(`Sent to ${d.sent} member${d.sent === 1 ? "" : "s"}.`);
       setSubject("");
       setMessage("");
       setPreview(null);
@@ -140,6 +147,20 @@ export function NoticesCard() {
         Send a notice to members
       </CardTitle>
       <p className="m-0 text-[14.5px] text-body">Email an announcement to members in three steps. Every notice is kept at the bottom of this card.</p>
+      {mail && !mail.configured ? (
+        <Banner tone="danger" title="Email is switched off.">
+          RESEND_API_KEY is not set, so no notice can be emailed. Add it to the site&rsquo;s settings (.env.local on your computer, Vercel online).
+        </Banner>
+      ) : mail?.testMode ? (
+        <Banner tone="warn" title="Email is in test mode.">
+          Notices go out from <code>{mail.from}</code>, Resend&rsquo;s test sender, which only delivers to the owner of the Resend account. Members will not get
+          them until EMAIL_FROM is set to an address on the verified domain.
+        </Banner>
+      ) : mail ? (
+        <p className="m-0 text-[13px] text-muted">
+          Sent from <code>{mail.from}</code>
+        </p>
+      ) : null}
       {err ? <Banner tone="danger">{err}</Banner> : null}
 
       {/* Step 1 */}
@@ -268,6 +289,17 @@ export function NoticesCard() {
             {count === 0 ? "Choose who gets it in step 1." : !subject.trim() ? "Write a subject in step 2." : "Write the message in step 2."}
           </p>
         ) : null}
+        {outcome ? (
+          outcome.error ? (
+            <Banner tone="danger" title={outcome.sent ? `Only ${outcome.sent} of ${outcome.of} emails went out.` : `None of the ${outcome.of} emails went out.`}>
+              {outcome.error}
+            </Banner>
+          ) : (
+            <Banner tone="info" title={`Sent to ${outcome.sent} member${outcome.sent === 1 ? "" : "s"}.`}>
+              Resend accepted every email. If one doesn&rsquo;t arrive in a few minutes, ask them to check spam or junk.
+            </Banner>
+          )
+        ) : null}
         {preview ? (
           <div className="overflow-hidden rounded-xl border border-line">
             <p className="m-0 border-b border-line bg-mist px-3 py-2 text-[13px] text-body">
@@ -288,6 +320,7 @@ export function NoticesCard() {
                 <span className="block text-[12.5px] text-muted">
                   {r.at} by {r.by} · {r.audience} · {r.sent} of {r.recipients} sent{r.failed ? `, ${r.failed} failed` : ""}
                 </span>
+                {r.error ? <span className="mt-1 block text-[13px] text-danger">{r.error}</span> : null}
                 {r.to.length ? (
                   <details className="mt-1">
                     <summary className="cursor-pointer text-[13px] font-semibold text-forest-800">Who got it</summary>

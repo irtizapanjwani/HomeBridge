@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
 import { chapters, parseAudience, pickableMembers, previewCount, previewNotice, recentBroadcasts, sendBroadcast } from "@/lib/broadcast";
 import { isDbConfigured } from "@/lib/db";
+import { emailSetup } from "@/lib/email";
 
 /** The chapters to choose from, and the notices already sent. */
 export async function GET() {
@@ -10,7 +11,7 @@ export async function GET() {
   if (!isDbConfigured()) return NextResponse.json({ ok: false, error: "No database is configured" }, { status: 503 });
   try {
     const [zones, recent, members] = await Promise.all([chapters(), recentBroadcasts(), pickableMembers()]);
-    return NextResponse.json({ ok: true, zones, recent, members });
+    return NextResponse.json({ ok: true, zones, recent, members, email: emailSetup() });
   } catch {
     return NextResponse.json({ ok: false, error: "Could not load notices" }, { status: 502 });
   }
