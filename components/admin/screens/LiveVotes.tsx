@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, inputCls } from "../ui";
 
@@ -32,6 +32,7 @@ export function OnlineVotesCard() {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/admin/motions")
@@ -111,7 +112,8 @@ export function OnlineVotesCard() {
           </thead>
           <tbody>
             {motions.map((m) => (
-              <tr key={m.id}>
+              <Fragment key={m.id}>
+              <tr>
                 <Td>
                   <strong>{m.title}</strong>
                   <span className="block text-[12.5px] text-muted">
@@ -130,6 +132,16 @@ export function OnlineVotesCard() {
                     For {m.counts.For} · Against {m.counts.Against} · Abstain {m.counts.Abstain}
                     {m.byProxy ? ` · ${m.byProxy} by proxy` : ""}
                   </span>
+                  {m.status !== "draft" ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(openId === m.id ? null : m.id)}
+                      aria-expanded={openId === m.id}
+                      className="mt-1 text-[13px] font-semibold text-forest-800 underline underline-offset-[3px]"
+                    >
+                      {openId === m.id ? "Hide who voted" : "See who voted"}
+                    </button>
+                  ) : null}
                 </Td>
                 <Td>
                   {m.status === "draft" ? (
@@ -157,6 +169,14 @@ export function OnlineVotesCard() {
                   ) : null}
                 </Td>
               </tr>
+              {openId === m.id ? (
+                <tr>
+                  <td colSpan={4} className="border-b border-line bg-mist px-4 py-3">
+                    <Turnout id={m.id} />
+                  </td>
+                </tr>
+              ) : null}
+              </Fragment>
             ))}
           </tbody>
         </Table>
@@ -276,3 +296,58 @@ export function MemberIdeasCard() {
     </Card>
   );
 }
+
+type TurnoutData = { voted: { memberNo: string; name: string; at: string; byProxy: string }[]; notVoted: { memberNo: string; name: string; chapter: string }[] };
+
+/** Who has voted and who has not. Never how anyone voted (bye-law: secret ballot; only totals are shown). */
+function Turnout({ id }: { id: string }) {
+  const [data, setData] = useState<TurnoutData | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    fetch(`/api/admin/motions/${id}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: TurnoutData & { ok?: boolean; error?: string }) => (d.ok ? setData(d) : setErr(d.error || "Could not load who has voted.")))
+      .catch(() => setErr("Could not reach the server."));
+  }, [id]);
+  if (err) return <p className="m-0 text-[13.5px] text-danger">{err}</p>;
+  if (!data) return <p className="m-0 text-[13.5px] text-muted">Loading…</p>;
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="min-w-0">
+        <p className="m-0 mb-1 text-[13px] font-semibold text-ink">Voted ({data.voted.length})</p>
+        {data.voted.length ? (
+          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13.5px]">
+            {data.voted.map((v) => (
+              <li key={v.memberNo}>
+                <strong>{v.name || v.memberNo}</strong> <span className="font-mono text-[12px] text-muted">{v.memberNo}</span>
+                <span className="block text-[12.5px] text-muted">
+                  {v.at}
+                  {v.byProxy ? ` · cast by proxy holder ${v.byProxy}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="m-0 text-[13.5px] text-muted">Nobody has voted yet.</p>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="m-0 mb-1 text-[13px] font-semibold text-ink">Not voted yet ({data.notVoted.length})</p>
+        {data.notVoted.length ? (
+          <ul className="m-0 flex max-h-64 list-none flex-col gap-1 overflow-y-auto p-0 text-[13.5px]">
+            {data.notVoted.map((v) => (
+              <li key={v.memberNo}>
+                {v.name} <span className="font-mono text-[12px] text-muted">{v.memberNo}</span>
+                {v.chapter ? <span className="text-[12.5px] text-muted"> · {v.chapter}</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="m-0 text-[13.5px] text-muted">Every member has voted.</p>
+        )}
+      </div>
+      <p className="m-0 text-[12.5px] text-muted md:col-span-2">This shows who took part, never how anyone voted. Only the totals are shown, to keep the ballot secret.</p>
+    </div>
+  );
+}
+
