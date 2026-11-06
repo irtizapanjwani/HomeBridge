@@ -31,6 +31,38 @@ export function MissedPaymentsCard() {
   const [data, setData] = useState<Data | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [auto, setAuto] = useState<{ on: boolean; cronReady: boolean } | null>(null);
+
+  const loadAuto = useCallback(() => {
+    fetch("/api/admin/settings/payment-reminders")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; on?: boolean; cronReady?: boolean }) => d.ok && setAuto({ on: Boolean(d.on), cronReady: Boolean(d.cronReady) }))
+      .catch(() => {});
+  }, []);
+  useEffect(loadAuto, [loadAuto]);
+
+  async function switchAuto(on: boolean) {
+    if (
+      !window.confirm(
+        on
+          ? "Switch on automatic reminders?\n\nFrom tomorrow morning, every member who hasn't paid this month gets reminder emails on day 1, 5, 7, 8 and 15. Real members will be emailed."
+          : "Switch off automatic reminders? Members will only be reminded when you press a button here.",
+      )
+    )
+      return;
+    setBusy("auto");
+    try {
+      const res = await fetch("/api/admin/settings/payment-reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || "That did not work.");
+      toast(on ? "Automatic reminders are on." : "Automatic reminders are off.");
+      loadAuto();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That did not work.", "warn");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const load = useCallback((p: string) => {
     setErr("");
@@ -88,9 +120,39 @@ export function MissedPaymentsCard() {
         Who hasn&rsquo;t paid
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        Members who haven&rsquo;t paid at least the monthly minimum (₦5,000 or £25) for the month you pick. You can email them a friendly
-        reminder, one at a time or all together. Nothing is sent unless you press a button.
+        Members who haven&rsquo;t paid at least the monthly minimum (₦5,000 or £25) for the month you pick. A member drops off this list as
+        soon as their payment is recorded.
       </p>
+
+      {auto ? (
+        <div className={cx("flex flex-col gap-2 rounded-xl border p-3.5 sm:flex-row sm:items-center", auto.on ? "border-[#CFE0D3] bg-mist" : "border-line bg-paper")}>
+          <div className="flex-1 text-[14px] text-body">
+            <strong className="block text-[15px] text-ink">Automatic reminders: {auto.on ? "ON" : "OFF"}</strong>
+            {auto.on ? (
+              <>
+                Every morning at 8:00 (Lagos), members who haven&rsquo;t paid are emailed automatically: on day 1 (payment due), day 5 (reminder),
+                day 7 (last day), day 8 (overdue) and day 15 (second notice). Each email goes once, and stops as soon as they pay. You don&rsquo;t
+                need to press anything.
+              </>
+            ) : (
+              <>
+                Nobody is reminded unless you press a button below. Switch it on and members who haven&rsquo;t paid are emailed automatically on
+                day 1, 5, 7, 8 and 15 of each month until they pay.
+              </>
+            )}
+            {auto.on && !auto.cronReady ? (
+              <span className="mt-1 block font-semibold text-danger">
+                The daily job can&rsquo;t run yet: CRON_SECRET is missing in Vercel&rsquo;s settings, so no automatic emails will go. Add it, then
+                redeploy.
+              </span>
+            ) : null}
+          </div>
+          <Btn variant={auto.on ? "outline" : "primary"} disabled={busy !== null} onClick={() => void switchAuto(!auto.on)}>
+            {busy === "auto" ? "Saving…" : auto.on ? "Switch off" : "Switch on"}
+          </Btn>
+        </div>
+      ) : null}
+
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-[13px] font-semibold text-muted">
@@ -107,7 +169,7 @@ export function MissedPaymentsCard() {
           />
         </label>
         <Btn variant="primary" disabled={!data || unreminded === 0 || busy !== null} onClick={() => void remind({ all: true }, "all")}>
-          {busy === "all" ? "Sending…" : `Remind everyone not reminded yet (${unreminded})`}
+          {busy === "all" ? "Sending…" : `Remind everyone not reminded yet, now (${unreminded})`}
         </Btn>
         <Btn disabled={!data || data.rows.length === 0} onClick={exportCsv}>
           <DownloadIcon size={17} /> Export list (CSV)
@@ -158,7 +220,7 @@ export function MissedPaymentsCard() {
                     </Td>
                     <Td>{r.lastPaid || <span className="text-muted">Never</span>}</Td>
                     <Td>
-                      {r.remindedAt ? <span className="mb-1 block text-[12.5px] text-muted">Reminded {r.remindedAt}</span> : null}
+                      {r.remindedAt ? <span className="mb-1 block text-[12.5px] text-muted">Overdue reminder sent {r.remindedAt}</span> : null}
                       <Btn size="sm" variant={r.remindedAt ? "outline" : "primary"} disabled={busy !== null || !r.email} onClick={() => void remind({ memberNos: [r.memberNo] }, r.memberNo)}>
                         {busy === r.memberNo ? "Sending…" : r.remindedAt ? "Remind again" : "Send reminder"}
                       </Btn>

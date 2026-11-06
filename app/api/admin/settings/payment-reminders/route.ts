@@ -10,7 +10,8 @@ export async function GET() {
   if (!(await isSignedIn())) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   if (!isDbConfigured()) return NextResponse.json({ ok: false, error: "No database is configured" }, { status: 503 });
   try {
-    return NextResponse.json({ ok: true, on: await isPaymentRemindersAuto(), today: lagosToday() });
+    // cronReady: without CRON_SECRET on the server, Vercel's daily job is refused and nothing sends.
+    return NextResponse.json({ ok: true, on: await isPaymentRemindersAuto(), today: lagosToday(), cronReady: Boolean(process.env.CRON_SECRET) });
   } catch {
     return NextResponse.json({ ok: false, error: "Could not read the setting" }, { status: 502 });
   }
