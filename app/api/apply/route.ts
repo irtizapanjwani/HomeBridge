@@ -228,6 +228,11 @@ export async function POST(req: Request) {
         adminUrl: `${siteUrl(req)}/admin`,
       });
       if (!alert.ok) console.error("[apply] office alert not sent:", alert.error);
+      // Kept so a later update about this application (e.g. the applicant sending more information)
+      // arrives in the same email conversation.
+      if (alert.thread && Object.keys(alert.thread.ids).length) {
+        await (await collections()).members.updateOne({ reference }, { $set: { officeAlert: alert.thread } }).catch(() => {});
+      }
     }
 
     return NextResponse.json({ ok: true, reference, status: supporter ? "Supporter" : "Submitted" });

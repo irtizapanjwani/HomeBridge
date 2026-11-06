@@ -56,6 +56,8 @@ type SendInput = {
   text: string;
   html: string;
   attachments?: Attachment[];
+  /** Extra headers, e.g. In-Reply-To and References to keep an office alert in one conversation. */
+  headers?: Record<string, string>;
 };
 
 /**
@@ -80,6 +82,7 @@ export async function sendEmail(input: SendInput): Promise<SendResult> {
         text: input.text,
         html: input.html,
         ...(bcc ? { bcc: [bcc] } : {}),
+        ...(input.headers && Object.keys(input.headers).length ? { headers: input.headers } : {}),
         // Resend takes attachment bytes base64-encoded.
         ...(input.attachments?.length
           ? {
@@ -542,7 +545,30 @@ export function officeRecipients(): string[] {
   return (raw || DEFAULT_OFFICE_ALERT).split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResult> {
+/** The new-application alert's subject. Replies about the same application reuse it, so they thread. */
+export const officeAlertSubject = (kind: string, fullName: string, reference: string) => `New HomeBridge ${kind.toLowerCase()}: ${fullName} (${reference})`;
+
+/**
+ * Resend's id for each copy of the new-application alert, by recipient, so later emails about the
+ * same application can be sent as replies to it and show up in the same conversation.
+ */
+export type AlertThread = { subject: string; ids: Record<string, string> };
+
+/** The Message-ID Resend gave a sent email, needed for In-Reply-To. Null if it cannot be read. */
+async function messageIdOf(emailId: string): Promise<string | null> {
+  if (!apiKey || !emailId) return null;
+  try {
+    const res = await fetch(`${RESEND_ENDPOINT}/${encodeURIComponent(emailId)}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) return null;
+    const d = (await res.json().catch(() => null)) as { message_id?: string } | null;
+    const id = d?.message_id?.trim();
+    return id ? (id.startsWith("<") ? id : `<${id}>`) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResult & { thread?: AlertThread }> {
   const recipients = officeRecipients();
   if (!recipients.length) return { ok: true, id: "" };
 
@@ -560,7 +586,7 @@ export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResu
     ] as [string, string][]
   ).filter(([, v]) => v.trim());
 
-  const subject = `New HomeBridge ${input.kind.toLowerCase()}: ${input.fullName} (${input.reference})`;
+  const subject = officeAlertSubject(input.kind, input.fullName, input.reference);
   const text = [
     `A new ${input.kind.toLowerCase()} has just come in on the HomeBridge site.`,
     ``,
@@ -595,11 +621,13 @@ export async function sendOfficeAlert(input: OfficeAlertInput): Promise<SendResu
 </body></html>`;
 
   let last: SendResult = { ok: true, id: "" };
+  const ids: Record<string, string> = {};
   for (const to of recipients) {
     const sent = await sendEmail({ to, subject, text, html });
     if (!sent.ok) last = sent;
+    else if (sent.id) ids[to] = sent.id;
   }
-  return last;
+  return { ...last, thread: { subject, ids } };
 }
 
 export type InfoReplyAlertInput = {
@@ -613,6 +641,10 @@ export type InfoReplyAlertInput = {
   /** Whether they attached a file (the file itself never goes by email). */
   withFile: boolean;
   adminUrl?: string;
+  /** The new-application alert this belongs under, so it lands in the same conversation. */
+  thread?: AlertThread;
+  /** Used to rebuild the original subject for older applications sent before threads were saved. */
+  kind?: string;
 };
 
 /**
@@ -623,7 +655,9 @@ export async function sendInfoReplyAlert(input: InfoReplyAlertInput): Promise<Se
   const recipients = officeRecipients();
   if (!recipients.length) return { ok: true, id: "" };
 
-  const subject = `${input.fullName} sent the information you asked for (${input.reference})`;
+  // A reply in the conversation that started with the new-application alert, rather than a new
+  // email: same subject with "Re:", and In-Reply-To pointing at the original.
+  const subject = `Re: ${input.thread?.subject || officeAlertSubject(input.kind || "Application", input.fullName, input.reference)}`;
   const text = [
     `${input.fullName} has replied to your request for more information on their HomeBridge application.`,
     ``,
@@ -645,7 +679,7 @@ export async function sendInfoReplyAlert(input: InfoReplyAlertInput): Promise<Se
 <html><body style="margin:0;padding:24px;background:#F3F1EA;font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;color:#1D201C;line-height:1.6">
   <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF7;border-radius:12px;border:1px solid #E2DED2">
     <tr><td style="padding:28px">
-      <p style="margin:0 0 16px"><strong>${esc(input.fullName)}</strong> has replied to your request for more information.</p>
+      <p style="margin:0 0 16px;font-size:17px"><strong>Update: ${esc(input.fullName)} has sent the information you asked for.</strong></p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;background:#F3F1EA;border-radius:8px">
         <tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px;width:120px">Application</td><td style="padding:8px 16px;font-weight:600">${esc(input.reference)}</td></tr>
         ${input.email ? `<tr><td style="padding:8px 16px;color:#6B6A61;font-size:13px">Email</td><td style="padding:8px 16px;font-weight:600">${esc(input.email)}</td></tr>` : ""}
@@ -666,7 +700,9 @@ export async function sendInfoReplyAlert(input: InfoReplyAlertInput): Promise<Se
 
   let last: SendResult = { ok: true, id: "" };
   for (const to of recipients) {
-    const sent = await sendEmail({ to, subject, text, html });
+    const original = input.thread?.ids[to] ? await messageIdOf(input.thread.ids[to]) : null;
+    const headers = original ? { "In-Reply-To": original, References: original } : undefined;
+    const sent = await sendEmail({ to, subject, text, html, headers });
     if (!sent.ok) last = sent;
   }
   return last;

@@ -192,6 +192,9 @@ export type MemberDoc = {
    * The applicant's answer to an officer's request for more information, sent from their account.
    * Any files they attached are in the documents collection under this application's reference.
    */
+  /** The new-application email the office got, so updates about it can thread under it. */
+  officeAlert?: { subject: string; ids: Record<string, string> };
+
   infoResponse?: {
     message: string;
     at: Date;

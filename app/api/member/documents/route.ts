@@ -128,6 +128,8 @@ export async function POST(req: Request) {
           message,
           withFile: Boolean(documentId),
           adminUrl: `${siteUrl(req)}/admin#applications`,
+          thread: member.officeAlert,
+          kind: member.supporter ? "Supporter" : "Application",
         }).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : "unknown error" }));
         await recordAudit({
           action: sent.ok ? "email.info_reply_alert_sent" : "email.info_reply_alert_failed",
