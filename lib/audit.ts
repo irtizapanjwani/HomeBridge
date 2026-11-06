@@ -72,6 +72,8 @@ const ACTION_LABEL: Record<string, string> = {
   "report.exported": "Exported a board report",
   "vote.motion_created": "Wrote a motion",
   "vote.opened": "Opened a vote",
+  "meeting.notice_sent": "Set the AGM and emailed the notice",
+  "meeting.notice_failed": "AGM notice email failed for some members",
   "vote.closed": "Closed a vote",
   "email.vote_open_sent": "Emailed members that a vote is open",
   "email.vote_open_failed": "Vote-open email failed for some members",

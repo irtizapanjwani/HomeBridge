@@ -18,7 +18,7 @@ import "server-only";
 
 import { getSetting, setSetting } from "@/lib/app-settings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"] as const;
+export const TEMPLATE_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S"] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const isTemplateKey = (v: unknown): v is TemplateKey => typeof v === "string" && (TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -345,6 +345,23 @@ export const TEMPLATE_INFO: Record<TemplateKey, TemplateInfo> = {
     ],
     mustInclude: ["{{Motion}}"],
   },
+  S: {
+    key: "S",
+    name: "S. AGM notice",
+    when: "Sent automatically to every member with an email address when an officer sets (or moves) the AGM date in Meetings and votes. Bye-law 16.3 needs at least 21 days' notice.",
+    placeholders: [
+      { name: "FirstName", description: "Member's first name", sample: "Adaeze" },
+      { name: "MemberNo", description: "Membership number", sample: "HBC-EDO-26-00014" },
+      { name: "MeetingDate", description: "Date and time of the meeting", sample: "Saturday 5 December 2026, 11:00" },
+      { name: "Place", description: "Where the meeting is held", sample: "Benin City and online (link to follow)" },
+      { name: "PortalLink", description: "Web address of the member account", sample: "https://www.homebridgecooperative.org/app" },
+    ],
+    blocks: [
+      { name: "AGENDA", description: "The agenda the officer wrote, as a numbered list", sample: "" },
+      { name: "BUTTON", description: "An “Open your account” button", sample: "" },
+    ],
+    mustInclude: ["{{MeetingDate}}"],
+  },
 };
 
 export const DEFAULT_TEMPLATES: Record<TemplateKey, Template> = {
@@ -629,6 +646,26 @@ Please sign in to your account to vote For, Against or Abstain. Each member has 
 Thank you,
 HomeBridge Membership Team`,
   },
+  S: {
+    subject: "Notice of the HomeBridge Annual General Meeting: {{MeetingDate}}",
+    body: `Dear {{FirstName}},
+
+This is formal notice of the **HomeBridge Cooperative Annual General Meeting**.
+
+- **Date:** {{MeetingDate}}
+- **Place:** {{Place}}
+
+## Agenda
+
+{{AGENDA}}
+
+Every member may attend and vote. If you cannot attend, you can give your proxy to another member. Votes on motions can also be cast online in your account once they open.
+
+{{BUTTON}}
+
+Thank you,
+HomeBridge Membership Team`,
+  },
 };
 
 // ---------- Stored templates ----------
@@ -767,6 +804,18 @@ export function highlightBox(label: string, value: string): Block {
   };
 }
 
+/** One agenda item per line, shown as a numbered list. */
+export function agendaBlock(value: string): Block {
+  const items = value
+    .split("\n")
+    .map((l) => l.replace(/^\s*(\d+[.)]|[-*])\s*/, "").trim())
+    .filter(Boolean);
+  return {
+    html: `<ol style="margin:0 0 18px;padding-left:22px;font-size:15px;line-height:1.7">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ol>`,
+    text: items.map((i, n) => `${n + 1}. ${i}`).join("\n"),
+  };
+}
+
 export function quoteBox(value: string): Block {
   return {
     html: `<p style="margin:0 0 16px;padding:12px 14px;background:#F3F1EA;border-radius:8px;font-size:15px;line-height:1.6">${esc(value)}</p>`,
@@ -799,6 +848,7 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
   const blocks: Record<string, Block> = {
     REFERENCE_BOX: highlightBox("Your application reference", vars.ApplicationRef ?? ""),
     NEEDED_BOX: quoteBox(vars.Needed ?? ""),
+    AGENDA: agendaBlock("Welcome and apologies\nAdopt the bye-laws\nElect the Board\nApprove the 2027 budget\nAny other business"),
     MOTION_DETAILS: quoteBox("The budget sets out running costs and the first two projects for 2027. Full papers are in your account."),
     BUTTON: buttonBlock(
       key === "B"
@@ -811,7 +861,9 @@ export function sampleFor(key: TemplateKey): { vars: Record<string, string>; blo
               ? "Open your account"
               : key === "R"
                 ? "Vote in your account"
-                : "Open the member portal",
+                : key === "S"
+                  ? "Open your account"
+                  : "Open the member portal",
       vars.AccountLink ?? vars.PortalLink ?? "#",
     ),
     DETAILS: detailsTable([
