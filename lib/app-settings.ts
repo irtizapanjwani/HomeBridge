@@ -28,7 +28,8 @@ export async function setSetting(key: string, value: unknown, actor: string, det
 
 // ---------- Welcome pack ----------
 
-const WELCOME_AUTO_SEND = "welcome_pack_auto_send";
+// New key (Nov 2026): an earlier "off" saved while testing no longer applies, so it starts automatic.
+const WELCOME_AUTO_SEND = "welcome_pack_auto_send_v2";
 
 /**
  * Whether the welcome pack goes out by itself (brief acceptance criterion: "The welcome email and
