@@ -40,6 +40,27 @@ export function OnlineVotesCard() {
       .then((d: { ok?: boolean; on?: boolean }) => setShowChoices(d.ok ? Boolean(d.on) : false))
       .catch(() => setShowChoices(false));
   }, []);
+  async function remove(m: { id: string; title: string; status: string; total: number }) {
+    const warning =
+      m.status === "draft"
+        ? `Delete the motion “${m.title}”? It has not been opened, so no member has seen it.`
+        : `Delete “${m.title}” and all ${m.total} vote${m.total === 1 ? "" : "s"} cast on it? ${m.status === "open" ? "Voting is still open: members will no longer see it." : "Its result will be gone."} This cannot be undone. The totals are kept in the audit log.`;
+    if (!window.confirm(warning)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/motions/${m.id}`, { method: "DELETE" });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      if (openId === m.id) setOpenId(null);
+      toast("Motion deleted.");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That did not work.", "warn");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function flipChoices() {
     const next = !showChoices;
     if (
@@ -206,6 +227,9 @@ export function OnlineVotesCard() {
                       Close
                     </Btn>
                   ) : null}
+                  <Btn size="sm" variant="ghost" className="ml-1" disabled={busy} onClick={() => void remove(m)}>
+                    Delete
+                  </Btn>
                 </Td>
               </tr>
               {openId === m.id ? (

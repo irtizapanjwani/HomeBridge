@@ -162,6 +162,32 @@ export async function listMotionsForAdmin() {
   );
 }
 
+/**
+ * Deletes a motion with its votes and proxies. A draft goes quietly; an open or closed vote is
+ * removed too when the officer insists, and its totals at that moment are kept in the audit log.
+ */
+export async function deleteMotion(id: string, actor: string) {
+  if (!ObjectId.isValid(id)) return { ok: false as const, error: "Not found" };
+  const { motions, votes, proxies } = await cols();
+  const _id = new ObjectId(id);
+  const m = await motions.findOne({ _id });
+  if (!m) return { ok: false as const, error: "That motion has already been deleted." };
+  const c = await counts(_id);
+  const total = c.For + c.Against + c.Abstain;
+  await Promise.all([votes.deleteMany({ motionId: _id }), proxies.deleteMany({ motionId: _id })]);
+  await motions.deleteOne({ _id });
+  await recordAudit({
+    action: "vote.motion_deleted",
+    actor,
+    subject: m.title,
+    before: m.status === "draft" ? "Not open yet" : m.status === "open" ? "Voting open" : "Closed",
+    after: "Deleted",
+    detail:
+      m.status === "draft" ? "Motion deleted before it was opened" : `Motion deleted with ${total} vote${total === 1 ? "" : "s"} (For ${c.For}, Against ${c.Against}, Abstain ${c.Abstain})`,
+  });
+  return { ok: true as const };
+}
+
 export async function createMotion(title: string, details: string, actor: string) {
   await ensureIndexes();
   const t = title.trim().slice(0, 200);
