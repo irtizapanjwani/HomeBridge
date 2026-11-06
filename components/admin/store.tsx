@@ -44,6 +44,8 @@ import {
 } from "@/lib/admin-data";
 import { monthsBetween, nowStamp } from "./lib";
 
+const SCREEN_IDS: ScreenId[] = ["register", "contributions", "applications", "fees", "withdrawals", "meetings", "projects", "reports", "audit", "settings"];
+
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
 
 export type IssueCheck = { ok: boolean; held: number; after: number; total: number; pctAfter: number; reason?: string };
@@ -131,6 +133,24 @@ export function AdminStoreProvider({
   // nearly always here for, and it is the one screen Finance cannot act on.
   const [roleId, setRoleId] = useState("kyc");
   const [screen, setScreen] = useState<ScreenId>("register");
+  // Keep the open screen in the address (#meetings), so a refresh or a shared link reopens the same
+  // screen instead of falling back to the Member register.
+  const restored = useRef(false);
+  useEffect(() => {
+    const fromHash = window.location.hash.replace(/^#/, "") as ScreenId;
+    if (SCREEN_IDS.includes(fromHash)) setScreen(fromHash);
+    restored.current = true;
+    const onHash = () => {
+      const h = window.location.hash.replace(/^#/, "") as ScreenId;
+      if (SCREEN_IDS.includes(h)) setScreen(h);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  useEffect(() => {
+    if (!restored.current) return;
+    if (window.location.hash !== `#${screen}`) window.history.replaceState(null, "", `#${screen}`);
+  }, [screen]);
   // Every screen opens at the top, not where the previous screen was scrolled to (runs after the new screen renders).
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });

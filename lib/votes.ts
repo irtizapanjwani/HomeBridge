@@ -117,14 +117,33 @@ const resultOf = (c: Record<Choice, number>) => (c.For > c.Against ? "Passed" : 
 // ---------- Officers ----------
 
 export async function listMotionsForAdmin() {
-  await ensureIndexes();
+  // Reads never wait for index set-up; writes (votes, proxies) still do, as they rely on it.
+  void ensureIndexes().catch(() => {});
   const { motions } = await cols();
   const list = await motions.find({}).sort({ createdAt: -1 }).limit(50).toArray();
+  // Every motion's totals in one trip to the database, instead of two queries per motion.
+  const { votes } = await cols();
+  const rows = list.length
+    ? await votes
+        .aggregate<{ _id: { m: ObjectId; c: Choice }; n: number; proxy: number }>([
+          { $match: { motionId: { $in: list.map((m) => m._id!) } } },
+          { $group: { _id: { m: "$motionId", c: "$choice" }, n: { $sum: 1 }, proxy: { $sum: { $cond: [{ $ifNull: ["$byProxy", false] }, 1, 0] } } } },
+        ])
+        .toArray()
+    : [];
+  const tally = new Map<string, { counts: Record<Choice, number>; byProxy: number }>();
+  for (const r of rows) {
+    const k = String(r._id.m);
+    const t = tally.get(k) ?? { counts: Object.fromEntries(CHOICES.map((c) => [c, 0])) as Record<Choice, number>, byProxy: 0 };
+    t.counts[r._id.c] = r.n;
+    t.byProxy += r.proxy;
+    tally.set(k, t);
+  }
   return Promise.all(
     list.map(async (m) => {
-      const c = await counts(m._id!);
-      const { votes } = await cols();
-      const byProxy = await votes.countDocuments({ motionId: m._id!, byProxy: { $exists: true } });
+      const t = tally.get(String(m._id));
+      const c = t?.counts ?? (Object.fromEntries(CHOICES.map((x) => [x, 0])) as Record<Choice, number>);
+      const byProxy = t?.byProxy ?? 0;
       return {
         id: String(m._id),
         byProxy,
@@ -220,12 +239,14 @@ export async function turnout(id: string) {
   const { motions, votes } = await cols();
   const motion = await motions.findOne({ _id: new ObjectId(id) });
   if (!motion) return null;
-  const cast = await votes.find({ motionId: motion._id! }, { projection: { memberNo: 1, at: 1, byProxy: 1 } }).sort({ at: 1 }).toArray();
   const { members } = await memberCollections();
-  const admitted = await members
-    .find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, chapter: 1, membership: 1 } })
-    .sort({ "membership.seq": 1 })
-    .toArray();
+  const [cast, admitted] = await Promise.all([
+    votes.find({ motionId: motion._id! }, { projection: { memberNo: 1, at: 1, byProxy: 1 } }).sort({ at: 1 }).toArray(),
+    members
+      .find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, chapter: 1, membership: 1 } })
+      .sort({ "membership.seq": 1 })
+      .toArray(),
+  ]);
   const nameOf = new Map(admitted.map((m) => [m.membership!.memberNo, m.fullName]));
   const votedSet = new Set(cast.map((v) => v.memberNo));
   const stamp = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -387,7 +408,8 @@ export async function sendIdea(member: MemberDoc, text: string) {
 }
 
 export async function ideasFor(memberRef: string) {
-  await ensureIndexes().catch(() => {});
+  // Reads never wait for index set-up; writes (votes, proxies) still do, as they rely on it.
+  void ensureIndexes().catch(() => {});
   const { ideas } = await cols();
   return (await ideas.find({ memberRef }).sort({ at: -1 }).limit(10).toArray()).map((i) => ({
     id: String(i._id),
@@ -399,7 +421,8 @@ export async function ideasFor(memberRef: string) {
 }
 
 export async function listIdeasForAdmin() {
-  await ensureIndexes();
+  // Reads never wait for index set-up; writes (votes, proxies) still do, as they rely on it.
+  void ensureIndexes().catch(() => {});
   const { ideas } = await cols();
   return (await ideas.find({}).sort({ at: -1 }).limit(200).toArray()).map((i) => ({
     id: String(i._id),
