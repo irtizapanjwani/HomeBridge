@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { DownloadIcon } from "@/components/ui/Icons";
-import { download, toCsv } from "../lib";
+import { download, notifyPayChange, toCsv } from "../lib";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, cx, inputCls } from "../ui";
 
 type Row = {
@@ -61,6 +61,7 @@ export function MissedPaymentsCard() {
       if (d.skipped) parts.push(`${d.skipped} skipped (already paid)`);
       toast(parts.join(" · "), d.failed ? "warn" : undefined);
       load(period);
+      notifyPayChange();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Could not send.", "warn");
     } finally {
@@ -84,11 +85,11 @@ export function MissedPaymentsCard() {
   return (
     <Card className="flex flex-col gap-4 p-5">
       <CardTitle id="missed-payments" aside={<Pill tone="green">Live</Pill>}>
-        Missed payments
+        Who hasn&rsquo;t paid
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        Members who have not paid the minimum monthly contribution (₦5,000 or £25, bye-law 11.2) for the month chosen, from the contributions
-        recorded above. Each member is counted from the month they were admitted. Reminders are optional and go only when you click.
+        Members who haven&rsquo;t paid at least the monthly minimum (₦5,000 or £25) for the month you pick. You can email them a friendly
+        reminder, one at a time or all together. Nothing is sent unless you press a button.
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -106,7 +107,7 @@ export function MissedPaymentsCard() {
           />
         </label>
         <Btn variant="primary" disabled={!data || unreminded === 0 || busy !== null} onClick={() => void remind({ all: true }, "all")}>
-          {busy === "all" ? "Sending…" : `Email reminders to all not yet reminded (${unreminded})`}
+          {busy === "all" ? "Sending…" : `Remind everyone not reminded yet (${unreminded})`}
         </Btn>
         <Btn disabled={!data || data.rows.length === 0} onClick={exportCsv}>
           <DownloadIcon size={17} /> Export list (CSV)

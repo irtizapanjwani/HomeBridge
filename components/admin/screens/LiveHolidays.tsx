@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { notifyPayChange } from "../lib";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, inputCls } from "../ui";
 
 type Holiday = {
@@ -54,6 +55,7 @@ export function HolidaysCard() {
       if (!res.ok || !d.ok) throw new Error(d.error || "That did not work.");
       toast(`${approve ? "Approved" : "Declined"}.${d.emailed ? " The member has been emailed." : " The email did not go."}`, d.emailed ? undefined : "warn");
       load();
+      notifyPayChange();
     } catch (e) {
       toast(e instanceof Error ? e.message : "That did not work.", "warn");
     } finally {
@@ -67,11 +69,12 @@ export function HolidaysCard() {
         Payment holiday requests
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        Members ask from their account, up to 3 months in any 12. Approving means those months get no reminders, no overdue notice, and are
-        not counted as missed. Declining needs a reason, which the member is emailed (O approved, P declined).
+        A member can ask to pause their payments for up to 3 months in a year. If you <strong>Approve</strong>, they get no reminders for
+        those months and are not counted as behind. To <strong>Decline</strong>, write a short reason in the box first. The member is emailed
+        your answer either way.
       </p>
       {err ? <Banner tone="danger">{err}</Banner> : null}
-      {pending && pending.length === 0 ? <p className="m-0 text-[14px] text-muted">Nothing waiting.</p> : null}
+      {pending && pending.length === 0 ? <p className="m-0 text-[14px] text-muted">Nothing waiting. New requests from members appear here.</p> : null}
       {pending && pending.length > 0 ? (
         <Table minWidth={760}>
           <thead>
@@ -104,7 +107,7 @@ export function HolidaysCard() {
                     <input
                       value={note[h.id] ?? ""}
                       onChange={(e) => setNote({ ...note, [h.id]: e.target.value })}
-                      placeholder="Note to the member (needed to decline)"
+                      placeholder="Message to the member (needed to decline)"
                       className={inputCls}
                       aria-label="Note to the member"
                     />
@@ -129,7 +132,7 @@ export function HolidaysCard() {
           <ul className="mt-3 mb-0 flex list-none flex-col gap-2 p-0 text-[14px]">
             {decided.map((h) => (
               <li key={h.id}>
-                <Pill tone={h.status === "approved" ? "green" : "grey"}>{h.status === "approved" ? "Approved" : "Declined"}</Pill> {h.memberNo} ·{" "}
+                <Pill tone={h.status === "approved" ? "green" : "grey"}>{h.status === "approved" ? "Approved" : "Declined"}</Pill> {h.name} ({h.memberNo}) ·{" "}
                 {h.months} · {h.decidedAt} by {h.decidedBy}
                 {h.note ? ` · “${h.note}”` : ""}
               </li>

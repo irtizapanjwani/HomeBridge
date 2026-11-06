@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { notifyPayChange } from "../lib";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, inputCls } from "../ui";
 
 type Proof = {
@@ -79,6 +80,7 @@ export function ProofsCard() {
       setRejecting(null);
       setReason("");
       load();
+      notifyPayChange();
     } catch (e) {
       toast(e instanceof Error ? e.message : "That did not work.", "warn");
     } finally {
@@ -92,12 +94,12 @@ export function ProofsCard() {
         Proofs of payment to check
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        Members send these from their account when they have paid by transfer. Check each one against the bank statement, then{" "}
-        <strong>Approve</strong> (records the contribution and emails the receipt) or <strong>Reject</strong> with a reason (emails the
-        member, Email L). While a proof waits, that month counts as paid for reminders.
+        When a member pays by transfer, they can upload their bank receipt from their account. Press <strong>View receipt</strong>, check the
+        money really is in the bank, then press <strong>Approve</strong>: the payment is recorded and the member is emailed their receipt. If
+        something is wrong, press <strong>Reject</strong> and say why; the member is emailed the reason.
       </p>
       {err ? <Banner tone="danger">{err}</Banner> : null}
-      {pending && pending.length === 0 ? <p className="m-0 text-[14px] text-muted">Nothing waiting.</p> : null}
+      {pending && pending.length === 0 ? <p className="m-0 text-[14px] text-muted">Nothing waiting. New proofs from members appear here.</p> : null}
       {pending && pending.length > 0 ? (
         <Table minWidth={860}>
           <thead>
@@ -170,7 +172,7 @@ export function ProofsCard() {
             {decided.map((p) => (
               <li key={p.id}>
                 <Pill tone={p.status === "approved" ? "green" : "grey"}>{p.status === "approved" ? "Approved" : "Rejected"}</Pill>{" "}
-                {p.memberNo} · {p.amount} for {p.period} · {p.decidedAt} by {p.decidedBy}
+                {p.name} ({p.memberNo}) · {p.amount} for {p.period} · {p.decidedAt} by {p.decidedBy}
                 {p.receiptNo ? ` · ${p.receiptNo}` : ""}
                 {p.reason ? ` · “${p.reason}”` : ""}
               </li>

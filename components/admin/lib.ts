@@ -154,3 +154,9 @@ export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").r
 
 /** Reference as letters and digits only, so "HB ED UK 000003" matches HB-ED-UK-000003. */
 export const normRef = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Tells the Contributions page (and the sidebar count) that something was recorded or decided. */
+export const PAY_CHANGED = "hb:pay-changed";
+export const notifyPayChange = () => {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PAY_CHANGED));
+};

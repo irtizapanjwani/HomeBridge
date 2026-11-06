@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { notifyPayChange } from "../lib";
 import { Banner, Btn, Card, CardTitle, Pill, Table, Td, Th, inputCls } from "../ui";
 
 type Cur = "NGN" | "GBP" | "USD";
@@ -67,6 +68,7 @@ export function ReconciliationCard() {
       setDismissing(null);
       setReason("");
       load();
+      notifyPayChange();
     } catch (e) {
       toast(e instanceof Error ? e.message : "That did not work.", "warn");
     } finally {
@@ -77,12 +79,13 @@ export function ReconciliationCard() {
   return (
     <Card className="flex flex-col gap-3 p-5">
       <CardTitle id="reconciliation" aside={data ? <Pill tone={data.accounts.every((a) => a.signOff) ? "green" : "warm"}>{data.accounts.filter((a) => a.signOff).length} of 3 signed off</Pill> : null}>
-        Monthly reconciliation
+        Month-end check
       </CardTitle>
       <p className="m-0 text-[14px] text-body">
-        For each account, enter the <strong>total money in</strong> for the month from the bank statement. The difference against the
-        contributions recorded as received that month is shown, and the Treasurer signs it off. Bank lines uploaded but never recorded, and
-        proofs waiting more than 5 days, are listed below.
+        Once a month, check the bank and this site agree. For each account, type the <strong>total money in</strong> from the bank
+        statement. If it says <strong>Balances</strong>, press <strong>Sign off</strong>. If there is a difference, write a short note
+        explaining it, then sign off. Below that are bank payments that were never recorded: record them, or mark them as not a
+        contribution (for example bank interest).
       </p>
       <label className="flex w-fit flex-col gap-1 text-[13px] font-semibold text-muted">
         Month
@@ -173,9 +176,9 @@ export function ReconciliationCard() {
             </tbody>
           </Table>
 
-          <h3 className="m-0 mt-2 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Bank lines not recorded ({data.unmatched.length})</h3>
+          <h3 className="m-0 mt-2 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Bank payments not recorded yet ({data.unmatched.length})</h3>
           {data.unmatched.length === 0 ? (
-            <p className="m-0 text-[14px] text-muted">Every uploaded payment in has been recorded or explained.</p>
+            <p className="m-0 text-[14px] text-muted">None. Every payment in the uploaded statements is recorded or explained.</p>
           ) : (
             <Table minWidth={760}>
               <thead>
@@ -216,7 +219,7 @@ export function ReconciliationCard() {
               </tbody>
             </Table>
           )}
-          <p className="m-0 text-[13px] text-muted">To record one of these as a contribution, upload the statement again in Record contributions, or use Record a contribution by hand.</p>
+          <p className="m-0 text-[13px] text-muted">To record one of these, use “Record a payment by hand” at the top of the page.</p>
 
           <h3 className="m-0 mt-2 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Proofs waiting more than 5 days ({data.proofs.length})</h3>
           {data.proofs.length === 0 ? (

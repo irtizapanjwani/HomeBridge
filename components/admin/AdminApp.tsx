@@ -6,6 +6,7 @@ import { LockIcon, MenuIcon } from "@/components/ui/Icons";
 import { LogoMark } from "@/components/ui/Logo";
 import { AdminStoreProvider, useAdmin } from "./store";
 import { NoAccess, cx } from "./ui";
+import { PAY_CHANGED } from "./lib";
 import { RegisterScreen } from "./screens/Register";
 import { MemberProfile } from "./screens/MemberProfile";
 import { ContributionsScreen } from "./screens/Contributions";
@@ -60,8 +61,23 @@ function Shell({ dbConnected }: { dbConnected: boolean }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [navOpen]);
 
+  // Real work waiting on the Contributions page: proofs to check and holiday requests to answer.
+  const [payWaiting, setPayWaiting] = useState(0);
+  useEffect(() => {
+    if (!dbConnected) return;
+    const count = (url: string) =>
+      fetch(url, { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ ok?: boolean; pending?: unknown[] }>)
+        .then((d) => (d.ok ? (d.pending?.length ?? 0) : 0))
+        .catch(() => 0);
+    const load = () => void Promise.all([count("/api/admin/proofs"), count("/api/admin/holidays")]).then(([a, b]) => setPayWaiting(a + b));
+    load();
+    window.addEventListener(PAY_CHANGED, load);
+    return () => window.removeEventListener(PAY_CHANGED, load);
+  }, [dbConnected]);
+
   const counts: Partial<Record<ScreenId, number>> = {
-    contributions: s.lines.filter((l) => l.matchStatus === "Suspense").length,
+    contributions: payWaiting,
     applications: s.apps.filter((a) => PENDING_APP.includes(a.status)).length,
   };
 
