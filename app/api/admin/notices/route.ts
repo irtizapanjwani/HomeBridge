@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
-import { chapters, parseAudience, previewCount, recentBroadcasts, sendBroadcast } from "@/lib/broadcast";
+import { chapters, parseAudience, pickableMembers, previewCount, previewNotice, recentBroadcasts, sendBroadcast } from "@/lib/broadcast";
 import { isDbConfigured } from "@/lib/db";
 
 /** The chapters to choose from, and the notices already sent. */
@@ -9,8 +9,8 @@ export async function GET() {
   if (!(await isSignedIn())) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   if (!isDbConfigured()) return NextResponse.json({ ok: false, error: "No database is configured" }, { status: 503 });
   try {
-    const [zones, recent] = await Promise.all([chapters(), recentBroadcasts()]);
-    return NextResponse.json({ ok: true, zones, recent });
+    const [zones, recent, members] = await Promise.all([chapters(), recentBroadcasts(), pickableMembers()]);
+    return NextResponse.json({ ok: true, zones, recent, members });
   } catch {
     return NextResponse.json({ ok: false, error: "Could not load notices" }, { status: 502 });
   }
@@ -30,6 +30,12 @@ export async function POST(req: Request) {
   if (!audience) return NextResponse.json({ ok: false, error: "Choose who gets it" }, { status: 422 });
   try {
     if (b.preview === true) return NextResponse.json({ ok: true, ...(await previewCount(audience)) });
+    if (b.preview === "email") {
+      return NextResponse.json({
+        ok: true,
+        ...(await previewNotice(audience, typeof b.subject === "string" ? b.subject : "", typeof b.message === "string" ? b.message : "")),
+      });
+    }
     const r = await sendBroadcast(audience, typeof b.subject === "string" ? b.subject : "", typeof b.message === "string" ? b.message : "", await currentOfficer());
     return r.ok ? NextResponse.json(r) : NextResponse.json(r, { status: 422 });
   } catch (err) {
