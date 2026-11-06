@@ -25,13 +25,6 @@ const ACCOUNT_LABEL: Record<Cur, string> = { NGN: "Naira account (UBA)", GBP: "P
 const SYM: Record<Cur, string> = { NGN: "₦", GBP: "£", USD: "$" };
 const REASONS = ["Bank interest", "Refund or reversal", "Transfer between our accounts"];
 
-const lastMonth = () => {
-  const d = new Date();
-  d.setUTCDate(1);
-  d.setUTCMonth(d.getUTCMonth() - 1);
-  return d.toISOString().slice(0, 7);
-};
-
 /**
  * Member Platform brief §5 "Monthly reconciliation". The site does the check itself: every bank
  * payment from the uploaded statements must be recorded (or set aside as not a contribution), and
@@ -40,7 +33,8 @@ const lastMonth = () => {
  */
 export function ReconciliationCard() {
   const toast = useToast();
-  const [period, setPeriod] = useState(lastMonth());
+  // Opens on this month, which is the one whose statement is usually being uploaded.
+  const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState<Data | null>(null);
   const [members, setMembers] = useState<{ memberNo: string; name: string }[]>([]);
   const [err, setErr] = useState("");
