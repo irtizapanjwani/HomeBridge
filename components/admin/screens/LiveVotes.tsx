@@ -33,6 +33,35 @@ export function OnlineVotesCard() {
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showChoices, setShowChoices] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch("/api/admin/settings/vote-choices")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; on?: boolean }) => setShowChoices(d.ok ? Boolean(d.on) : false))
+      .catch(() => setShowChoices(false));
+  }, []);
+  async function flipChoices() {
+    const next = !showChoices;
+    if (
+      next &&
+      !window.confirm(
+        "Show officers how each member voted? The brief keeps votes secret (only totals), so switch this on only if the Board has agreed. Every look is recorded in the audit log.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings/vote-choices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: next }) });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || `That did not work (error ${res.status}).`);
+      setShowChoices(next);
+      toast(next ? "Individual votes are now shown in “See who voted”." : "Votes are secret again: only totals are shown.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That did not work.", "warn");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const load = useCallback(() => {
     fetch("/api/admin/motions")
@@ -98,6 +127,16 @@ export function OnlineVotesCard() {
             Save motion
           </Btn>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-mist px-4 py-3">
+        <p className="m-0 text-[14px] text-body">
+          <strong>How each member voted:</strong>{" "}
+          {showChoices === null ? "…" : showChoices ? "shown to officers in “See who voted” (every look is logged)." : "secret. Officers see totals and who took part only."}
+        </p>
+        <Btn size="sm" variant={showChoices ? "outline" : "primary"} disabled={busy || showChoices === null} onClick={() => void flipChoices()}>
+          {showChoices ? "Make votes secret again" : "Show how each member voted"}
+        </Btn>
       </div>
 
       {motions && motions.length ? (
@@ -172,7 +211,7 @@ export function OnlineVotesCard() {
               {openId === m.id ? (
                 <tr>
                   <td colSpan={4} className="border-b border-line bg-mist px-4 py-3">
-                    <Turnout id={m.id} />
+                    <Turnout key={String(showChoices)} id={m.id} />
                   </td>
                 </tr>
               ) : null}
@@ -297,7 +336,12 @@ export function MemberIdeasCard() {
   );
 }
 
-type TurnoutData = { voted: { memberNo: string; name: string; at: string; byProxy: string }[]; notVoted: { memberNo: string; name: string; chapter: string }[] };
+type TurnoutData = {
+  voted: { memberNo: string; name: string; at: string; byProxy: string; choice: "For" | "Against" | "Abstain" | null }[];
+  notVoted: { memberNo: string; name: string; chapter: string }[];
+  showChoices: boolean;
+};
+const CHOICE_TONE = { For: "green", Against: "red", Abstain: "grey" } as const;
 
 /** Who has voted and who has not. Never how anyone voted (bye-law: secret ballot; only totals are shown). */
 function Turnout({ id }: { id: string }) {
@@ -320,6 +364,11 @@ function Turnout({ id }: { id: string }) {
             {data.voted.map((v) => (
               <li key={v.memberNo}>
                 <strong>{v.name || v.memberNo}</strong> <span className="font-mono text-[12px] text-muted">{v.memberNo}</span>
+                {v.choice ? (
+                  <span className="ml-2 align-middle">
+                    <Pill tone={CHOICE_TONE[v.choice]}>{v.choice}</Pill>
+                  </span>
+                ) : null}
                 <span className="block text-[12.5px] text-muted">
                   {v.at}
                   {v.byProxy ? ` · cast by proxy holder ${v.byProxy}` : ""}
@@ -346,7 +395,11 @@ function Turnout({ id }: { id: string }) {
           <p className="m-0 text-[13.5px] text-muted">Every member has voted.</p>
         )}
       </div>
-      <p className="m-0 text-[12.5px] text-muted md:col-span-2">This shows who took part, never how anyone voted. Only the totals are shown, to keep the ballot secret.</p>
+      <p className="m-0 text-[12.5px] text-muted md:col-span-2">
+        {data.showChoices
+          ? "Individual votes are switched on. Opening this list is recorded in the audit log."
+          : "This shows who took part, not how anyone voted. To see each member's choice, use “Show how each member voted” above (only if the Board agrees)."}
+      </p>
     </div>
   );
 }

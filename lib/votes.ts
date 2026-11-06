@@ -234,14 +234,15 @@ async function announceMotion(m: MotionDoc, actor: string, site: string) {
  * Who has voted on a motion and who has not, for the office to follow up. Never includes the
  * choice: the vote's choice field is not even read here, so this list cannot reveal how anyone voted.
  */
-export async function turnout(id: string) {
+export async function turnout(id: string, opts: { withChoices?: boolean; actor?: string } = {}) {
   if (!ObjectId.isValid(id)) return null;
   const { motions, votes } = await cols();
   const motion = await motions.findOne({ _id: new ObjectId(id) });
   if (!motion) return null;
   const { members } = await memberCollections();
   const [cast, admitted] = await Promise.all([
-    votes.find({ motionId: motion._id! }, { projection: { memberNo: 1, at: 1, byProxy: 1 } }).sort({ at: 1 }).toArray(),
+    // The choice is read only when the Board has switched individual votes on (Settings).
+    votes.find({ motionId: motion._id! }, { projection: { memberNo: 1, at: 1, byProxy: 1, ...(opts.withChoices ? { choice: 1 } : {}) } }).sort({ at: 1 }).toArray(),
     members
       .find({ "membership.memberNo": { $exists: true } }, { projection: { fullName: 1, chapter: 1, membership: 1 } })
       .sort({ "membership.seq": 1 })
@@ -249,6 +250,9 @@ export async function turnout(id: string) {
   ]);
   const nameOf = new Map(admitted.map((m) => [m.membership!.memberNo, m.fullName]));
   const votedSet = new Set(cast.map((v) => v.memberNo));
+  if (opts.withChoices && cast.length) {
+    await recordAudit({ action: "vote.choices_viewed", actor: opts.actor ?? "Officer", subject: motion.title, detail: `Viewed how ${cast.length} member${cast.length === 1 ? "" : "s"} voted` }).catch(() => {});
+  }
   const stamp = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   return {
     voted: cast.map((v) => ({
@@ -256,7 +260,9 @@ export async function turnout(id: string) {
       name: nameOf.get(v.memberNo) ?? "",
       at: stamp.format(v.at),
       byProxy: v.byProxy ? `${nameOf.get(v.byProxy) ?? ""} (${v.byProxy})`.trim() : "",
+      choice: opts.withChoices ? (v.choice ?? null) : null,
     })),
+    showChoices: Boolean(opts.withChoices),
     notVoted: admitted
       .filter((m) => !votedSet.has(m.membership!.memberNo))
       .map((m) => ({ memberNo: m.membership!.memberNo, name: m.fullName, chapter: m.chapter || "" })),

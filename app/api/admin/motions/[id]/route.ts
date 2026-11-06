@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { currentOfficer, isSignedIn } from "@/lib/admin-auth";
+import { isVoteChoicesVisible } from "@/lib/app-settings";
 import { isDbConfigured } from "@/lib/db";
 import { siteUrl } from "@/lib/site-url";
 import { moveMotion, turnout } from "@/lib/votes";
@@ -11,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!isDbConfigured()) return NextResponse.json({ ok: false, error: "No database is configured" }, { status: 503 });
   const { id } = await params;
   try {
-    const t = await turnout(id);
+    const t = await turnout(id, { withChoices: await isVoteChoicesVisible(), actor: await currentOfficer() });
     return t ? NextResponse.json({ ok: true, ...t }, { headers: { "Cache-Control": "no-store" } }) : NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   } catch {
     return NextResponse.json({ ok: false, error: "Could not load who has voted" }, { status: 502 });

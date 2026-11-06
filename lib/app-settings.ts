@@ -48,3 +48,26 @@ export async function setWelcomeAutoSend(on: boolean, actor: string) {
     on ? "Automatic" : "By hand",
   );
 }
+
+// ---------- How each member voted ----------
+
+const VOTE_CHOICES_VISIBLE = "vote_choices_visible";
+
+/**
+ * Whether officers can see how each member voted. Off by default: the brief keeps the ballot secret
+ * ("only totals are shown"). The Board decides whether to switch it on; every change and every look
+ * at individual choices is recorded in the audit log.
+ */
+export const isVoteChoicesVisible = () => getSetting(VOTE_CHOICES_VISIBLE, false);
+
+export async function setVoteChoicesVisible(on: boolean, actor: string) {
+  const before = await isVoteChoicesVisible();
+  await setSetting(
+    VOTE_CHOICES_VISIBLE,
+    on,
+    actor,
+    on ? "Officers can now see how each member voted" : "Votes are secret again: officers see totals only",
+    before ? "Shown" : "Secret",
+    on ? "Shown" : "Secret",
+  );
+}
