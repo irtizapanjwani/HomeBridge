@@ -45,7 +45,9 @@ type VoteDoc = {
 };
 
 /** A member's proxy for one motion: who may vote for them. Cancelled proxies are kept for the record. */
-type ProxyDoc = { _id?: ObjectId; motionId: ObjectId; giverNo: string; giverName: string; holderNo: string; at: Date; cancelledAt?: Date };
+// `live` is true until the proxy is cancelled. MongoDB cannot build a partial index on "field does
+// not exist", so the one-live-proxy rule below keys on this flag instead of on cancelledAt.
+type ProxyDoc = { _id?: ObjectId; motionId: ObjectId; giverNo: string; giverName: string; holderNo: string; at: Date; live?: true; cancelledAt?: Date };
 
 /** Bye-law 16.4: nobody may hold more than five proxies. */
 export const MAX_PROXIES_HELD = 5;
@@ -88,7 +90,7 @@ async function ensureIndexes() {
       c.ideas.createIndex({ at: -1 }),
       c.ideas.createIndex({ memberRef: 1, at: -1 }),
       // One live proxy per member per motion.
-      c.proxies.createIndex({ motionId: 1, giverNo: 1 }, { unique: true, partialFilterExpression: { cancelledAt: { $exists: false } } }),
+      c.proxies.createIndex({ motionId: 1, giverNo: 1 }, { name: "one_live_proxy", unique: true, partialFilterExpression: { live: true } }),
       c.proxies.createIndex({ motionId: 1, holderNo: 1 }),
     ]);
   })().catch((err) => {
@@ -236,7 +238,7 @@ export async function giveProxy(member: MemberDoc, motionId: string, holderNoRaw
     return { ok: false as const, error: `That member already holds ${MAX_PROXIES_HELD} proxies, the most allowed.` };
   }
   try {
-    await proxies.insertOne({ motionId: motion._id!, giverNo: me, giverName: member.fullName, holderNo, at: new Date() });
+    await proxies.insertOne({ motionId: motion._id!, giverNo: me, giverName: member.fullName, holderNo, at: new Date(), live: true });
   } catch (err) {
     if ((err as { code?: number }).code === 11000) return { ok: false as const, error: "You have already given your proxy on this vote. Cancel it first." };
     throw err;
@@ -253,7 +255,7 @@ export async function cancelProxy(member: MemberDoc, motionId: string) {
   const motion = await motions.findOne({ _id: new ObjectId(motionId) });
   if (!motion || motion.status !== "open") return { ok: false as const, error: "This vote is not open." };
   if (await votes.findOne({ motionId: motion._id!, memberNo: me })) return { ok: false as const, error: "Your vote has already been cast, so the proxy cannot be cancelled." };
-  const res = await proxies.findOneAndUpdate({ motionId: motion._id!, giverNo: me, cancelledAt: { $exists: false } }, { $set: { cancelledAt: new Date() } });
+  const res = await proxies.findOneAndUpdate({ motionId: motion._id!, giverNo: me, cancelledAt: { $exists: false } }, { $set: { cancelledAt: new Date() }, $unset: { live: "" } });
   if (!res) return { ok: false as const, error: "You have not given a proxy on this vote." };
   await recordAudit({ action: "vote.proxy_cancelled", actor: `Member (${me})`, subject: motion.title, detail: `Proxy to ${res.holderNo} cancelled` });
   return { ok: true as const };
