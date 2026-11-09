@@ -6,7 +6,8 @@ import { CheckIcon, LockIcon } from "@/components/ui/Icons";
 import { CONTACT } from "@/lib/content";
 import { JOINING_FEE } from "@/lib/settings";
 import type { DocMeta } from "@/lib/document-types";
-import { Card, btnSecondary, textLink } from "./bits";
+import { Card, textLink } from "./bits";
+import { ApplicantHero, HelpCard, NextStepCard, NextTimeline, StatusTiles } from "./ApplicantOverview";
 import { DocumentsCard, InfoRequestCard } from "./Documents";
 import { FormsCard, type FormsView } from "./Forms";
 import { ContactEditor, MembershipCard, type MembershipView } from "./Membership";
@@ -62,13 +63,6 @@ function greetingFor(hour: number) {
   return "Good evening";
 }
 
-const STATUS_TONE: Record<string, string> = {
-  Submitted: "bg-butter text-gold-ink",
-  "In review": "bg-butter text-gold-ink",
-  "Info requested": "bg-butter text-gold-ink",
-  Approved: "bg-mist text-forest-800",
-  Declined: "bg-[#fdf6f3] text-danger",
-};
 
 export function Account({ view }: { view: AccountView }) {
   const [greeting, setGreeting] = useState("Welcome");
@@ -91,78 +85,49 @@ export function Account({ view }: { view: AccountView }) {
 
   return (
     <div className="mx-auto max-w-[1240px] px-[clamp(16px,4vw,28px)] pt-[clamp(24px,4vw,40px)]">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0">
-          <p className="m-0 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[14px] text-muted">
-            {view.memberNo ? (
-              <span>
-                Membership number <span className="font-mono font-semibold text-forest-800">{view.memberNo}</span>
-              </span>
-            ) : (
-              <span>
-                Application reference <span className="font-mono font-semibold text-forest-800">{view.reference}</span>
-              </span>
-            )}
-            {view.memberType && <span>· {view.memberType}</span>}
-            {view.chapter && <span>· {view.chapter}</span>}
-          </p>
-          <h1 className="mt-1.5 mb-0 text-[clamp(28px,4vw,40px)] text-forest-800">
-            {greeting}
-            {view.firstName ? `, ${view.firstName}` : ""}
-          </h1>
-        </div>
-        <button
-          type="button"
-          disabled={signingOut}
-          onClick={async () => {
-            setSigningOut(true);
-            await fetch("/api/member/login", { method: "DELETE" }).catch(() => null);
-            window.location.href = "/";
-          }}
-          className={btnSecondary}
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
-      </div>
+      <ApplicantHero
+        f={view}
+        greeting={greeting}
+        signingOut={signingOut}
+        signOut={async () => {
+          setSigningOut(true);
+          await fetch("/api/member/login", { method: "DELETE" }).catch(() => null);
+          window.location.href = "/";
+        }}
+      />
 
-      <div className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      {!view.membership && (
+        <div className="mt-5 grid gap-5">
+          {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
+          <NextStepCard f={view} />
+          <StatusTiles f={view} />
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1.55fr_1fr]">
         <div className="grid gap-5">
           {view.membership && <MembershipCard m={view.membership} />}
-          {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
+          {view.membership && view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
           {view.forms && <FormsCard forms={view.forms} />}
           {view.contributions && <ContributionsCard c={view.contributions} />}
           {view.meeting && <MeetingCard meeting={view.meeting} />}
           {view.motions && <VotesCard motions={view.motions} />}
           {view.ideas && <IdeasCard ideas={view.ideas} />}
 
-          <Card>
-            <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your application</h2>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[14px] font-semibold ${STATUS_TONE[view.status] ?? "bg-mist text-forest-800"}`}>
-                {view.supporter ? "On the Supporter list" : view.status}
-              </span>
-              <span className="text-[14.5px] text-muted">Sent {view.submittedAt}</span>
-            </div>
-            {view.infoRepliedAt && view.status === "In review" && (
-              <p className="mt-3 mb-0 text-[14.5px] text-body">
+          {view.infoRepliedAt && view.status === "In review" && (
+            <Card className="!bg-mist !border-mist">
+              <p className="m-0 flex gap-2.5 text-[15px] text-body">
+                <CheckIcon size={18} strokeWidth={2.6} className="mt-0.5 shrink-0 text-forest-700" />
                 We received your reply on {view.infoRepliedAt}. An officer will look at it and let you know.
               </p>
-            )}
+            </Card>
+          )}
 
-            <h3 className="mt-7 mb-3 font-sans text-[15px] font-semibold text-forest-800">What happens next</h3>
-            <ol className="m-0 flex list-none flex-col gap-3 p-0">
-              {steps.map((t, i) => (
-                <li key={t} className="flex gap-3 text-[15px] leading-relaxed text-body">
-                  <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-full bg-forest-800 text-[13px] font-semibold text-cream">
-                    {i + 1}
-                  </span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ol>
-          </Card>
-
-          {!view.supporter && <DocumentsCard documents={view.documents} canUpload={open} />}
+          {!view.supporter && (
+            <div id="documents" className="scroll-mt-6">
+              <DocumentsCard documents={view.documents} canUpload={open} />
+            </div>
+          )}
 
           {view.payment && (
             <Card>
@@ -200,6 +165,16 @@ export function Account({ view }: { view: AccountView }) {
               <Row label="Lives in" value={view.livesIn} />
               {view.idLabel && <Row label="ID for verification" value={view.idLabel} />}
             </dl>
+            {view.nominees.length > 0 && (
+              <>
+                <h3 className="mt-6 mb-1 font-sans text-[15px] font-semibold text-forest-800">Your nominees</h3>
+                <dl className="divide-y divide-line/70">
+                  {view.nominees.map((n) => (
+                    <Row key={n.name} label={n.name} value={`${n.relationship} · ${n.share}%`} />
+                  ))}
+                </dl>
+              </>
+            )}
             {editing ? (
               <ContactEditor initial={view.contact} onDone={() => setEditing(false)} />
             ) : (
@@ -216,27 +191,20 @@ export function Account({ view }: { view: AccountView }) {
             )}
           </Card>
 
-          {view.nominees.length > 0 && (
-            <Card>
-              <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your nominees</h2>
-              <dl className="mt-3 divide-y divide-line/70">
-                {view.nominees.map((n) => (
-                  <Row key={n.name} label={n.name} value={`${n.relationship} · ${n.share}%`} />
-                ))}
-              </dl>
-            </Card>
-          )}
         </div>
 
         <aside className="grid content-start gap-5">
           {view.glance && <GlanceCard g={view.glance} />}
-          {!view.membership && <Card className="bg-forest-800 text-cream">
+          {!view.membership && <NextTimeline steps={steps} title={view.supporter ? "As a supporter" : "What happens next"} />}
+          {!view.membership && !view.supporter && <Card className="!border-forest-800 !bg-forest-800 text-cream">
             <h2 className="m-0 font-sans text-[16px] font-semibold text-cream">Shares and statements</h2>
             <p className="mt-2 mb-0 text-[14.5px] leading-relaxed text-[#D6DED8]">
               Your share account opens once you are approved and have bought your first share. Contributions, statements and voting all
               appear here then.
             </p>
           </Card>}
+
+          <HelpCard />
 
           <Card>
             <p className="m-0 flex gap-2.5 text-[14px] leading-snug text-muted">
