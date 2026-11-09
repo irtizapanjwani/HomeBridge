@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { CloseIcon } from "@/components/ui/Icons";
 import { Card, btnPrimary, btnSecondary } from "./bits";
 
 export type MeetingView = { when: string; place: string; agenda: string[]; daysLeft: number; answer: "yes" | "no" | null };
 
+type Answer = "yes" | "no" | null;
+
+/** Session key, per meeting, so closing the popup with X hides it until the member's next visit. */
+const dismissKey = (m: MeetingView) => `hb-meeting-popup-dismissed:${m.when}`;
+
 /**
  * The next general meeting, from the AGM notice (bye-law 16.3), and the member's reply. Saying
  * whether they will come lets the office see early whether the meeting will be quorate (16.5).
+ *
+ * While the member hasn't replied, the same details open as a popup when the dashboard loads.
+ * The card and the popup share one answer, so replying in either updates both.
  */
 export function MeetingCard({ meeting }: { meeting: MeetingView }) {
-  const [answer, setAnswer] = useState(meeting.answer);
+  const [answer, setAnswer] = useState<Answer>(meeting.answer);
   const [busy, setBusy] = useState<"yes" | "no" | null>(null);
   const [err, setErr] = useState("");
 
@@ -29,24 +38,113 @@ export function MeetingCard({ meeting }: { meeting: MeetingView }) {
     }
   }
 
-  const soon = meeting.daysLeft === 0 ? "Today" : meeting.daysLeft === 1 ? "Tomorrow" : `In ${meeting.daysLeft} days`;
+  const body = (headingId: string) => (
+    <MeetingBody meeting={meeting} answer={answer} busy={busy} err={err} reply={reply} headingId={headingId} roomForClose={headingId === "meeting-popup-h"} />
+  );
 
   return (
-    <Card id="meeting" className="scroll-mt-6">
-      <div className="flex items-start gap-4">
-        {/* Calendar-style date tile, read from the meeting date text */}
-        {(() => {
-          const d = /(\d{1,2})\s+([A-Za-z]+)/.exec(meeting.when);
-          return d ? (
-            <div aria-hidden="true" className="flex w-16 shrink-0 flex-col overflow-hidden rounded-2xl border border-line bg-paper text-center shadow-card">
-              <span className="bg-forest-800 py-1 text-[11px] font-semibold tracking-[0.1em] text-gold-soft uppercase">{d[2].slice(0, 3)}</span>
-              <span className="py-1.5 font-display text-[28px] leading-none font-bold text-forest-800">{d[1]}</span>
-            </div>
-          ) : null;
-        })()}
+    <>
+      <Card id="meeting" className="scroll-mt-6" aria-labelledby="meeting-card-h">
+        {body("meeting-card-h")}
+      </Card>
+      {meeting.answer === null && <MeetingPopup meeting={meeting} answered={answer !== null}>{body("meeting-popup-h")}</MeetingPopup>}
+    </>
+  );
+}
+
+/** Opens once per visit while the member hasn't replied. X, Esc or a click outside closes it. */
+function MeetingPopup({ meeting, answered, children }: { meeting: MeetingView; answered: boolean; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    let dismissed = false;
+    try {
+      dismissed = sessionStorage.getItem(dismissKey(meeting)) === "1";
+    } catch {
+      /* storage blocked: show it anyway */
+    }
+    if (dismissed) return;
+    // A short pause lets the dashboard paint first, so the popup doesn't feel like a page error.
+    const t = setTimeout(() => ref.current?.showModal(), 400);
+    return () => clearTimeout(t);
+  }, [meeting]);
+
+  // After a reply, show the thank-you for a moment, then close.
+  useEffect(() => {
+    if (!answered || !ref.current?.open) return;
+    const t = setTimeout(() => ref.current?.close(), 1800);
+    return () => clearTimeout(t);
+  }, [answered]);
+
+  const close = () => {
+    try {
+      sessionStorage.setItem(dismissKey(meeting), "1");
+    } catch {
+      /* ignore */
+    }
+    ref.current?.close();
+  };
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="meeting-popup-h"
+      onCancel={close}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+      className="m-auto w-[min(92vw,520px)] rounded-[26px] border border-line bg-paper p-0 text-body shadow-card backdrop:bg-forest-950/60 backdrop:backdrop-blur-[2px]"
+    >
+      <div className="relative p-6 sm:p-7">
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          className="absolute top-3 right-3 inline-flex size-11 items-center justify-center rounded-full text-forest-800 hover:bg-mist"
+        >
+          <CloseIcon size={20} />
+        </button>
+        {children}
+      </div>
+    </dialog>
+  );
+}
+
+function MeetingBody({
+  meeting,
+  answer,
+  busy,
+  err,
+  reply,
+  headingId,
+  roomForClose = false,
+}: {
+  meeting: MeetingView;
+  answer: Answer;
+  busy: "yes" | "no" | null;
+  err: string;
+  reply: (a: "yes" | "no") => Promise<void>;
+  headingId: string;
+  roomForClose?: boolean;
+}) {
+  const soon = meeting.daysLeft === 0 ? "Today" : meeting.daysLeft === 1 ? "Tomorrow" : `In ${meeting.daysLeft} days`;
+  // Calendar-style date tile, read from the meeting date text
+  const d = /(\d{1,2})\s+([A-Za-z]+)/.exec(meeting.when);
+
+  return (
+    <>
+      <div className={`flex items-start gap-4 ${roomForClose ? "pr-10" : ""}`}>
+        {d ? (
+          <div aria-hidden="true" className="flex w-16 shrink-0 flex-col overflow-hidden rounded-2xl border border-line bg-paper text-center shadow-card">
+            <span className="bg-forest-800 py-1 text-[11px] font-semibold tracking-[0.1em] text-gold-soft uppercase">{d[2].slice(0, 3)}</span>
+            <span className="py-1.5 font-display text-[28px] leading-none font-bold text-forest-800">{d[1]}</span>
+          </div>
+        ) : null}
         <div className="min-w-0">
           <p className="eyebrow m-0">Next meeting · {soon}</p>
-          <h2 className="m-0 mt-1 font-sans text-[18px] font-semibold text-ink">Annual General Meeting</h2>
+          <h2 id={headingId} className="m-0 mt-1 font-sans text-[18px] font-semibold text-ink">
+            Annual General Meeting
+          </h2>
           <p className="m-0 mt-1 text-[14.5px] text-body">
             {meeting.when}
             <span className="block text-muted">{meeting.place}</span>
@@ -102,6 +200,6 @@ export function MeetingCard({ meeting }: { meeting: MeetingView }) {
           </p>
         ) : null}
       </div>
-    </Card>
+    </>
   );
 }
