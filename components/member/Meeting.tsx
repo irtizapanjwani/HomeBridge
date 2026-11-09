@@ -33,25 +33,44 @@ export function MeetingCard({ meeting }: { meeting: MeetingView }) {
 
   return (
     <Card id="meeting" className="scroll-mt-6">
-      <p className="eyebrow m-0">Next meeting · {soon}</p>
-      <h2 className="m-0 mt-1.5 font-sans text-[19px] font-semibold text-ink">Annual General Meeting</h2>
-      <p className="m-0 mt-2 text-[15.5px] text-ink">
-        <strong>{meeting.when}</strong>
-        <span className="block text-body">{meeting.place}</span>
-      </p>
+      <div className="flex items-start gap-4">
+        {/* Calendar-style date tile, read from the meeting date text */}
+        {(() => {
+          const d = /(\d{1,2})\s+([A-Za-z]+)/.exec(meeting.when);
+          return d ? (
+            <div aria-hidden="true" className="flex w-16 shrink-0 flex-col overflow-hidden rounded-2xl border border-line bg-paper text-center shadow-card">
+              <span className="bg-forest-800 py-1 text-[11px] font-semibold tracking-[0.1em] text-gold-soft uppercase">{d[2].slice(0, 3)}</span>
+              <span className="py-1.5 font-display text-[28px] leading-none font-bold text-forest-800">{d[1]}</span>
+            </div>
+          ) : null;
+        })()}
+        <div className="min-w-0">
+          <p className="eyebrow m-0">Next meeting · {soon}</p>
+          <h2 className="m-0 mt-1 font-sans text-[18px] font-semibold text-ink">Annual General Meeting</h2>
+          <p className="m-0 mt-1 text-[14.5px] text-body">
+            {meeting.when}
+            <span className="block text-muted">{meeting.place}</span>
+          </p>
+        </div>
+      </div>
 
       {meeting.agenda.length ? (
         <>
-          <p className="m-0 mt-4 text-[14px] font-semibold text-ink">Agenda</p>
-          <ol className="m-0 mt-1 pl-5 text-[15px] leading-relaxed text-body">
+          <p className="m-0 mt-4 text-[13px] font-semibold tracking-[0.06em] text-muted uppercase">Agenda</p>
+          <ol className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
             {meeting.agenda.map((a, i) => (
-              <li key={i}>{a}</li>
+              <li key={i} className="flex items-center gap-2.5 rounded-xl bg-cream px-3 py-2 text-[14.5px] text-ink">
+                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-forest-800 text-[12px] font-semibold text-cream">
+                  {i + 1}
+                </span>
+                {a}
+              </li>
             ))}
           </ol>
         </>
       ) : null}
 
-      <div className="mt-5 rounded-xl bg-paper p-4">
+      <div className="mt-4 border-t border-line pt-4">
         {answer ? (
           <p className="m-0 text-[15px] text-ink" aria-live="polite">
             {answer === "yes" ? (

@@ -32,21 +32,24 @@ export function ContributionsCard({ c }: { c: ContributionsView }) {
   const shown = all ? c.items : c.items.slice(0, 6);
   return (
     <Card>
-      <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your contributions</h2>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-mist/70 px-4 py-3">
-          <p className="m-0 text-[13px] text-muted">Total contributed</p>
-          <p className="m-0 mt-0.5 text-[20px] font-semibold text-forest-800">{c.totals.length ? c.totals.join(" + ") : "Nothing yet"}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Your contributions</h2>
+          <p className="m-0 mt-0.5 text-[14px] text-muted">
+            {c.totals.length ? c.totals.join(" + ") : "Nothing yet"} · {c.shares.toLocaleString("en-GB")} shares
+          </p>
         </div>
-        <div className="rounded-xl bg-mist/70 px-4 py-3">
-          <p className="m-0 text-[13px] text-muted">Share balance</p>
-          <p className="m-0 mt-0.5 text-[20px] font-semibold text-forest-800">{c.shares.toLocaleString("en-GB")} shares</p>
-        </div>
+        <a
+          href="/app/pay"
+          className="inline-flex min-h-10 items-center rounded-full bg-forest-800 px-5 text-[14.5px] font-semibold text-cream no-underline hover:bg-forest-900 hover:text-cream"
+        >
+          Pay now
+        </a>
       </div>
       <p className="mt-2 mb-0 text-[13px] text-muted">{c.note}</p>
 
       {c.items.length ? (
-        <ul className="mt-4 mb-0 flex list-none flex-col divide-y divide-line/70 p-0">
+        <ul className="mt-3 mb-0 flex list-none flex-col divide-y divide-line/70 p-0">
           {shown.map((i) => (
             <li key={i.receiptNo} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
               <span>
@@ -98,8 +101,10 @@ export function ContributionsCard({ c }: { c: ContributionsView }) {
         </div>
       ) : null}
 
-      <ProofForm currency={c.currency} thisMonth={c.thisMonth} />
-      <HolidayForm thisMonth={c.thisMonth} holidays={c.holidays} />
+      <div className="mt-4 grid items-start gap-3 sm:grid-cols-2">
+        <ProofForm currency={c.currency} thisMonth={c.thisMonth} />
+        <HolidayForm thisMonth={c.thisMonth} holidays={c.holidays} />
+      </div>
       <StatementDownload firstMonth={c.firstMonth} thisMonth={c.thisMonth} />
     </Card>
   );
@@ -133,7 +138,7 @@ function ProofForm({ currency, thisMonth }: { currency: ContributionsView["curre
   }
 
   return (
-    <details className="mt-5 rounded-xl border border-line p-4">
+    <details className="rounded-xl border border-line bg-page/60 p-4 open:sm:col-span-2">
       <summary className="cursor-pointer text-[15px] font-semibold text-forest-800">I have paid — send proof</summary>
       <p className="mt-2 mb-3 text-[14px] text-body">
         Paid by bank transfer and it is not showing yet? Send a photo or PDF of your bank receipt. Sent by the 7th, it counts as on time.
@@ -185,7 +190,7 @@ function StatementDownload({ firstMonth, thisMonth }: { firstMonth: string; this
   const [to, setTo] = useState(thisMonth);
   const href = (format: "pdf" | "csv") => `/api/member/statement?from=${from}&to=${to}&format=${format}`;
   return (
-    <div className="mt-5 rounded-xl bg-mist/50 p-4">
+    <div className="mt-3 rounded-xl bg-mist/50 p-4">
       <h3 className="m-0 font-sans text-[15px] font-semibold text-forest-800">Download a statement</h3>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <label className={label}>
@@ -234,7 +239,7 @@ function HolidayForm({ thisMonth, holidays }: { thisMonth: string; holidays: Con
   }
 
   return (
-    <details className="mt-3 rounded-xl border border-line p-4">
+    <details className="rounded-xl border border-line bg-page/60 p-4 open:sm:col-span-2">
       <summary className="cursor-pointer text-[15px] font-semibold text-forest-800">Ask for a payment holiday</summary>
       <p className="mt-2 mb-3 text-[14px] text-body">
         Going through a hard time? You can ask to pause your contributions for up to 3 months in any 12. If the Treasurer approves, you will

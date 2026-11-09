@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, ClipboardIcon, FileIcon, IdIcon, BankIcon, WhatsAppIcon, ArrowRightIcon } from "@/components/ui/Icons";
+import { CheckIcon, ClipboardIcon, DownloadIcon, FileIcon, IdIcon, BankIcon, WhatsAppIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { CONTACT } from "@/lib/content";
 import type { DocMeta } from "@/lib/document-types";
 import { Card } from "./bits";
@@ -67,7 +67,7 @@ export function stagesFor(f: ApplicantFacts): Stage[] {
   });
 }
 
-function CopyButton({ value }: { value: string }) {
+function CopyButton({ value, light }: { value: string; light?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -81,7 +81,7 @@ function CopyButton({ value }: { value: string }) {
           /* clipboard blocked: the number is still selectable */
         }
       }}
-      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-cream/30 px-3 text-[13px] font-semibold text-cream transition-colors hover:bg-cream/10"
+      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-colors ${light ? "bg-forest-800 text-cream hover:bg-forest-900" : "border border-cream/30 text-cream hover:bg-cream/10"}`}
       aria-label={copied ? "Copied" : `Copy ${value}`}
     >
       {copied ? <CheckIcon size={14} strokeWidth={3} /> : <ClipboardIcon size={14} />}
@@ -95,109 +95,217 @@ const PILL: Record<string, string> = {
   Declined: "bg-[#fdf6f3] text-danger",
 };
 
-/** Dark welcome banner: greeting, reference, status and (for applicants) the progress tracker. */
+/** Welcome banner in the landing-page style: cream background, serif greeting with a gold accent,
+ * and a card on the right — the membership card for members, the progress steps for applicants. */
 export function ApplicantHero({
   f,
   greeting,
   signOut,
   signingOut,
+  membership,
 }: {
   f: ApplicantFacts;
   greeting: string;
   signOut: () => void;
   signingOut: boolean;
+  membership?: { category: string; chapter: string; admittedAt: string; certificateNo: string; receiptNo?: string };
 }) {
   const stages = f.supporter || f.memberNo ? null : stagesFor(f);
   const doneCount = stages?.filter((s) => s.state === "done").length ?? 0;
   const statusLabel = f.supporter ? "On the Supporter list" : f.status;
   const number = f.memberNo ?? f.reference;
+  const subtitle = f.memberNo
+    ? "Here’s your membership at a glance — contributions, meetings and votes are all below."
+    : f.supporter
+      ? "Thank you for supporting HomeBridge. We’ll keep you posted."
+      : "Here’s where your application is, and what happens next.";
 
   return (
-    <section
-      aria-labelledby="welcome-h"
-      className="relative overflow-hidden rounded-[28px] bg-forest-800 px-[clamp(20px,4vw,40px)] pt-[clamp(22px,4vw,36px)] pb-[clamp(22px,4vw,32px)] text-cream"
-    >
-      {/* Soft gold glow in the corner, purely decorative */}
-      <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-gold/15 blur-3xl" />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="m-0 text-[13px] font-semibold tracking-[0.08em] text-gold-soft uppercase">
-            {f.memberNo ? "Member account" : f.supporter ? "Supporter" : "Membership application"}
-          </p>
-          <h1 id="welcome-h" className="mt-2 mb-0 text-[clamp(30px,4.5vw,46px)] leading-tight text-cream">
-            {greeting}
-            {f.firstName ? `, ${f.firstName}` : ""}
-          </h1>
-          <p className="mt-2 mb-0 text-[15px] text-on-dark">
+    <section aria-labelledby="welcome-h" className="relative overflow-hidden rounded-[28px] border border-line bg-cream">
+      <div aria-hidden="true" className="pointer-events-none absolute -top-40 -right-40 size-[480px] rounded-full bg-gold/10 blur-3xl" />
+      <div className="relative grid items-center gap-8 p-[clamp(20px,4vw,44px)] lg:grid-cols-[1.05fr_1fr] lg:gap-12">
+        {/* Left: greeting */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <span className="inline-flex flex-wrap items-center gap-2 self-start rounded-full bg-paper px-3.5 py-1.5 text-[13px] font-medium text-forest-800 ring-1 ring-line">
+            <span className="font-semibold text-gold-dark">{f.memberNo ? "Member" : f.supporter ? "Supporter" : "Applicant"}</span>
             {[f.memberType, f.chapter].filter(Boolean).join(" · ") || "HomeBridge Cooperative"}
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={signingOut}
-          onClick={signOut}
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-cream/40 px-5 text-[15px] font-semibold text-cream transition-colors hover:bg-cream/10 disabled:opacity-60"
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
-      </div>
+          </span>
+          <h1 id="welcome-h" className="m-0 text-[clamp(32px,4.6vw,52px)] leading-[1.06] text-forest-800">
+            {greeting}
+            {f.firstName ? (
+              <>
+                , <span className="text-gold-dark">{f.firstName}.</span>
+              </>
+            ) : (
+              "."
+            )}
+          </h1>
+          <p className="m-0 max-w-[32em] text-[clamp(15.5px,1.4vw,17px)] text-body">{subtitle}</p>
 
-      <div className="relative mt-6 flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-forest-900/60 py-2 pr-2 pl-4">
-          <span className="text-[13px] text-on-dark">{f.memberNo ? "Membership number" : "Application reference"}</span>
-          <span className="font-mono text-[17px] font-semibold tracking-wide text-cream select-all">{number}</span>
-          <CopyButton value={number} />
-        </div>
-        <span className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[14px] font-semibold ${PILL[f.status] ?? "bg-butter text-gold-ink"}`}>
-          {statusLabel}
-        </span>
-      </div>
+          {!f.memberNo && (
+            <div className="flex flex-wrap items-center gap-2.5 self-start rounded-2xl bg-paper py-1.5 pr-1.5 pl-4 ring-1 ring-line">
+              <span className="text-[13px] text-muted">Reference</span>
+              <span className="font-mono text-[16px] font-semibold tracking-wide text-forest-800 select-all">{number}</span>
+              <CopyButton value={number} light />
+            </div>
+          )}
 
-      {stages && (
-        <div className="relative mt-8">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="m-0 text-[14px] font-semibold text-cream">Your progress</p>
-            <p className="m-0 text-[13px] text-on-dark">
-              {doneCount} of {stages.length} done
-            </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[14px] font-semibold ${PILL[f.status] ?? "bg-butter text-gold-ink"}`}>
+              {statusLabel}
+            </span>
+            <button
+              type="button"
+              disabled={signingOut}
+              onClick={signOut}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest-800 px-5 text-[15px] font-semibold text-forest-800 transition hover:-translate-y-px hover:bg-paper disabled:opacity-60"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
           </div>
-          {/* Overall bar */}
-          <div className="h-1.5 overflow-hidden rounded-full bg-cream/15" aria-hidden="true">
-            <div className="h-full rounded-full bg-gold transition-[width]" style={{ width: `${(doneCount / stages.length) * 100}%` }} />
-          </div>
-          <ol className="m-0 mt-5 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-5 sm:gap-2">
-            {stages.map((s, i) => (
-              <li key={s.label} className="flex items-center gap-3 sm:flex-col sm:items-start sm:gap-2">
-                <span
-                  aria-hidden="true"
-                  className={`grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
-                    s.state === "done"
-                      ? "bg-gold text-forest-900"
-                      : s.state === "current"
-                        ? "bg-cream text-forest-900 ring-4 ring-gold/40"
-                        : s.state === "stopped"
-                          ? "bg-[#fdf6f3] text-danger"
-                          : "border border-cream/30 text-on-dark"
-                  }`}
+        </div>
+
+        {/* Right: membership card, or the progress steps */}
+        {f.memberNo && membership ? (
+          <div className="relative">
+            <div aria-hidden="true" className="absolute -inset-3 rotate-2 rounded-[28px] bg-gold/25" />
+            <div className="relative flex flex-col gap-4 rounded-[22px] bg-forest-800 p-6 text-cream shadow-card sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <p className="m-0 flex items-center gap-2 text-[12.5px] font-semibold tracking-[0.08em] text-gold-soft uppercase">
+                  <CheckIcon size={15} strokeWidth={3} /> Membership card
+                </p>
+                <CopyButton value={number} />
+              </div>
+              <div>
+                <p className="m-0 font-mono text-[clamp(22px,3vw,30px)] font-bold tracking-wide text-cream select-all">{number}</p>
+                <p className="m-0 mt-1 text-[13px] text-on-dark">Quote it on every payment, form and enquiry.</p>
+              </div>
+              <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-cream/15 pt-4">
+                {[
+                  ["Category", `${membership.category} member`],
+                  ["Chapter", membership.chapter],
+                  ["Admitted", membership.admittedAt],
+                  ["Certificate", membership.certificateNo],
+                ].map(([k, v]) => (
+                  <div key={k} className="min-w-0">
+                    <dt className="text-[12.5px] text-on-dark">{k}</dt>
+                    <dd className="m-0 text-[14.5px] font-semibold break-words text-cream">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="/api/member/certificate"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full bg-gold px-4 text-[14px] font-semibold text-forest-900 no-underline hover:bg-gold-soft"
                 >
-                  {s.state === "done" ? <CheckIcon size={15} strokeWidth={3} /> : i + 1}
+                  <DownloadIcon size={16} /> Certificate
+                </a>
+                {membership.receiptNo ? (
+                  <a
+                    href="/api/member/receipt"
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cream/35 px-4 text-[14px] font-semibold text-cream no-underline hover:bg-cream/10 hover:text-cream"
+                  >
+                    <DownloadIcon size={16} /> Joining fee receipt
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : stages ? (
+          <div className="relative">
+            <div aria-hidden="true" className="absolute -inset-3 rotate-2 rounded-[28px] bg-gold/25" />
+            <div className="relative flex flex-col gap-3 rounded-[22px] bg-paper p-5 text-ink shadow-card sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="m-0 font-display text-[21px] text-forest-800">Your progress</h2>
+                <span className="shrink-0 rounded-full bg-forest-100 px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-forest-800">
+                  {doneCount} of {stages.length} done
                 </span>
-                <div className="min-w-0">
-                  <p className={`m-0 text-[14px] font-semibold ${s.state === "todo" ? "text-on-dark" : "text-cream"}`}>
-                    {s.label}
-                    <span className="sr-only">
-                      {s.state === "done" ? " (done)" : s.state === "current" ? " (in progress)" : s.state === "stopped" ? " (stopped)" : " (to come)"}
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
+                <div className="h-full rounded-full bg-gold" style={{ width: `${(doneCount / stages.length) * 100}%` }} />
+              </div>
+              <ol className="m-0 flex list-none flex-col gap-2 p-0">
+                {stages.map((s, i) => (
+                  <li
+                    key={s.label}
+                    className={`flex items-center gap-3 rounded-[14px] px-3.5 py-2.5 ${
+                      s.state === "current" ? "bg-butter ring-1 ring-gold/50" : s.state === "stopped" ? "bg-[#fdf6f3]" : "bg-cream"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
+                        s.state === "done"
+                          ? "bg-forest-800 text-cream"
+                          : s.state === "current"
+                            ? "bg-gold text-forest-900"
+                            : s.state === "stopped"
+                              ? "bg-danger text-paper"
+                              : "border border-line-strong/60 text-muted"
+                      }`}
+                    >
+                      {s.state === "done" ? <CheckIcon size={15} strokeWidth={3} /> : i + 1}
                     </span>
-                  </p>
-                  <p className={`m-0 text-[13px] ${s.state === "current" ? "text-gold-soft" : "text-on-dark"}`}>{s.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+                    <div className="min-w-0 flex-1">
+                      <p className={`m-0 text-[14.5px] font-semibold ${s.state === "todo" ? "text-muted" : "text-forest-800"}`}>
+                        {s.label}
+                        <span className="sr-only">
+                          {s.state === "done" ? " (done)" : s.state === "current" ? " (in progress)" : s.state === "stopped" ? " (stopped)" : " (to come)"}
+                        </span>
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-right text-[13px] ${s.state === "current" ? "font-semibold text-gold-ink" : "text-muted"}`}>{s.detail}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </section>
+  );
+}
+
+/** Four headline numbers for members, in the landing page's stat-box style. */
+export function MemberStats({
+  totals,
+  shares,
+  meetingDays,
+  openVotes,
+}: {
+  totals: string[];
+  shares: number;
+  meetingDays: number | null;
+  openVotes: number;
+}) {
+  const stats = [
+    { value: totals.length ? totals.join(" + ") : "£0", label: "Total contributed", href: "#contributions" },
+    { value: shares.toLocaleString("en-GB"), label: shares === 1 ? "Share owned" : "Shares owned", href: "#contributions" },
+    {
+      value: meetingDays === null ? "—" : meetingDays === 0 ? "Today" : `${meetingDays} days`,
+      label: meetingDays === null ? "No meeting called" : "Until the next meeting",
+      href: "#meeting",
+    },
+    { value: String(openVotes), label: openVotes === 1 ? "Vote open now" : "Votes open now", href: "#votes" },
+  ];
+  return (
+    <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 lg:grid-cols-4 lg:gap-4">
+      {stats.map((s) => (
+        <li key={s.label}>
+          <a
+            href={s.href}
+            className="flex h-full flex-col gap-1 rounded-[20px] border border-line bg-paper px-5 py-4 text-ink no-underline shadow-card transition hover:-translate-y-px hover:border-line-strong/60"
+          >
+            <span className="font-display text-[clamp(22px,2.4vw,30px)] leading-tight font-bold break-words text-gold-dark">{s.value}</span>
+            <span className="text-[13.5px] text-muted">{s.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -342,11 +450,11 @@ export function NextTimeline({ steps, title = "What happens next" }: { steps: st
 }
 
 /** Small help card with the office's WhatsApp and email. */
-export function HelpCard() {
+export function HelpCard({ member = false }: { member?: boolean }) {
   return (
     <Card className="!bg-cream">
       <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Need help?</h2>
-      <p className="mt-2 mb-4 text-[14.5px] leading-relaxed text-body">Questions about your application? Message the membership office.</p>
+      <p className="mt-2 mb-4 text-[14.5px] leading-relaxed text-body">{member ? "Questions about payments, forms or meetings? Message the office." : "Questions about your application? Message the membership office."}</p>
       <div className="flex flex-col gap-2.5">
         <a
           href={CONTACT.whatsapp}
