@@ -3,8 +3,9 @@ import { isDbConfigured } from "@/lib/db";
 import {
   clearMemberSession,
   createMemberSession,
-  findMemberByEmail,
+  findMemberByLogin,
   isMemberAuthConfigured,
+  makeSessionToken,
   verifyPassword,
 } from "@/lib/member-auth";
 
@@ -24,6 +25,11 @@ function tooMany(key: string) {
   return entry.count > MAX_ATTEMPTS;
 }
 
+/**
+ * Website: { email, password } → sets the session cookie.
+ * Mobile app: { login, password, client: "app" } → returns { token, expiresAt } instead. "login" can
+ * be an email, membership number (HBC-…), application reference (HBA-…) or phone number.
+ */
 export async function POST(req: Request) {
   if (!isMemberAuthConfigured() || !isDbConfigured()) {
     return NextResponse.json({ ok: false, error: "Sign-in is not configured" }, { status: 503 });
@@ -31,23 +37,29 @@ export async function POST(req: Request) {
 
   let email = "";
   let password = "";
+  let app = false;
   try {
-    const body = (await req.json()) as { email?: unknown; password?: unknown };
-    email = typeof body.email === "string" ? body.email.trim() : "";
+    const body = (await req.json()) as { email?: unknown; login?: unknown; password?: unknown; client?: unknown };
+    const login = typeof body.login === "string" ? body.login : body.email;
+    email = typeof login === "string" ? login.trim() : "";
     password = typeof body.password === "string" ? body.password : "";
+    app = body.client === "app";
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid request" }, { status: 400 });
   }
 
   if (!email || !password) {
-    return NextResponse.json({ ok: false, error: "Enter your email address and password" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: app ? "Enter your email, membership number or phone, and your password" : "Enter your email address and password" },
+      { status: 400 },
+    );
   }
   if (tooMany(email.toLowerCase())) {
     return NextResponse.json({ ok: false, error: "Too many attempts. Try again in a few minutes." }, { status: 429 });
   }
 
   try {
-    const member = await findMemberByEmail(email);
+    const member = await findMemberByLogin(email);
     // The same answer whether the address is unknown or the password is wrong, so this page cannot
     // be used to find out who has registered.
     const ok = member?.passwordHash ? await verifyPassword(password, member.passwordHash) : false;
@@ -55,6 +67,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Those details don't match an account." }, { status: 401 });
     }
     attempts.delete(email.toLowerCase());
+    if (app) {
+      const { token, expiresAt } = await makeSessionToken(member.reference);
+      return NextResponse.json({ ok: true, token, expiresAt });
+    }
     await createMemberSession(member.reference);
     return NextResponse.json({ ok: true });
   } catch (err) {
