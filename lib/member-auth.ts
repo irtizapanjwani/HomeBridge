@@ -7,8 +7,8 @@
 import "server-only";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { cookies, headers } from "next/headers";
-import { collections, normEmail, normPhone } from "@/lib/members";
+import { cookies } from "next/headers";
+import { collections, normEmail } from "@/lib/members";
 
 const scrypt = promisify(scryptCb) as (p: string | Buffer, s: string | Buffer, k: number) => Promise<Buffer>;
 
@@ -69,21 +69,11 @@ function safeEqual(a: string, b: string) {
 
 export const isMemberAuthConfigured = () => Boolean(process.env.MEMBER_SESSION_SECRET);
 
-/**
- * A signed session token: "<reference>.<expires ms>.<HMAC>". The website keeps it in an httpOnly
- * cookie; the mobile app gets the same token back from sign-in, keeps it in the phone's secure
- * storage and sends it as "Authorization: Bearer <token>".
- */
-export async function makeSessionToken(reference: string) {
+export async function createMemberSession(reference: string) {
   const expires = Date.now() + MAX_AGE_SECONDS * 1000;
   const payload = `${reference}.${expires}`;
-  return { token: `${payload}.${await sign(payload)}`, expiresAt: new Date(expires).toISOString() };
-}
-
-export async function createMemberSession(reference: string) {
-  const { token } = await makeSessionToken(reference);
   const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
+  store.set(SESSION_COOKIE, `${payload}.${await sign(payload)}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -96,24 +86,11 @@ export async function clearMemberSession() {
   (await cookies()).delete(SESSION_COOKIE);
 }
 
-/** The bearer token sent by the mobile app, if any. */
-async function bearerToken(): Promise<string | undefined> {
-  const auth = (await headers()).get("authorization") ?? "";
-  const m = /^Bearer\s+(\S+)$/i.exec(auth);
-  return m?.[1];
-}
-
-/**
- * The signed-in member's reference, or null. Accepts the website's cookie or the app's bearer
- * token — both are the same signed format, so every member API works for both without changes.
- */
+/** The signed-in member's reference, or null. */
 export async function currentMemberRef(): Promise<string | null> {
   if (!isMemberAuthConfigured()) return null;
-  const token = (await bearerToken()) ?? (await cookies()).get(SESSION_COOKIE)?.value;
-  return token ? referenceFromToken(token) : null;
-}
-
-async function referenceFromToken(token: string): Promise<string | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
   const at = token.lastIndexOf(".");
   if (at < 1) return null;
   const payload = token.slice(0, at);
@@ -126,23 +103,6 @@ async function referenceFromToken(token: string): Promise<string | null> {
   const expires = Number(expiresRaw);
   if (!reference || !Number.isFinite(expires) || expires <= Date.now()) return null;
   return reference;
-}
-
-/**
- * Finds the account for whatever the member typed on the app's sign-in screen: their email,
- * membership number (HBC-…), application reference (HBA-…) or phone number.
- */
-export async function findMemberByLogin(login: string) {
-  const value = login.trim();
-  if (!value) return null;
-  const { members } = await collections();
-  if (value.includes("@")) return findMemberByEmail(value);
-  const upper = value.toUpperCase();
-  if (/^HBC-/.test(upper)) return members.findOne({ "membership.memberNo": upper });
-  if (/^HBA-/.test(upper)) return members.findOne({ reference: upper });
-  const phone = normPhone(value);
-  if (phone.length >= 7) return members.findOne({ phoneNorm: phone }, { sort: { submittedAt: -1 } });
-  return null;
 }
 
 /** Looks up a member by the email they registered with. */

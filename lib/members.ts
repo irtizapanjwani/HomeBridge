@@ -360,7 +360,6 @@ export function ensureIndexes() {
       people.createIndex({ phones: 1 }),
       members.createIndex({ reference: 1 }, { unique: true }),
       members.createIndex({ personRef: 1 }),
-      members.createIndex({ phoneNorm: 1 }),
       members.createIndex({ submittedAt: -1 }),
       members.createIndex({ status: 1 }),
       members.createIndex({ "payment.reference": 1 }),
