@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CheckIcon, LockIcon } from "@/components/ui/Icons";
+import { LogoMark } from "@/components/ui/Logo";
 import { CONTACT } from "@/lib/content";
 import { JOINING_FEE } from "@/lib/settings";
 import type { DocMeta } from "@/lib/document-types";
@@ -236,13 +237,7 @@ export function Account({ view }: { view: AccountView }) {
           <h2 id="record-h" className="m-0 mt-1 text-[clamp(24px,3vw,32px)] text-forest-800">
             Details, documents and joining fee
           </h2>
-          <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-            {detailsCard}
-            <div className="grid gap-4">
-              {documentsCard}
-              {feeCard}
-            </div>
-          </div>
+          <LevelColumns left={[detailsCard]} right={[documentsCard, feeCard]} panel={(wide) => <SafeRecordPanel wide={wide} />} />
         </section>
       </div>
     );
@@ -290,6 +285,129 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="grid gap-0.5 py-2 sm:grid-cols-[minmax(0,150px)_1fr] sm:gap-4">
       <dt className="text-[14px] text-muted">{label}</dt>
       <dd className="m-0 text-[15px] break-words text-ink">{value || <span className="text-muted">Not given</span>}</dd>
+    </div>
+  );
+}
+
+/**
+ * Fills the space under "Your details" so the two columns of the record end level. Dark green with
+ * gold, like the hero and footer, with a faint house mark: a calm word on how the record is kept.
+ */
+function SafeRecordPanel({ wide = false }: { wide?: boolean }) {
+  const points = [
+    "Your ID and documents are stored encrypted.",
+    "Only the membership office sees them, to check who you are.",
+    "They are never shown to other members.",
+  ];
+  return (
+    <section
+      aria-labelledby="safe-h"
+      className={`relative flex flex-1 flex-col overflow-hidden rounded-[22px] bg-forest-800 p-[clamp(18px,2.6vw,24px)] text-cream ${
+        wide ? "lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)] lg:items-center lg:gap-x-10" : ""
+      }`}
+    >
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold via-gold-soft to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-10 -bottom-14 rotate-[-10deg] opacity-[0.08]">
+        <LogoMark size={230} />
+      </div>
+      <div className={wide ? "lg:row-span-2" : ""}>
+        <p className="m-0 inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] text-gold uppercase">
+          <LockIcon size={15} /> Your record is safe with us
+        </p>
+        <h2 id="safe-h" className="m-0 mt-2 text-[clamp(20px,2.2vw,24px)] text-cream">
+          Kept private, kept secure
+        </h2>
+      </div>
+      <ul className={`relative m-0 mt-3 flex list-none flex-col gap-2.5 p-0 ${wide ? "lg:mt-0" : ""}`}>
+        {points.map((t) => (
+          <li key={t} className="flex items-start gap-3 text-[15px] leading-snug text-on-dark">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/40">
+              <CheckIcon size={13} strokeWidth={3} />
+            </span>
+            {t}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** About the panel's own height in a column, with the gap above it. */
+const PANEL_HEIGHT = 205;
+
+/**
+ * Two columns that always end level. The panel goes under whichever column is shorter (measured in the
+ * browser, so it follows the real number of documents and notes) and stretches to fill the gap; the
+ * last card of the other column stretches too, to absorb any small difference. One column on phones.
+ */
+function LevelColumns({
+  left,
+  right,
+  panel,
+}: {
+  left: React.ReactNode[];
+  right: React.ReactNode[];
+  panel: (wide: boolean) => React.ReactNode;
+}) {
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  // "below" = the columns are close in height, so the panel runs across the bottom of both instead.
+  const [side, setSide] = useState<"left" | "right" | "below">("left");
+
+  // useLayoutEffect so the panel moves before the page is painted; skipped on the server.
+  const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+  useIsoLayoutEffect(() => {
+    const measure = () => {
+      // Each card's own height, not its stretched one: switch stretching off just while reading.
+      const natural = (el: HTMLDivElement | null) =>
+        el
+          ? [...el.children]
+              .filter((c) => !(c as HTMLElement).dataset.panel)
+              .reduce((h, c) => {
+                const box = c as HTMLElement;
+                const inner = (box.firstElementChild ?? box) as HTMLElement;
+                const before = [box.style.flex, inner.style.flex];
+                box.style.flex = inner.style.flex = "none";
+                const height = inner.getBoundingClientRect().height;
+                [box.style.flex, inner.style.flex] = before;
+                return h + height;
+              }, 0)
+          : 0;
+      const l = natural(leftRef.current);
+      const r = natural(rightRef.current);
+      // Whichever leaves less empty space: the panel in the shorter column, or across the bottom.
+      const gap = Math.abs(l - r);
+      setSide(Math.abs(gap - PANEL_HEIGHT) < gap ? (l < r ? "left" : "right") : "below");
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    [leftRef.current, rightRef.current].forEach((el) => el && [...el.children].forEach((c) => ro.observe(c.firstElementChild ?? c)));
+    return () => ro.disconnect();
+  }, []);
+
+  const column = (items: React.ReactNode[], withPanel: boolean, ref: React.RefObject<HTMLDivElement | null>) => {
+    const shown = items.filter(Boolean);
+    return (
+      <div ref={ref} className="flex flex-col gap-4">
+        {shown.map((item, i) => (
+          <div key={i} className={!withPanel && i === shown.length - 1 ? "flex flex-1 flex-col [&>*]:flex-1" : ""}>
+            {item}
+          </div>
+        ))}
+        {withPanel && (
+          <div data-panel="1" className="flex flex-1 flex-col">
+            {panel(false)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {column(left, side === "left", leftRef)}
+      {column(right, side === "right", rightRef)}
+      {side === "below" && <div className="flex lg:col-span-2">{panel(true)}</div>}
     </div>
   );
 }
