@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Statements" };
 export const dynamic = "force-dynamic";
 
 export default async function Statements() {
-  const { view, configured } = await loadAccountView();
+  const { view, configured } = await loadAccountView(["money"]);
   if (!view) return <MemberSignIn configured={configured} />;
   if (!view.membership || !view.contributions) return <MembersOnly what="Statements" />;
   return <StatementsPage c={view.contributions} memberNo={view.membership.memberNo} />;

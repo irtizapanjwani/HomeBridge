@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Keep pages the browser has just shown for 30 seconds, so going back to a member-area tab is
+    // instant. Saving anything (a reply, a vote, contact details) refreshes the page as before.
+    staleTimes: { dynamic: 30 },
+  },
   // PDFs and fonts are read from disk at run time (welcome pack, certificates, receipts), so make
   // sure the deployed functions carry them, including pack files added later such as the bye-laws.
   outputFileTracingIncludes: {

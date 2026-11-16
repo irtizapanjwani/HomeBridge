@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { AccountView } from "@/components/member/Account";
 import { currentMemberRef, findMemberByRef, isMemberAuthConfigured } from "@/lib/member-auth";
 import { isDbConfigured } from "@/lib/db";
@@ -52,30 +53,38 @@ const date = (v: string) =>
  * dashboard and the Statements, Projects, Meetings and Profile pages. `view` is null when nobody is
  * signed in (the page then shows the sign-in form).
  */
-export async function loadAccountView(): Promise<{ view: AccountView | null; configured: boolean }> {
-  const configured = isMemberAuthConfigured() && isDbConfigured();
-  const ref = isDbConfigured() ? await currentMemberRef() : null;
-  if (!ref) return { view: null, configured };
+/** What a page needs beyond the member's own record. Each page asks only for its own, so it opens fast. */
+export type Need = "documents" | "money" | "glance" | "votes" | "ideas" | "meeting";
+const EVERYTHING: Need[] = ["documents", "money", "glance", "votes", "ideas", "meeting"];
 
-  const m = await findMemberByRef(ref);
+/**
+ * The signed-in member, read once per request even when the layout (for the menu) and the page both
+ * ask, so a tab change does one lookup, not two.
+ */
+export const signedInMember = cache(async () => {
+  const ref = isDbConfigured() ? await currentMemberRef() : null;
+  return ref ? findMemberByRef(ref) : null;
+});
+
+export async function loadAccountView(need: Need[] = EVERYTHING): Promise<{ view: AccountView | null; configured: boolean }> {
+  const configured = isMemberAuthConfigured() && isDbConfigured();
+  const m = await signedInMember().catch(() => null);
   if (!m) return { view: null, configured };
 
-  // A failure to read documents must not take the whole account page down with it.
-  const documents = (await listDocumentsFor([m.reference]).catch(() => new Map())).get(m.reference) ?? [];
-
-  // Contribution history and share balance (brief Phase 2 member portal). Never takes the page down.
-  const contribs = m.membership ? await contributionsFor(m.reference).catch(() => []) : [];
-  const proofs = m.membership ? await proofsFor(m.reference).catch(() => []) : [];
-  const holidays = m.membership ? await holidaysFor(m.reference).catch(() => []) : [];
-  // Each of these is optional: a failure leaves its card out rather than taking the page down.
-  const [glance, motions, ideas, meeting] = m.membership
-    ? await Promise.all([
-        transparency().catch(() => undefined),
-        motionsForMember(m.membership.memberNo).catch(() => undefined),
-        ideasFor(m.reference).catch(() => undefined),
-        meetingForMember(m.membership.memberNo).catch(() => null),
-      ])
-    : [undefined, undefined, undefined, null];
+  const wants = (n: Need) => need.includes(n);
+  const member = m.membership;
+  // All of these run at the same time. Each is optional: a failure leaves its card out rather than
+  // taking the page down. "glance" reads the whole cooperative, so only the dashboard asks for it.
+  const [documents, contribs, proofs, holidays, glance, motions, ideas, meeting] = await Promise.all([
+    wants("documents") ? listDocumentsFor([m.reference]).then((d) => d.get(m.reference) ?? []).catch(() => []) : Promise.resolve([]),
+    member && wants("money") ? contributionsFor(m.reference).catch(() => []) : Promise.resolve([]),
+    member && wants("money") ? proofsFor(m.reference).catch(() => []) : Promise.resolve([]),
+    member && wants("money") ? holidaysFor(m.reference).catch(() => []) : Promise.resolve([]),
+    member && wants("glance") ? transparency().catch(() => undefined) : Promise.resolve(undefined),
+    member && wants("votes") ? motionsForMember(member.memberNo).catch(() => undefined) : Promise.resolve(undefined),
+    member && wants("ideas") ? ideasFor(m.reference).catch(() => undefined) : Promise.resolve(undefined),
+    member && wants("meeting") ? meetingForMember(member.memberNo).catch(() => null) : Promise.resolve(null),
+  ]);
   const SHORT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric" });
 
   const view: AccountView = {

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** For members and applicants alike. */
 export default async function Profile() {
-  const { view, configured } = await loadAccountView();
+  const { view, configured } = await loadAccountView(["documents"]);
   if (!view) return <MemberSignIn configured={configured} />;
   return <ProfilePage view={view} />;
 }

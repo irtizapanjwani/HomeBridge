@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Projects" };
 export const dynamic = "force-dynamic";
 
 export default async function Projects() {
-  const { view, configured } = await loadAccountView();
+  const { view, configured } = await loadAccountView(["ideas"]);
   if (!view) return <MemberSignIn configured={configured} />;
   if (!view.membership) return <MembersOnly what="Projects" />;
   return <ProjectsPage ideas={view.ideas ?? []} />;

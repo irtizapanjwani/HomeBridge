@@ -5,8 +5,7 @@ import { Logo } from "@/components/ui/Logo";
 import { MobileTabBar } from "@/components/site/MobileTabBar";
 import { MemberNav } from "@/components/member/MemberNav";
 import { Footer } from "@/components/home/Footer";
-import { isDbConfigured } from "@/lib/db";
-import { currentMemberRef, findMemberByRef } from "@/lib/member-auth";
+import { signedInMember } from "./load-view";
 
 export const metadata: Metadata = {
   title: "My account",
@@ -16,8 +15,7 @@ export const metadata: Metadata = {
 /** Which menu to show: everything for members, Dashboard and Profile for applicants, nothing signed out. */
 async function whoIsSignedIn(): Promise<"member" | "applicant" | null> {
   try {
-    const ref = isDbConfigured() ? await currentMemberRef() : null;
-    const m = ref ? await findMemberByRef(ref) : null;
+    const m = await signedInMember();
     return m ? (m.membership ? "member" : "applicant") : null;
   } catch {
     return null;
