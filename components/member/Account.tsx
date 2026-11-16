@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CheckIcon, LockIcon } from "@/components/ui/Icons";
+import { ArrowRightIcon, BankIcon, CheckIcon, ChartIcon, FileIcon, LockIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { LogoMark } from "@/components/ui/Logo";
 import { CONTACT } from "@/lib/content";
 import { JOINING_FEE } from "@/lib/settings";
@@ -231,6 +231,7 @@ export function Account({ view }: { view: AccountView }) {
             view.glance && <GlanceCard key="glance" g={view.glance} />,
             <HelpCard key="help" member />,
             <div key="safety">{safetyCard}</div>,
+            <QuickLinks key="quick" hasVotes={Boolean(view.motions)} hasContributions={Boolean(c)} />,
           ]}
           panel={(wide) => <JourneyCard view={view} wide={wide} />}
         />
@@ -404,7 +405,10 @@ function LevelColumns({
     return (
       <div ref={ref} className="flex flex-col gap-4">
         {shown.map((item, i) => (
-          <div key={i} className={!withPanel && i === shown.length - 1 ? "flex flex-1 flex-col [&>*]:flex-1" : ""}>
+          <div
+            key={i}
+            className={!withPanel && i === shown.length - 1 ? "flex flex-1 flex-col [&>*]:flex-1 [&>div>*]:h-full" : ""}
+          >
             {item}
           </div>
         ))}
@@ -512,6 +516,56 @@ function JourneyCard({ view, wide = false }: { view: AccountView; wide?: boolean
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+/**
+ * Big friendly shortcuts at the foot of the right-hand column. The tiles grow with the card, so the
+ * card can fill whatever space the column has left and the two columns still end level.
+ */
+function QuickLinks({ hasVotes, hasContributions }: { hasVotes: boolean; hasContributions: boolean }) {
+  const tiles = [
+    ...(hasContributions ? [{ href: "#contributions", label: "Pay or send proof", sub: "Your contributions", Icon: BankIcon }] : []),
+    ...(hasContributions ? [{ href: "#contributions", label: "Get a statement", sub: "PDF or spreadsheet", Icon: ChartIcon }] : []),
+    ...(hasVotes ? [{ href: "#votes", label: "Have your say", sub: "Open votes", Icon: CheckIcon }] : []),
+    { href: "#documents", label: "Your documents", sub: "Forms and receipts", Icon: FileIcon },
+  ].slice(0, 4);
+  return (
+    <section aria-labelledby="quick-h" className="flex flex-col rounded-[22px] border border-line bg-paper p-[clamp(18px,2.6vw,24px)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="quick-h" className="m-0 font-sans text-[17px] font-semibold text-ink">
+          Quick links
+        </h2>
+        <a
+          href={CONTACT.whatsapp}
+          target="_blank"
+          rel="noopener"
+          className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-forest-800 no-underline hover:underline"
+        >
+          <WhatsAppIcon size={16} /> Ask the office
+        </a>
+      </div>
+      <div className="mt-3 grid flex-1 auto-rows-fr grid-cols-2 gap-3">
+        {tiles.map(({ href, label, sub, Icon }) => (
+          <a
+            key={label}
+            href={href}
+            className="group flex min-h-[92px] flex-col justify-between rounded-[16px] bg-mist/60 p-3.5 text-forest-800 no-underline ring-1 ring-forest-800/5 transition hover:-translate-y-0.5 hover:bg-mist hover:shadow-card"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-paper text-forest-800 shadow-sm">
+              <Icon size={18} />
+            </span>
+            <span>
+              <span className="flex items-center gap-1 text-[14.5px] font-semibold text-ink">
+                {label}
+                <ArrowRightIcon size={14} className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </span>
+              <span className="block text-[12.5px] text-muted">{sub}</span>
+            </span>
+          </a>
+        ))}
+      </div>
     </section>
   );
 }

@@ -245,7 +245,9 @@ export function IdeasCard({ ideas }: { ideas: IdeaView[] }) {
   }
 
   return (
-    <Card>
+    // A flex column so that, when the dashboard stretches this card to line up the columns, the writing
+    // box grows into the space instead of leaving it empty.
+    <Card className="flex flex-col">
       <h2 className="m-0 font-sans text-[17px] font-semibold text-ink">Share an idea</h2>
       <p className="mt-2 mb-0 text-[14.5px] text-body">A project, an improvement, a question for the board. Every idea is read.</p>
       <textarea
@@ -253,11 +255,11 @@ export function IdeasCard({ ideas }: { ideas: IdeaView[] }) {
         onChange={(e) => setText(e.target.value)}
         maxLength={2000}
         rows={4}
-        className="mt-3 w-full rounded-xl border border-line bg-white p-3 text-[15px] text-ink"
+        className="mt-3 min-h-[120px] w-full flex-1 rounded-xl border border-line bg-white p-3 text-[15px] text-ink"
         aria-label="Your idea"
       />
       {msg ? <p className={`mt-2 mb-0 text-[14px] ${msg.ok ? "text-forest-800" : "text-danger"}`}>{msg.text}</p> : null}
-      <button type="button" disabled={busy || text.trim().length < 5} onClick={() => void send()} className={`${btnPrimary} mt-3`}>
+      <button type="button" disabled={busy || text.trim().length < 5} onClick={() => void send()} className={`${btnPrimary} mt-3 self-start`}>
         {busy ? "Sending…" : "Send idea"}
       </button>
       {ideas.length ? (
