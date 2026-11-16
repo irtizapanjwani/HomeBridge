@@ -72,3 +72,5 @@ they said they paid. Shares, contributions and statements are still the sample f
   data in `lib/admin-data.ts`.
 - Replace the illustrated project images and initials avatar with real photos when available.
 - Publish the full privacy notice (the footer currently opens a summary).
+
+- 
