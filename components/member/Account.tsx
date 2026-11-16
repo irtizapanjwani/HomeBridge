@@ -15,6 +15,7 @@ import { ContactEditor, type MembershipView } from "./Membership";
 import { ContributionsCard, type ContributionsView } from "./Contributions";
 import { GlanceCard, type GlanceView, IdeasCard, type IdeaView, type MotionView, VotesCard } from "./Community";
 import { MeetingCard, type MeetingView } from "./Meeting";
+import { VotePopup, waitingVotes } from "./VotePopup";
 
 export type AccountView = {
   reference: string;
@@ -198,6 +199,7 @@ export function Account({ view }: { view: AccountView }) {
     return (
       <div className="mx-auto max-w-[1240px] px-[clamp(16px,4vw,28px)] pt-[clamp(20px,3vw,32px)]">
         {hero}
+        {view.motions && <VotePopup motions={view.motions} />}
 
         <div className="mt-4 grid gap-4">
           <MemberStats
@@ -231,7 +233,7 @@ export function Account({ view }: { view: AccountView }) {
             view.ideas && <IdeasCard key="ideas" ideas={view.ideas} />,
           ]}
           right={[
-            view.meeting && <MeetingCard key="meeting" meeting={view.meeting} />,
+            view.meeting && <MeetingCard key="meeting" meeting={view.meeting} afterVote={waitingVotes(view.motions).length > 0} />,
             view.glance && <GlanceCard key="glance" g={view.glance} />,
             <HelpCard key="help" member />,
             <div key="safety">{safetyCard}</div>,

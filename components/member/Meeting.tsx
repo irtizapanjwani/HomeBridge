@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Card, btnPrimary, btnSecondary } from "./bits";
+import { VOTE_POPUP_DONE } from "./VotePopup";
 
 export type MeetingView = { when: string; place: string; agenda: string[]; daysLeft: number; answer: "yes" | "no" | null };
 
@@ -18,7 +19,7 @@ const dismissKey = (m: MeetingView) => `hb-meeting-popup-dismissed:${m.when}`;
  * While the member hasn't replied, the same details open as a popup when the dashboard loads.
  * The card and the popup share one answer, so replying in either updates both.
  */
-export function MeetingCard({ meeting, popup = true }: { meeting: MeetingView; popup?: boolean }) {
+export function MeetingCard({ meeting, popup = true, afterVote = false }: { meeting: MeetingView; popup?: boolean; afterVote?: boolean }) {
   const [answer, setAnswer] = useState<Answer>(meeting.answer);
   const [busy, setBusy] = useState<"yes" | "no" | null>(null);
   const [err, setErr] = useState("");
@@ -47,13 +48,13 @@ export function MeetingCard({ meeting, popup = true }: { meeting: MeetingView; p
       <Card id="meeting" className="scroll-mt-6" aria-labelledby="meeting-card-h">
         {body("meeting-card-h")}
       </Card>
-      {popup && meeting.answer === null && <MeetingPopup meeting={meeting} answered={answer !== null}>{body("meeting-popup-h")}</MeetingPopup>}
+      {popup && meeting.answer === null && <MeetingPopup meeting={meeting} answered={answer !== null} afterVote={afterVote}>{body("meeting-popup-h")}</MeetingPopup>}
     </>
   );
 }
 
 /** Opens once per visit while the member hasn't replied. X, Esc or a click outside closes it. */
-function MeetingPopup({ meeting, answered, children }: { meeting: MeetingView; answered: boolean; children: React.ReactNode }) {
+function MeetingPopup({ meeting, answered, afterVote, children }: { meeting: MeetingView; answered: boolean; afterVote: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -64,10 +65,22 @@ function MeetingPopup({ meeting, answered, children }: { meeting: MeetingView; a
       /* storage blocked: show it anyway */
     }
     if (dismissed) return;
+    // When a vote popup is showing, wait until it is closed so the two never stack.
+    if (afterVote) {
+      let t: ReturnType<typeof setTimeout> | undefined;
+      const open = () => {
+        t = setTimeout(() => ref.current?.showModal(), 300);
+      };
+      window.addEventListener(VOTE_POPUP_DONE, open, { once: true });
+      return () => {
+        window.removeEventListener(VOTE_POPUP_DONE, open);
+        clearTimeout(t);
+      };
+    }
     // A short pause lets the dashboard paint first, so the popup doesn't feel like a page error.
     const t = setTimeout(() => ref.current?.showModal(), 400);
     return () => clearTimeout(t);
-  }, [meeting]);
+  }, [meeting, afterVote]);
 
   // After a reply, show the thank-you for a moment, then close.
   useEffect(() => {
