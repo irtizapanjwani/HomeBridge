@@ -209,35 +209,43 @@ export function Account({ view }: { view: AccountView }) {
           {view.infoRequest && <InfoRequestCard needed={view.infoRequest.needed} by={view.infoRequest.by} />}
         </div>
 
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.55fr_1fr]">
-          <div className="grid gap-4">
-            {view.forms && <FormsCard forms={view.forms} />}
-            {c && (
-              <div id="contributions" className="scroll-mt-6">
+        <LevelColumns
+          cols="lg:grid-cols-[1.55fr_1fr]"
+          panelHeight={JOURNEY_HEIGHT}
+          left={[
+            view.forms && <FormsCard key="forms" forms={view.forms} />,
+            c && (
+              <div key="contributions" id="contributions" className="scroll-mt-6">
                 <ContributionsCard c={c} />
               </div>
-            )}
-            {view.motions && (
-              <div id="votes" className="scroll-mt-6">
+            ),
+            view.motions && (
+              <div key="votes" id="votes" className="scroll-mt-6">
                 <VotesCard motions={view.motions} />
               </div>
-            )}
-            {view.ideas && <IdeasCard ideas={view.ideas} />}
-          </div>
-          <aside className="grid content-start gap-4">
-            {view.meeting && <MeetingCard meeting={view.meeting} />}
-            {view.glance && <GlanceCard g={view.glance} />}
-            <HelpCard member />
-            {safetyCard}
-          </aside>
-        </div>
+            ),
+            view.ideas && <IdeasCard key="ideas" ideas={view.ideas} />,
+          ]}
+          right={[
+            view.meeting && <MeetingCard key="meeting" meeting={view.meeting} />,
+            view.glance && <GlanceCard key="glance" g={view.glance} />,
+            <HelpCard key="help" member />,
+            <div key="safety">{safetyCard}</div>,
+          ]}
+          panel={(wide) => <JourneyCard view={view} wide={wide} />}
+        />
 
         <section aria-labelledby="record-h" className="mt-10">
           <p className="eyebrow m-0">Your record</p>
           <h2 id="record-h" className="m-0 mt-1 text-[clamp(24px,3vw,32px)] text-forest-800">
             Details, documents and joining fee
           </h2>
-          <LevelColumns left={[detailsCard]} right={[documentsCard, feeCard]} panel={(wide) => <SafeRecordPanel wide={wide} />} />
+          <LevelColumns
+            left={[detailsCard]}
+            right={[documentsCard, feeCard]}
+            panelHeight={PANEL_HEIGHT}
+            panel={(wide) => <SafeRecordPanel wide={wide} />}
+          />
         </section>
       </div>
     );
@@ -344,10 +352,16 @@ function LevelColumns({
   left,
   right,
   panel,
+  panelHeight,
+  cols = "lg:grid-cols-2",
 }: {
   left: React.ReactNode[];
   right: React.ReactNode[];
   panel: (wide: boolean) => React.ReactNode;
+  /** The panel's own height in a column, with the gap above it. */
+  panelHeight: number;
+  /** The two columns' widths on wide screens. */
+  cols?: string;
 }) {
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
@@ -377,13 +391,13 @@ function LevelColumns({
       const r = natural(rightRef.current);
       // Whichever leaves less empty space: the panel in the shorter column, or across the bottom.
       const gap = Math.abs(l - r);
-      setSide(Math.abs(gap - PANEL_HEIGHT) < gap ? (l < r ? "left" : "right") : "below");
+      setSide(Math.abs(gap - panelHeight) < gap ? (l < r ? "left" : "right") : "below");
     };
     measure();
     const ro = new ResizeObserver(measure);
     [leftRef.current, rightRef.current].forEach((el) => el && [...el.children].forEach((c) => ro.observe(c.firstElementChild ?? c)));
     return () => ro.disconnect();
-  }, []);
+  }, [panelHeight]);
 
   const column = (items: React.ReactNode[], withPanel: boolean, ref: React.RefObject<HTMLDivElement | null>) => {
     const shown = items.filter(Boolean);
@@ -404,10 +418,100 @@ function LevelColumns({
   };
 
   return (
-    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+    <div className={`mt-4 grid gap-4 ${cols}`}>
       {column(left, side === "left", leftRef)}
       {column(right, side === "right", rightRef)}
       {side === "below" && <div className="flex lg:col-span-2">{panel(true)}</div>}
     </div>
+  );
+}
+
+/**
+ * The member's own milestones, from application to the next meeting, on a dark green card. The steps
+ * spread out to fill whatever height the column has spare, so the two columns always end level and
+ * the space looks intended. The first step not yet reached is marked "Next".
+ */
+/** About the journey card's own height in a column, with the gap above it. */
+const JOURNEY_HEIGHT = 440;
+
+function JourneyCard({ view, wide = false }: { view: AccountView; wide?: boolean }) {
+  const items = view.contributions?.items ?? [];
+  const formsDone = Boolean(view.forms?.declaration && view.forms?.nominee);
+  const steps: { title: string; detail: string; done: boolean }[] = [
+    { title: "Applied", detail: view.submittedAt, done: true },
+    {
+      title: "Approved as a member",
+      detail: view.membership ? `${view.membership.admittedAt} · ${view.membership.memberNo}` : "",
+      done: Boolean(view.membership),
+    },
+    {
+      title: "Membership forms signed",
+      detail: formsDone ? "Declaration and nominee form" : view.forms ? `Please sign by ${view.forms.dueBy}` : "",
+      done: formsDone,
+    },
+    {
+      title: "First contribution",
+      detail: items.length ? `${items[items.length - 1].period} · ${items.length} so far` : "Your first monthly payment",
+      done: items.length > 0,
+    },
+    view.meeting
+      ? { title: "Next general meeting", detail: view.meeting.when, done: false }
+      : { title: "Have your say", detail: "Vote on motions and share your ideas", done: false },
+  ];
+  const next = steps.findIndex((st) => !st.done);
+
+  return (
+    <section
+      aria-labelledby="journey-h"
+      className="relative flex flex-1 flex-col overflow-hidden rounded-[22px] bg-forest-800 p-[clamp(18px,2.6vw,24px)] text-cream"
+    >
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold via-gold-soft to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-12 -bottom-14 rotate-[-10deg] opacity-[0.07]">
+        <LogoMark size={220} />
+      </div>
+      <p className="m-0 text-[12px] font-bold tracking-[0.14em] text-gold uppercase">Your HomeBridge journey</p>
+      <h2 id="journey-h" className="m-0 mt-2 text-[clamp(20px,2.2vw,24px)] text-cream">
+        How far you&apos;ve come
+      </h2>
+      <ol
+        className={`relative m-0 mt-5 flex flex-1 list-none flex-col justify-between gap-4 p-0 ${
+          wide ? "lg:grid lg:grid-cols-5 lg:gap-5" : ""
+        }`}
+      >
+        {/* the line that joins the dots: down the side, or across the top on the wide layout */}
+        <span
+          aria-hidden="true"
+          className={`absolute top-3 bottom-3 left-[11px] w-px bg-gradient-to-b from-gold/70 via-gold/30 to-cream/15 ${
+            wide ? "lg:top-[11px] lg:right-6 lg:bottom-auto lg:left-3 lg:h-px lg:w-auto lg:bg-gradient-to-r" : ""
+          }`}
+        />
+        {steps.map((st, i) => (
+          <li key={st.title} className={`relative flex items-start gap-3 ${wide ? "lg:flex-col lg:gap-2.5" : ""}`}>
+            <span
+              className={`relative z-[1] mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                st.done
+                  ? "bg-gold text-forest-900"
+                  : i === next
+                    ? "bg-forest-800 text-gold ring-2 ring-gold"
+                    : "bg-forest-800 ring-1 ring-cream/30"
+              }`}
+            >
+              {st.done ? <CheckIcon size={13} strokeWidth={3} /> : i === next ? <span className="h-2 w-2 rounded-full bg-gold" /> : null}
+            </span>
+            <div className="min-w-0">
+              <p className={`m-0 text-[15px] font-semibold ${st.done ? "text-cream" : i === next ? "text-gold" : "text-on-dark"}`}>
+                {st.title}
+                {i === next && (
+                  <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 align-middle text-[11px] font-bold tracking-wide text-gold uppercase">
+                    Next
+                  </span>
+                )}
+              </p>
+              {st.detail && <p className="m-0 mt-0.5 text-[13.5px] text-on-dark/80">{st.detail}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
