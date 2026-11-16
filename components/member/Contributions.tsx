@@ -5,7 +5,8 @@ import { DownloadIcon } from "@/components/ui/Icons";
 import { Card, btnPrimary, btnSecondary, textLink } from "./bits";
 
 export type ContributionsView = {
-  items: { receiptNo: string; period: string; amount: string; paidAt: string }[];
+  /** key = YYYY-MM and value/currency = the plain number, for yearly totals on the Statements page. */
+  items: { receiptNo: string; period: string; amount: string; paidAt: string; key?: string; value?: number; currency?: "NGN" | "GBP" | "USD" }[];
   totals: string[];
   shares: number;
   note: string;

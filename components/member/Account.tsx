@@ -213,7 +213,11 @@ export function Account({ view }: { view: AccountView }) {
           cols="lg:grid-cols-[1.55fr_1fr]"
           panelHeight={JOURNEY_HEIGHT}
           left={[
-            view.forms && <FormsCard key="forms" forms={view.forms} />,
+            view.forms && (
+              <div key="forms" id="forms" className="scroll-mt-6">
+                <FormsCard forms={view.forms} />
+              </div>
+            ),
             c && (
               <div key="contributions" id="contributions" className="scroll-mt-6">
                 <ContributionsCard c={c} />

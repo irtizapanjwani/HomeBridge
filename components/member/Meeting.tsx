@@ -18,7 +18,7 @@ const dismissKey = (m: MeetingView) => `hb-meeting-popup-dismissed:${m.when}`;
  * While the member hasn't replied, the same details open as a popup when the dashboard loads.
  * The card and the popup share one answer, so replying in either updates both.
  */
-export function MeetingCard({ meeting }: { meeting: MeetingView }) {
+export function MeetingCard({ meeting, popup = true }: { meeting: MeetingView; popup?: boolean }) {
   const [answer, setAnswer] = useState<Answer>(meeting.answer);
   const [busy, setBusy] = useState<"yes" | "no" | null>(null);
   const [err, setErr] = useState("");
@@ -47,7 +47,7 @@ export function MeetingCard({ meeting }: { meeting: MeetingView }) {
       <Card id="meeting" className="scroll-mt-6" aria-labelledby="meeting-card-h">
         {body("meeting-card-h")}
       </Card>
-      {meeting.answer === null && <MeetingPopup meeting={meeting} answered={answer !== null}>{body("meeting-popup-h")}</MeetingPopup>}
+      {popup && meeting.answer === null && <MeetingPopup meeting={meeting} answered={answer !== null}>{body("meeting-popup-h")}</MeetingPopup>}
     </>
   );
 }
