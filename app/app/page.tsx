@@ -1,4 +1,5 @@
 import { Account, type AccountView } from "@/components/member/Account";
+import { Footer } from "@/components/home/Footer";
 import { MemberSignIn } from "@/components/member/SignIn";
 import { currentMemberRef, findMemberByRef, isMemberAuthConfigured } from "@/lib/member-auth";
 import { isDbConfigured } from "@/lib/db";
@@ -185,6 +186,21 @@ export default async function MemberAccountPage() {
         }
       : null,
   };
+
+  // Applicants (not yet admitted) get the website's own footer under their dashboard, like the public
+  // pages. Members keep the dashboard as it is. The wrapper cancels the layout's bottom padding so the
+  // footer reaches the bottom, then leaves room for the phone tab bar exactly as the public pages do.
+  if (!m.membership) {
+    return (
+      <>
+        <Account view={view} />
+        <div className="mt-12 -mb-24 md:-mb-16 print:hidden">
+          <Footer />
+          <div aria-hidden="true" className="h-14 md:hidden" />
+        </div>
+      </>
+    );
+  }
 
   return <Account view={view} />;
 }
