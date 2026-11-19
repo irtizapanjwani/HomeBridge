@@ -7,6 +7,7 @@ import { LogoMark } from "@/components/ui/Logo";
 import { AdminStoreProvider, useAdmin } from "./store";
 import { NoAccess, cx } from "./ui";
 import { PAY_CHANGED } from "./lib";
+import { clearAdminCache, installFastFetch, prefetchAdmin } from "./fast-fetch";
 import { RegisterScreen } from "./screens/Register";
 import { MemberProfile } from "./screens/MemberProfile";
 import { ContributionsScreen } from "./screens/Contributions";
@@ -18,6 +19,39 @@ import { ProjectsScreen } from "./screens/Projects";
 import { ReportsScreen } from "./screens/Reports";
 import { AuditLogScreen } from "./screens/AuditLog";
 import { SettingsScreen } from "./screens/Settings";
+
+// Install before any section mounts, so even the first section's data goes through the store.
+installFastFetch();
+
+const lastMonth = () => {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 7);
+};
+
+/** What each section loads when it opens. Fetched ahead of time so clicking a section is instant. */
+const SECTION_DATA: Partial<Record<ScreenId, () => string[]>> = {
+  contributions: () => [
+    "/api/admin/proofs",
+    "/api/admin/holidays",
+    "/api/admin/contributions",
+    "/api/admin/contributions/missed",
+    `/api/admin/reconciliation?period=${lastMonth()}`,
+    "/api/admin/settings/payment-reminders",
+  ],
+  fees: () => ["/api/admin/fees/ledger"],
+  meetings: () => ["/api/admin/meetings", "/api/admin/motions", "/api/admin/settings/vote-choices", "/api/admin/ideas", "/api/admin/notices"],
+  reports: () => ["/api/admin/reports"],
+  settings: () => [
+    "/api/admin/settings/welcome-auto-send",
+    "/api/admin/settings/templates",
+    "/api/admin/settings/forms-reminders",
+    "/api/admin/settings/payment-reminders",
+    "/api/admin/settings/statements",
+  ],
+};
+const warm = (id: ScreenId) => prefetchAdmin(SECTION_DATA[id]?.() ?? []);
 
 const NAV: { id: ScreenId; label: string; what: string; group: 1 | 2 }[] = [
   { id: "register", label: "Member register", what: "the member register or share accounts", group: 1 },
@@ -60,6 +94,16 @@ function Shell({ dbConnected }: { dbConnected: boolean }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [navOpen]);
+
+  // Load every section's data in the background once the page is up, so clicking around is instant.
+  useEffect(() => {
+    if (!dbConnected) return;
+    const t = setTimeout(() => {
+      for (const n of NAV) if (s.access(n.id) !== "none") warm(n.id);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbConnected, s.role]);
 
   // Real work waiting on the Contributions page: proofs to check and holiday requests to answer.
   const [payWaiting, setPayWaiting] = useState(0);
@@ -111,6 +155,8 @@ function Shell({ dbConnected }: { dbConnected: boolean }) {
                   s.go(n.id);
                   setNavOpen(false);
                 }}
+                onPointerEnter={() => dbConnected && !locked && warm(n.id)}
+                onFocus={() => dbConnected && !locked && warm(n.id)}
                 className={cx(
                   "flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 text-left text-[15px] transition",
                   on ? "bg-gold font-semibold text-forest-950" : n.group === 1 ? "text-cream hover:bg-white/6" : "text-[#D8D3BC] hover:bg-white/6",
@@ -222,6 +268,7 @@ function SignOutButton({ className }: { className?: string }) {
       onClick={async () => {
         setBusy(true);
         await fetch("/api/admin/login", { method: "DELETE" }).catch(() => null);
+        clearAdminCache();
         window.location.reload();
       }}
       className={cx("min-h-11", className)}
